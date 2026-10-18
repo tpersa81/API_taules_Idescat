@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Consultes API JSON-Stat · Idescat</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <div><h1>Consultes API JSON-Stat</h1><p>Consulta de taules de l'Idescat</p></div>
+  <a href="https://www.idescat.cat/dev/api/taules/" target="_blank" rel="noopener">Documentació API ↗</a>
+</header>
+<main>
+<section class="card" id="step1"><h2>1. Selecciona l'estadística</h2><label>Estadística<select id="stat"></select></label></section>
+<section class="card" id="step2"><h2>2. Tria la taula</h2>
+  <div class="grid">
+    <label>Concepte<select id="concept" disabled></select></label>
+    <label>Enencreuament<select id="cross" disabled></select></label>
+    <label>Node<select id="node" disabled><option>— Selecciona —</option></select></label>
+    <label>Taula<select id="table" disabled><option>— Selecciona —</option></select></label>
+    <label>Geografia<select id="geo" disabled><option>— Selecciona —</option></select></label>
+  </div>
+  <div id="tableInfo" class="selected" hidden></div>
+</section>
+<section class="card" id="step3"><div class="section-title"><h2>3. Filtra la taula</h2><button id="clear" class="secondary">Restableix seleccions</button></div>
+  <div id="cellInfo" class="cell-info" hidden></div>
+  <p class="filter-help">Selecciona els valors identificant-los pel <strong>codi</strong> i l’<strong>etiqueta</strong>. Utilitza el cercador per localitzar ràpidament els valors.</p><div id="filters"></div>
+</section>
+<section class="actions"><button id="query" class="primary" disabled>Consultar</button><button id="exportCsv" class="secondary" disabled>Exporta CSV</button><button id="exportXlsx" class="secondary" disabled>Exporta XLSX</button><span id="status"></span></section>
+<section class="card results"><div class="section-title"><h2>4. Resultats</h2></div><div id="results"><div class="empty">Selecciona una taula i fes la consulta.</div></div></section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
