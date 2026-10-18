@@ -59,15 +59,22 @@ function resetBelow(level) {
 }
 
 async function loadStats() {
-  const local = await fetchJson('data/statistics.json');
-  state.stats = local
-    .map(r => ({ value: r.Estadística, label: `${r.Estadística} · ${r.Nom}` }))
+  const ds = await fetchJson(`${API}?lang=ca`);
+
+  state.stats = collectionItems(ds)
+    .map(x => ({
+      value: String(x.id),
+      label: `${x.id} · ${x.label}`
+    }))
     .sort((a, b) => a.value.localeCompare(b.value, 'ca', { numeric: true }));
   fill($('stat'), state.stats);
-  // L'Excel no selecciona cap estadística en obrir-se.
   // Només restaurem una estadística si forma part de l'URL compartida.
   const initial = new URLSearchParams(location.search).get('stat') || '';
-  if (initial) { $('stat').value = initial; await onStatChange(); }
+
+  if (initial) {
+    $('stat').value = initial;
+    await onStatChange();
+  }
 }
 
 async function onStatChange() {
