@@ -1094,13 +1094,109 @@ function exportCSV(){
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');
   a.href=url;a.download=`idescat_${state.selected.stat}_${state.selected.table}_${state.selected.geo}.csv`;a.click();URL.revokeObjectURL(url);
 }
+function buildPivotExportData() {
+  if (!state.lastData) return null;
+
+  const {dims, rows} = resultRows(state.lastData);
+
+  const pivotDims = dims.filter(d =>
+    String(d.label || '').trim().toLowerCase() !== 'concepte'
+  );
+
+  const rowIds = state.pivot.rows;
+  const columnIds = state.pivot.columns;
+
+  // Si el constructor no està complet, no generem el segon full.
+  if (!rowIds.length || !columnIds.length) return null;
+
+  const allIds = [...rowIds, ...columnIds];
+
+  if (
+    allIds.length !== pivotDims.length ||
+    allIds.length !== new Set(allIds).size
+  ) {
+    return null;
+  }
+
+  const rowCombinations = pivotCombinationMap(rows, rowIds);
+  const columnCombinations = pivotCombinationMap(rows, columnIds);
+
+  const values = new Map();
+
+  for (const row of rows) {
+    const rKey = pivotKey(row, rowIds);
+    const cKey = pivotKey(row, columnIds);
+
+    values.set(`${rKey}§${cKey}`, row.value);
+  }
+
+  const out = [];
+
+  // Títol
+  out.push([state.metadata?.label || '']);
+
+  // Una mica d'informació
+  out.push([
+    `Files: ${rowCombinations.length} · Columnes: ${columnCombinations.length}`
+  ]);
+
+  out.push([]);
+
+  // Capçalera
+  const header = [];
+
+  for (const id of rowIds) {
+    const dim = pivotDimensionById(dims, id);
+    header.push(pivotDimensionLabel(dim));
+  }
+
+  for (const c of columnCombinations) {
+    header.push(c.label);
+  }
+
+  out.push(header);
+
+  // Dades
+  for (const r of rowCombinations) {
+    const rowOut = [];
+
+    for (const id of rowIds) {
+      rowOut.push(r.row[id]?.label ?? '');
+    }
+
+    for (const c of columnCombinations) {
+      const value = values.get(`${r.key}§${c.key}`);
+
+      rowOut.push(
+        value === null || value === undefined
+          ? ''
+          : value
+      );
+    }
+
+    out.push(rowOut);
+  }
+
+  return out;
+}
 
 function exportXLSX(){
   if(!state.lastData)return;
-  if(typeof XLSX==='undefined'){ status("No s'ha pogut carregar el mòdul d'exportació XLSX.",'error'); return; }
+  if(typeof XLSX==='undefined'){
+    status("No s'ha pogut carregar el mòdul d'exportació XLSX.",'error');
+    return;
+  }
+
   const {dims,rows}=resultRows(state.lastData);
-  const headers=dims.flatMap(d=>[`${d.id}_Codi`,`${d.id}_Etiqueta`]).concat('Valor');
+  const headers=dims
+    .flatMap(d=>[`${d.id}_Codi`,`${d.id}_Etiqueta`])
+    .concat('Valor');
   const {tableName,queryUrl,exportDate}=exportInfo();
+
+  // -------------------------------------------------
+  // Full 1: Dades
+  // -------------------------------------------------
+
   const out=[
     [tableName],
     [`URL: ${queryUrl}`],
@@ -1108,18 +1204,86 @@ function exportXLSX(){
     [],
     headers
   ];
-  for(const r of rows) out.push(dims.flatMap(d=>[r[d.id].code,r[d.id].label]).concat(r.value??''));
+
+  for(const r of rows){
+    out.push(
+      dims
+        .flatMap(d=>[r[d.id].code,r[d.id].label])
+        .concat(r.value??'')
+    );
+  }
+
   const ws=XLSX.utils.aoa_to_sheet(out);
-  ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:4,c:0},e:{r:out.length-1,c:headers.length-1}})};
+
+  ws['!autofilter']={
+    ref:XLSX.utils.encode_range({
+      s:{r:4,c:0},
+      e:{r:out.length-1,c:headers.length-1}
+    })
+  };
+
   ws['!merges']=[
     {s:{r:0,c:0},e:{r:0,c:Math.max(0,headers.length-1)}},
     {s:{r:1,c:0},e:{r:1,c:Math.max(0,headers.length-1)}},
     {s:{r:2,c:0},e:{r:2,c:Math.max(0,headers.length-1)}}
   ];
+
   ws['A1'].s={font:{bold:true}};
+
+  // -------------------------------------------------
+  // Crear llibre
+  // -------------------------------------------------
+
   const wb=XLSX.utils.book_new();
+
   XLSX.utils.book_append_sheet(wb,ws,'Dades');
-  XLSX.writeFile(wb,`idescat_${state.selected.stat}_${state.selected.table}_${state.selected.geo}.xlsx`);
+
+  // -------------------------------------------------
+  // Full 2: Taula construïda
+  // -------------------------------------------------
+
+  const pivotOut=buildPivotExportData();
+
+  if(pivotOut){
+    const pivotWs=XLSX.utils.aoa_to_sheet(pivotOut);
+
+    // Fusionem el títol amb tota l'amplada de la taula
+    const width=pivotOut[3]?.length || 1;
+
+    pivotWs['!merges']=[
+      {
+        s:{r:0,c:0},
+        e:{r:0,c:Math.max(0,width-1)}
+      },
+      {
+        s:{r:1,c:0},
+        e:{r:1,c:Math.max(0,width-1)}
+      }
+    ];
+
+    // Autofilter sobre la capçalera
+    if(pivotOut.length>4){
+      pivotWs['!autofilter']={
+        ref:XLSX.utils.encode_range({
+          s:{r:3,c:0},
+          e:{r:pivotOut.length-1,c:width-1}
+        })
+      };
+    }
+
+    pivotWs['A1'].s={font:{bold:true}};
+
+    XLSX.utils.book_append_sheet(
+      wb,
+      pivotWs,
+      'Taula construïda'
+    );
+  }
+
+  XLSX.writeFile(
+    wb,
+    `idescat_${state.selected.stat}_${state.selected.table}_${state.selected.geo}.xlsx`
+  );
 }
 
 function updateUrl(withFilters=false){const p=new URLSearchParams(); for(const [k,v] of Object.entries(state.selected))if(v)p.set(k,v); if(withFilters)for(const[k,v]of Object.entries(selectedFilters()))p.set(k,v.join(',')); history.replaceState(null,'','?'+p.toString());}
