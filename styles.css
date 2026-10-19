@@ -216,3 +216,25 @@
   color:#1f4e79;
   margin:18px 0 8px;
 }
+#pivotResult table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+#pivotResult th,
+#pivotResult td {
+  border: 1px solid #ADADAD;
+  padding: 6px 8px;
+}
+
+#pivotResult th {
+  text-align: center;
+}
+
+#pivotResult th.pivot-row-header {
+  text-align: left;
+}
+
+#pivotResult td {
+  text-align: right;
+}
