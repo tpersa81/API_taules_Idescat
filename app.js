@@ -423,6 +423,24 @@ function dimensions(ds) {
 function capitalizeFirst(str) {
   return str ? str.charAt(0).toUpperCase() + str.slice(1) : str;
 }
+
+function provinceSortOrder(code) {
+  const order = {
+    '08': 1,
+    '17': 2,
+    '25': 3,
+    '43': 4,
+    '99': 5
+  };
+
+  // Catalunya (TOTAL), al final
+  if (code === 'cat' || code === 'CAT' || code === 'Total' || code === 'TOTAL') {
+    return 6;
+  }
+
+  return order[String(code)] ?? 999;
+}
+
 function renderMetadata(ds) {
   const dims=dimensions(ds); state.filters.clear();
   const box=$('filters'); box.innerHTML='';
@@ -806,6 +824,7 @@ function pivotCombinationMap(rows, ids) {
 
   for (const row of rows) {
     const key = pivotKey(row, ids);
+
     map.set(key, {
       key,
       label: pivotLabel(row, ids),
@@ -813,7 +832,38 @@ function pivotCombinationMap(rows, ids) {
     });
   }
 
-  return [...map.values()];
+  const result = [...map.values()];
+
+  // Ordenació específica quan entre les dimensions hi ha Província
+  const provinceId = ids.find(id => {
+    const dim = resultRows(state.lastData).dims.find(d => d.id === id);
+
+    return dim &&
+      (
+        dim.label?.toLowerCase() === 'província' ||
+        dim.label?.toLowerCase() === 'provincia'
+      );
+  });
+
+  if (provinceId) {
+    result.sort((a, b) => {
+      const aCode = String(a.row[provinceId]?.code ?? '');
+      const bCode = String(b.row[provinceId]?.code ?? '');
+
+      const orderA = provinceSortOrder(aCode);
+      const orderB = provinceSortOrder(bCode);
+
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+
+      return aCode.localeCompare(bCode, 'ca', {
+        numeric: true
+      });
+    });
+  }
+
+  return result;
 }
 
 function renderPivotTable() {
