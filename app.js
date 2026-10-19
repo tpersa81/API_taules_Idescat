@@ -2807,11 +2807,27 @@ function buildPivotRowHeaderHtml(
 }
 
 
-function selectedSingleCategoryLabels(ds) {
-  const dims = dimensions(ds);
+function selectedSingleCategoryLabels() {
+  /*
+   * IMPORTANT:
+   * state.lastData és la resposta ja filtrada de l'API.
+   * Per tant, una dimensió de la qual l'usuari ha triat
+   * una sola categoria només conté una categoria a lastData.
+   *
+   * Per saber si era realment una dimensió amb diverses
+   * categories possibles, hem de consultar state.metadata,
+   * que és la resposta original de metadades sense filtres.
+   */
+  const dims =
+    dimensions(
+      state.metadata || {}
+    );
 
   return dims
-    .filter(d => !isConceptDimension(d))
+    .filter(
+      d =>
+        !isConceptDimension(d)
+    )
     .map(d => {
       const categories =
         d.categories ?? [];
@@ -2820,9 +2836,8 @@ function selectedSingleCategoryLabels(ds) {
         state.filters.get(d.id);
 
       /*
-       * Només mostrem dimensions que tenen
-       * més d'una categoria possible i de les
-       * quals l'usuari n'ha seleccionat exactament una.
+       * No mostrem dimensions que ja només tenen
+       * una categoria possible a la taula original.
        */
       if (
         categories.length <= 1 ||
@@ -2972,9 +2987,7 @@ function renderPivotTable() {
     );
 
   const singleCategoryLabels =
-    selectedSingleCategoryLabels(
-      state.lastData
-    );
+    selectedSingleCategoryLabels();
 
   let html = `
     <div class="pivot-table-title">
@@ -3348,9 +3361,7 @@ function buildPivotExportData() {
     exportInfo();
 
   const singleCategoryLabels =
-    selectedSingleCategoryLabels(
-      state.lastData
-    );
+    selectedSingleCategoryLabels();
 
   const out = [];
 
