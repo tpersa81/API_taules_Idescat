@@ -1,4 +1,4 @@
-const API = 'https://apibeta.intranet.idescat.cat/taules/v2';
+const API = 'https://api.idescat.cat/taules/v2';
 const MAX_CELLS = 20000;
 
 const state = {
