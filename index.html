@@ -27,7 +27,22 @@
   <p class="filter-help">Selecciona els valors identificant-los pel <strong>codi</strong> i l’<strong>etiqueta</strong>. Utilitza el cercador per localitzar ràpidament els valors.</p><div id="filters"></div>
 </section>
 <section class="actions"><button id="query" class="primary" disabled>Consultar</button><button id="exportCsv" class="secondary" disabled>Exporta CSV</button><button id="exportXlsx" class="secondary" disabled>Exporta XLSX</button><span id="status"></span></section>
-<section class="card results"><div class="section-title"><h2>4. Resultats</h2></div><div id="results"><div class="empty">Selecciona una taula i fes la consulta.</div></div></section>
+<section class="card results">
+  <div class="section-title">
+    <h2>4. Resultats</h2>
+  </div>
+
+  <div class="result-tabs">
+    <button id="tabData" class="result-tab active">Dades</button>
+    <button id="tabPivot" class="result-tab">Constructor de taula</button>
+  </div>
+
+  <div id="results">
+    <div class="empty">Selecciona una taula i fes la consulta.</div>
+  </div>
+
+  <div id="pivotBuilder" hidden></div>
+</section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script src="app.js"></script>
