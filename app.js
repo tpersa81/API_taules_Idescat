@@ -2806,6 +2806,50 @@ function buildPivotRowHeaderHtml(
   return html;
 }
 
+
+function selectedSingleCategoryLabels(ds) {
+  const dims = dimensions(ds);
+
+  return dims
+    .filter(d => !isConceptDimension(d))
+    .map(d => {
+      const categories =
+        d.categories ?? [];
+
+      const selected =
+        state.filters.get(d.id);
+
+      /*
+       * Només mostrem dimensions que tenen
+       * més d'una categoria possible i de les
+       * quals l'usuari n'ha seleccionat exactament una.
+       */
+      if (
+        categories.length <= 1 ||
+        !(selected instanceof Set) ||
+        selected.size !== 1
+      ) {
+        return null;
+      }
+
+      const code =
+        [...selected][0];
+
+      const category =
+        categories.find(
+          c =>
+            String(c.code) ===
+            String(code)
+        );
+
+      return (
+        category?.label ??
+        String(code)
+      );
+    })
+    .filter(Boolean);
+}
+
 function renderPivotTable() {
   const result =
     $('pivotResult');
@@ -2927,12 +2971,23 @@ function renderPivotTable() {
       dims
     );
 
+  const singleCategoryLabels =
+    selectedSingleCategoryLabels(
+      state.lastData
+    );
+
   let html = `
     <div class="pivot-table-title">
       ${esc(
         state.metadata?.label || ''
       )}
     </div>
+
+    ${
+      singleCategoryLabels.length
+        ? `<div class="pivot-table-subtitle">${esc(singleCategoryLabels.join('. '))}</div>`
+        : ''
+    }
 
     <div class="pivot-result-meta">
       ${rowCombinations.length.toLocaleString('ca-ES')}
@@ -3291,15 +3346,28 @@ function buildPivotExportData() {
 
   const {source} =
     exportInfo();
+
+  const singleCategoryLabels =
+    selectedSingleCategoryLabels(
+      state.lastData
+    );
+
   const out = [];
+
   out.push([
     state.metadata?.label ||
       ''
   ]);
-  
+
+  out.push(
+    singleCategoryLabels.length
+      ? [singleCategoryLabels.join('. ')]
+      : []
+  );
+
   out.push([source]);
   out.push([]);
-    
+
   const header = [];
 
   for (
@@ -3439,7 +3507,7 @@ function exportXLSX() {
     ref:
       XLSX.utils.encode_range({
         s: {
-          r: 4,
+          r: 5,
           c: 0
         },
         e: {
@@ -3527,7 +3595,7 @@ function exportXLSX() {
       );
 
     const width =
-      pivotOut[3]?.length ||
+      pivotOut[4]?.length ||
       1;
 
     pivotWs['!merges'] = [
@@ -3558,6 +3626,20 @@ function exportXLSX() {
               width - 1
             )
         }
+      },
+      {
+        s: {
+          r: 2,
+          c: 0
+        },
+        e: {
+          r: 2,
+          c:
+            Math.max(
+              0,
+              width - 1
+            )
+        }
       }
     ];
 
@@ -3568,7 +3650,7 @@ function exportXLSX() {
         ref:
           XLSX.utils.encode_range({
             s: {
-              r: 3,
+              r: 4,
               c: 0
             },
             e: {
