@@ -2914,11 +2914,6 @@ function buildPivotRowHeaderHtml(
         level
       );
 
-    /*
-     * span === 0 significa que la categoria
-     * ja està representada per un rowspan
-     * iniciat en una fila anterior.
-     */
     if (span === 0) {
       continue;
     }
@@ -2933,7 +2928,7 @@ function buildPivotRowHeaderHtml(
 
     html += `
       <td
-        class="pivot-label pivot-row-level-${level}"
+        class="pivot-label pivot-row-header pivot-row-level-${level}"
         rowspan="${span}"
       >
         ${esc(label)}
