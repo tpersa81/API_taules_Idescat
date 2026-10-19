@@ -877,7 +877,12 @@ function renderPivotTable() {
 
   if (!state.lastData) return;
 
-    const {dims, rows} = resultRows(state.lastData);
+  const {dims, rows} = resultRows(state.lastData);
+
+  const pivotDims = dims.filter(d =>
+    String(d.label || '').trim().toLowerCase() !== 'concepte'
+  );
+  
   const rowIds = state.pivot.rows;
   const columnIds = state.pivot.columns;
 
@@ -901,7 +906,7 @@ function renderPivotTable() {
     return;
   }
 
-  if (allIds.length !== dims.length) {
+  if (allIds.length !== pivotDims.length) {
     result.innerHTML = `
       <div class="error">
         No totes les dimensions estan assignades.
