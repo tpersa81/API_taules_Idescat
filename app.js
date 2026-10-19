@@ -637,20 +637,24 @@ function pivotDropOnItem(event, target, targetId) {
   const id = event.dataTransfer.getData('text/plain');
   if (!id || id === targetId) return;
 
-  const sourceList =
-    state.pivot.rows.includes(id) ? state.pivot.rows :
-    state.pivot.columns.includes(id) ? state.pivot.columns :
-    null;
-
-  if (!sourceList) return;
-
+  // Elimina la variable de qualsevol zona on pogués estar.
   state.pivot.rows = state.pivot.rows.filter(x => x !== id);
   state.pivot.columns = state.pivot.columns.filter(x => x !== id);
 
-  const targetList = target === 'rows' ? state.pivot.rows : state.pivot.columns;
+  // La variable arrossegada s'insereix abans de la variable
+  // sobre la qual s'ha deixat anar.
+  const targetList =
+    target === 'rows'
+      ? state.pivot.rows
+      : state.pivot.columns;
+
   const index = targetList.indexOf(targetId);
 
-  targetList.splice(index < 0 ? targetList.length : index, 0, id);
+  targetList.splice(
+    index < 0 ? targetList.length : index,
+    0,
+    id
+  );
 
   renderPivotBuilder();
 }
