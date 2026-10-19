@@ -1308,40 +1308,11 @@ function isTerritorialDimension(
 }
 
 function sortCategories(
-  categories,
-  dim
+  categories
 ) {
-  if (
-    !isTerritorialDimension(dim)
-  ) {
-    return categories;
-  }
-
   return [...categories].sort(
-    (a, b) => {
-      const oa =
-        territorialSortOrder(
-          dim,
-          a.code
-        );
-
-      const ob =
-        territorialSortOrder(
-          dim,
-          b.code
-        );
-
-      if (oa !== ob) {
-        return oa - ob;
-      }
-
-      return String(a.code)
-        .localeCompare(
-          String(b.code),
-          'ca',
-          { numeric: true }
-        );
-    }
+    (a, b) =>
+      a.index - b.index
   );
 }
 
@@ -2152,11 +2123,10 @@ function isSingleValueDimension(dim) {
 }
 
 function pivotAvailableDimensions(dims) {
-  const used =
-    new Set([
-      ...state.pivot.rows,
-      ...state.pivot.columns
-    ]);
+  const used = new Set([
+    ...state.pivot.rows,
+    ...state.pivot.columns
+  ]);
 
   return dims.filter(
     d =>
@@ -2404,12 +2374,15 @@ function renderPivotBuilder() {
   const columnsValid =
     state.pivot.columns.length > 0;
 
+  const assignablePivotDims =
+    pivotDims.filter(
+      d => !isSingleValueDimension(d)
+    );
+  
   const allAssigned =
     state.pivot.rows.length +
       state.pivot.columns.length ===
-    pivotDims.filter(
-      d => !isSingleValueDimension(d)
-    ).length;
+    assignablePivotDims.length;
 
   builder.innerHTML = `
     <div class="pivot-intro">
