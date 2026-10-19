@@ -4,7 +4,11 @@ const state = {
   stats: [], nodes: [], tables: [], geos: [], metadata: null, lastData: null,
   selected: { stat: '', concept: '', cross: '', node: '', table: '', geo: '' },
   filters: new Map(), fallbackCatalog: [], page: 1, pageSize: 100,
-  requestToken: 0
+  requestToken: 0,
+  pivot: {
+    rows: [],
+    columns: []
+  }
 };
 
 const $ = id => document.getElementById(id);
