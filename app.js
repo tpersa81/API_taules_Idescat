@@ -997,7 +997,6 @@ function collectionItems(ds) {
               u.pathname
                 .split('/')
                 .filter(Boolean);
-
             id =
               parts.at(-1) || '';
 
@@ -1997,8 +1996,7 @@ function isSingleValueDimension(dim) {
 
 function pivotAvailableDimensions(dims) {
   const used = new Set([
-    ...state.pivot.rows,
-    ...state.pivot.columns
+    ...state.pivot.rows,    ...state.pivot.columns
   ]);
 
   return dims.filter(
@@ -2201,7 +2199,10 @@ function renderPivotBuilder() {
     return;
   }
 
-  const { dims } =
+  const {
+    dims,
+    rows
+  } =
     resultRows(
       state.lastData
     );
@@ -2211,9 +2212,52 @@ function renderPivotBuilder() {
       d => !isConceptDimension(d)
     );
 
+  const assignablePivotDims =
+    pivotDims.filter(
+      d =>
+        !isSingleValueDimension(d)
+    );
+
+  /*
+   * Si la consulta retorna un únic valor,
+   * no queda cap variable pivotable.
+   * En aquest cas utilitzem el Concepte com
+   * a variable de Files.
+   */
+  const scalarResult =
+    rows.length === 1 &&
+    assignablePivotDims.length === 0;
+
+  const conceptDim =
+    dims.find(
+      d => isConceptDimension(d)
+    );
+
+  const effectivePivotDims =
+    scalarResult && conceptDim
+      ? [conceptDim]
+      : assignablePivotDims;
+
+  /*
+   * En el cas escalar, el Concepte queda
+   * automàticament a Files.
+   */
+  if (
+    scalarResult &&
+    conceptDim &&
+    state.pivot.rows.length === 0 &&
+    state.pivot.columns.length === 0
+  ) {
+    state.pivot.rows = [
+      conceptDim.id
+    ];
+  }
+
   const available =
     pivotAvailableDimensions(
-      pivotDims
+      scalarResult
+        ? []
+        : pivotDims
     );
 
   const availableHtml =
@@ -2247,19 +2291,13 @@ function renderPivotBuilder() {
   const columnsValid =
     state.pivot.columns.length > 0;
 
-  const assignablePivotDims =
-    pivotDims.filter(
-      d =>
-        !isSingleValueDimension(d)
-    );
-
   /*
    * Amb una sola variable pivotable no cal exigir
    * que hi hagi variables als dos eixos. L'altre eix
    * representa implícitament un únic valor.
    */
   const onePivotDimension =
-    assignablePivotDims.length === 1;
+    effectivePivotDims.length === 1;
 
   const axesValid =
     onePivotDimension
@@ -2274,8 +2312,8 @@ function renderPivotBuilder() {
 
   const allAssigned =
     assignedPivotDims.size ===
-      assignablePivotDims.length &&
-    assignablePivotDims.every(
+      effectivePivotDims.length &&
+    effectivePivotDims.every(
       d => assignedPivotDims.has(d.id)
     );
 
@@ -2925,6 +2963,20 @@ function renderPivotTable() {
         !isSingleValueDimension(d)
     );
 
+  const conceptDim =
+    dims.find(
+      d => isConceptDimension(d)
+    );
+
+  const scalarResult =
+    rows.length === 1 &&
+    pivotDims.length === 0;
+
+  const effectivePivotDims =
+    scalarResult && conceptDim
+      ? [conceptDim]
+      : pivotDims;
+
   const rowIds =
     state.pivot.rows;
 
@@ -2959,7 +3011,7 @@ function renderPivotTable() {
 
   if (
     allIds.length !==
-    pivotDims.length
+    effectivePivotDims.length
   ) {
     result.innerHTML =
       '<div class="error">No totes les dimensions estan assignades.</div>';
@@ -2997,7 +3049,6 @@ function renderPivotTable() {
         row,
         rowIds
       );
-
     const cKey =
       pivotKey(
         row,
@@ -3328,6 +3379,20 @@ function buildPivotExportData() {
         !isSingleValueDimension(d)
     );
 
+  const conceptDim =
+    dims.find(
+      d => isConceptDimension(d)
+    );
+
+  const scalarResult =
+    rows.length === 1 &&
+    pivotDims.length === 0;
+
+  const effectivePivotDims =
+    scalarResult && conceptDim
+      ? [conceptDim]
+      : pivotDims;
+
   const rowIds =
     state.pivot.rows;
 
@@ -3349,7 +3414,7 @@ function buildPivotExportData() {
 
   if (
     allIds.length !==
-      pivotDims.length ||
+      effectivePivotDims.length ||
     allIds.length !==
       new Set(allIds).size
   ) {
