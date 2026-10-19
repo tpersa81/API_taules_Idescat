@@ -84,14 +84,8 @@ async function onStatChange() {
 
   setBusy(true); status("Construint el Catàleg de l'estadística…");
   try {
-    // Reproducció exacta de la part rellevant de la consulta M "Cataleg" de
-    // l'Excel. Primer obtenim tots els Nodes de l'estadística. Després,
-    // Concepte i Encreuament NO són el nom del Node: es deriven del NomNode.
-    //
-    // Excel / Power Query:
-    //   Concepte  = Text.BeforeDelimiter([NomNode], ".")
-    //   Encreuament = Text.BetweenDelimiters([NomNode], ". ", ". A")
-    //                o [NomNode] si no es pot aplicar.
+    // Primer obtenim tots els Nodes de l'estadística. Després, Concepte i Encreuament NO són el nom del Node: es deriven del NomNode.
+    
     const ds = await fetchJson(`${API}/${encodeURIComponent(state.selected.stat)}?lang=ca`);
     const rawNodes = collectionItems(ds).map(x => ({
       value: String(x.id),
@@ -105,8 +99,7 @@ async function onStatChange() {
       Encreuament: deriveCrossFromNode(n.label)
     }));
 
-    // Guardem el Catàleg de Nodes. Les taules i geografies es completaran
-    // només quan siguin necessàries, igual que la navegació de l'Excel.
+    // Guardem el Catàleg de Nodes. Les taules i geografies es completaran només quan siguin necessàries.
     state.nodes = rawNodes;
     state.fallbackCatalog = rows;
 
@@ -134,7 +127,6 @@ function countMessage(n, singular, plural, oneEnding, manyEnding) {
   return `S'han trobat ${n} ${plural}. ${manyEnding}`;
 }
 
-// Equivalents de les expressions M utilitzades al Cataleg de l'Excel.
 function deriveConcept(nodeLabel) {
   const n = String(nodeLabel ?? '');
   const p = n.indexOf('.');
@@ -153,8 +145,7 @@ function deriveCrossFromNode(nodeLabel) {
   const end = rest.indexOf('. A');
   return (end >= 0 ? rest.slice(0, end) : rest).trim();
 }
-// Aquestes funcions implementen la construcció del Catàleg de l'Excel a
-// partir de la jerarquia real de l'API. El catàleg es manté en memòria per a
+// Aquestes funcions implementen la construcció del Catàleg a partir de la jerarquia real de l'API. El catàleg es manté en memòria per a
 // la sessió i es va completant només per als conceptes que l'usuari explora.
 async function apiTablesForNode(nodeId) {
   const ds = await fetchJson(`${API}/${encodeURIComponent(state.selected.stat)}/${encodeURIComponent(nodeId)}?lang=ca`);
@@ -162,7 +153,7 @@ async function apiTablesForNode(nodeId) {
 }
 
 function deriveCross(nodeLabel, tableLabel, tableCount) {
-  // El Encreuament és una propietat del Node en el Catàleg de l'Excel,
+  // L'Encreuament és una propietat del Node en el Catàleg de l'Excel,
   // no del nom de la taula. Per tant, no hi afegim mai el Concepte ni
   // intentem reconstruir-lo a partir de NomTaula.
   return deriveCrossFromNode(nodeLabel);
@@ -233,9 +224,8 @@ async function updateCrossOptions() {
   $('cross').disabled = crosses.length === 0;
 
   if (!crosses.length) {
-    // Hi ha conceptes que no tenen encreuament, però sí que tenen Node,
-    // Taula i GEO. En aquest cas el Encreuament queda buit i podem passar
-    // directament al Node.
+    // Hi ha conceptes que no tenen encreuament, però sí que tenen Node, Taula i GEO. 
+    // En aquest cas el l'Encreuament queda buit i podem passar directament al Node.
     state.selected.cross = '';
     $('cross').disabled = true;
     const rowsNoCross = state.fallbackCatalog.filter(r => r.Concepte === concept);
@@ -258,8 +248,7 @@ async function updateCrossOptions() {
     }
   } else {
     status(countMessage(crosses.length, 'encreuament', 'encreuaments', "Tria'l", "Tria'n un"));
-    // Si només hi ha un encreuament, el seleccionem automàticament i
-    // continuem amb el node, sense obligar l'usuari a fer un clic.
+    // Si només hi ha un encreuament, el seleccionem automàticament i continuem amb el node, sense obligar l'usuari a fer un clic.
     if (crosses.length === 1) {
       $('cross').value = crosses[0];
       await loadNodesForSelection();
@@ -379,14 +368,9 @@ async function onGeoChange() {
 }
 
 function collectionItems(ds) {
-  // Idescat returns the hierarchy (statistics -> nodes -> tables -> geographies)
-  // as JSON-stat 2.0 collections. A collection does NOT contain the items in
-  // `dataset`/`data`: they are exposed through `link.item`.
   if (ds?.class === 'collection') {
     const items = Array.isArray(ds.link?.item) ? ds.link.item : [];
     return items.map(item => {
-      // The API items are normally links such as /irpf/16160/19457/mun.
-      // The last path component is the identifier we need for the next call.
       let id = item?.id ?? item?.extension?.id ?? '';
       if (!id && item?.href) {
         try {
@@ -402,8 +386,6 @@ function collectionItems(ds) {
     }).filter(x => x.id);
   }
 
-  // Also accept an embedded dataset, which is useful for JSON-stat responses
-  // returned by some compatible providers.
   if (ds?.class === 'dataset') {
     const ids = ds.id || [];
     if (!ids.length) return [];
@@ -417,9 +399,6 @@ function jsonstatCategories(ds,id) {
   const cat=ds.dimension?.[id]?.category||{};
   const labels=cat.label && typeof cat.label==='object' ? cat.label : {};
   let codes=[];
-  // JSON-stat normally stores index as {code:position}. Some responses use
-  // an array; in that case the array can contain positions rather than codes,
-  // so labels are the safest source for the actual category identifiers.
   if (cat.index && !Array.isArray(cat.index) && typeof cat.index==='object') {
     codes=Object.entries(cat.index).sort((a,b)=>Number(a[1])-Number(b[1])).map(([c])=>String(c));
   } else if (Object.keys(labels).length) {
@@ -437,38 +416,99 @@ function dimensions(ds) {
   });
 }
 
+function capitalizeFirst(str) {
+  return str ? str.charAt(0).toUpperCase() + str.slice(1) : str;
+}
 function renderMetadata(ds) {
   const dims=dimensions(ds); state.filters.clear();
   const box=$('filters'); box.innerHTML='';
+
   for (const d of dims) {
-    const defaultCodes = d.categories.map(x=>x.code);
+
+    let categories = d.categories;
+
+    // Ordenació específica de la dimensió Província:
+    // Barcelona 08, Girona 17, Lleida 25, Tarragona 43,
+    // No residents a Catalunya o altres 99 i Catalunya (TOTAL).
+    if (d.id.toLowerCase() === 'prov') {
+      const order = ['08', '17', '25', '43', '99'];
+
+      categories = [...categories].sort((a, b) => {
+        const ia = order.indexOf(String(a.code));
+        const ib = order.indexOf(String(b.code));
+
+        if (ia !== -1 && ib !== -1) return ia - ib;
+        if (ia !== -1) return -1;
+        if (ib !== -1) return 1;
+
+        return String(a.code).localeCompare(String(b.code), 'ca', {
+          numeric: true
+        });
+      });
+    }
+
+    const defaultCodes = categories.map(x=>x.code);
     state.filters.set(d.id,new Set(defaultCodes));
-    const section=document.createElement('section'); section.className='filter'; section.dataset.dim=d.id;
-    section.innerHTML=`<div class="filter-head"><div><h3>${esc(d.label)}</h3><span class="role">${esc(d.role||'')}</span></div><span class="selected-count"></span></div>`;
-    const toolbar=document.createElement('div'); toolbar.className='filter-tools';
-    const all=document.createElement('button'); all.className='secondary'; all.textContent='Tots';
-    const none=document.createElement('button'); none.className='secondary'; none.textContent='Cap';
-    toolbar.append(all,none); section.append(toolbar);
-    const list=document.createElement('div'); list.className='options';
-    for (const c of d.categories) {
+
+    const section=document.createElement('section');
+    section.className='filter';
+    section.dataset.dim=d.id;
+
+    section.innerHTML=`<div class="filter-head"><div><h3>${esc(capitalizeFirst(d.label))}</h3><span class="role">${esc(d.role||'')}</span></div><span class="selected-count"></span></div>`;
+
+    const toolbar=document.createElement('div');
+    toolbar.className='filter-tools';
+
+    const all=document.createElement('button');
+    all.className='secondary';
+    all.textContent='Tots';
+
+    const none=document.createElement('button');
+    none.className='secondary';
+    none.textContent='Cap';
+
+    toolbar.append(all,none);
+    section.append(toolbar);
+
+    const list=document.createElement('div');
+    list.className='options';
+
+    for (const c of categories) {
       const option=document.createElement('button');
-      option.type='button'; option.className='option selected';
+      option.type='button';
+      option.className='option selected';
       option.dataset.search=(c.code+' '+c.label).toLocaleLowerCase();
       option.dataset.code=c.code;
       option.setAttribute('aria-pressed', state.filters.get(d.id).has(c.code) ? 'true' : 'false');
       option.innerHTML=`<span class="option-label">${esc(c.label)}</span><small>${esc(c.code)}</small>`;
+
       option.addEventListener('click',()=>{
         const s=state.filters.get(d.id);
-        if(s.has(c.code)) s.delete(c.code); else s.add(c.code);
+        if(s.has(c.code)) s.delete(c.code);
+        else s.add(c.code);
         updateOptionButton(option, s.has(c.code));
         updateCells();
       });
+
       list.append(option);
     }
-    section.append(list); box.append(section);
-    all.addEventListener('click',()=>{state.filters.set(d.id,new Set(d.categories.map(x=>x.code))); list.querySelectorAll('.option').forEach(x=>updateOptionButton(x,true)); updateCells();});
-    none.addEventListener('click',()=>{state.filters.set(d.id,new Set()); list.querySelectorAll('.option').forEach(x=>updateOptionButton(x,false)); updateCells();});
+
+    section.append(list);
+    box.append(section);
+
+    all.addEventListener('click',()=>{
+      state.filters.set(d.id,new Set(categories.map(x=>x.code)));
+      list.querySelectorAll('.option').forEach(x=>updateOptionButton(x,true));
+      updateCells();
+    });
+
+    none.addEventListener('click',()=>{
+      state.filters.set(d.id,new Set());
+      list.querySelectorAll('.option').forEach(x=>updateOptionButton(x,false));
+      updateCells();
+    });
   }
+
   updateCells();
 }
 
