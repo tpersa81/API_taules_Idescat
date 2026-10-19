@@ -2248,15 +2248,23 @@ function renderPivotBuilder() {
     state.pivot.columns.length > 0;
 
   const assignablePivotDims =
-  state.dimensions.filter(
-    d =>
-      !isConceptDimension(d) &&
-      !isSingleValueDimension(d)
-  );
-  
+    pivotDims.filter(
+      d =>
+        !isSingleValueDimension(d)
+    );
+
+  const assignedPivotDims =
+    new Set([
+      ...state.pivot.rows,
+      ...state.pivot.columns
+    ]);
+
   const allAssigned =
-    assignedPivotDims.length ===
-    assignablePivotDims.length;
+    assignedPivotDims.size ===
+      assignablePivotDims.length &&
+    assignablePivotDims.every(
+      d => assignedPivotDims.has(d.id)
+    );
 
   builder.innerHTML = `
     <div class="pivot-intro">
