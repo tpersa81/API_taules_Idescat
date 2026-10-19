@@ -497,6 +497,62 @@ function comarcaSortOrder(code) {
   return order[String(code)] ?? 999;
 }
 
+function territorialSortOrder(dim, code) {
+  const id = String(dim?.id || '').toLowerCase();
+  const label = String(dim?.label || '').toLowerCase();
+
+  if (
+    id === 'prov' ||
+    label === 'província' ||
+    label === 'provincia'
+  ) {
+    return provinceSortOrder(code);
+  }
+
+  if (
+    id === 'com' ||
+    label === 'comarca' ||
+    label === 'comarques'
+  ) {
+    return comarcaSortOrder(code);
+  }
+
+  return null;
+}
+
+
+function sortRowsTerritorially(rows, dims) {
+  const territorialDims = dims.filter(d =>
+    territorialSortOrder(d, '') !== null
+  );
+
+  if (!territorialDims.length) {
+    return rows;
+  }
+
+  return [...rows].sort((a, b) => {
+    for (const dim of territorialDims) {
+      const aCode = String(a[dim.id]?.code ?? '');
+      const bCode = String(b[dim.id]?.code ?? '');
+
+      const aOrder = territorialSortOrder(dim, aCode);
+      const bOrder = territorialSortOrder(dim, bCode);
+
+      if (aOrder !== bOrder) {
+        return aOrder - bOrder;
+      }
+
+      if (aCode !== bCode) {
+        return aCode.localeCompare(bCode, 'ca', {
+          numeric: true
+        });
+      }
+    }
+
+    return 0;
+  });
+}
+
 function renderMetadata(ds) {
   const dims=dimensions(ds); state.filters.clear();
   const box=$('filters'); box.innerHTML='';
@@ -508,17 +564,19 @@ function renderMetadata(ds) {
     // Ordenació específica de la dimensió Província:
     // Barcelona 08, Girona 17, Lleida 25, Tarragona 43,
     // No residents a Catalunya o altres 99 i Catalunya (TOTAL).
-    if (d.id.toLowerCase() === 'prov') {
-      const order = ['08', '17', '25', '43', '99'];
-
+    const territorial = categories.some(c =>
+      territorialSortOrder(d, c.code) !== null
+    );
+    
+    if (territorial) {
       categories = [...categories].sort((a, b) => {
-        const ia = order.indexOf(String(a.code));
-        const ib = order.indexOf(String(b.code));
-
-        if (ia !== -1 && ib !== -1) return ia - ib;
-        if (ia !== -1) return -1;
-        if (ib !== -1) return 1;
-
+        const orderA = territorialSortOrder(d, a.code);
+        const orderB = territorialSortOrder(d, b.code);
+    
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+    
         return String(a.code).localeCompare(String(b.code), 'ca', {
           numeric: true
         });
@@ -636,14 +694,43 @@ async function runQuery() {
 }
 
 function resultRows(ds) {
-  const ids=ds.id||[], sizes=ds.size||[], dims=ids.map(id=>({id,label:ds.dimension[id]?.label||id,cats:jsonstatCategories(ds,id)})); const vals=ds.value||[];
-  const rows=[];
-  for(let flat=0;flat<vals.length;flat++){
-    let rem=flat; const row={};
-    for(let j=ids.length-1;j>=0;j--){const idx=rem%sizes[j];rem=Math.floor(rem/sizes[j]);const c=dims[j].cats[idx];row[ids[j]]={code:c?.code??'',label:c?.label??''};}
-    row.value=vals[flat]; rows.push(row);
+  const ids = ds.id || [];
+  const sizes = ds.size || [];
+
+  const dims = ids.map(id => ({
+    id,
+    label: ds.dimension[id]?.label || id,
+    cats: jsonstatCategories(ds, id)
+  }));
+
+  const vals = ds.value || [];
+  const rows = [];
+
+  for (let flat = 0; flat < vals.length; flat++) {
+    let rem = flat;
+    const row = {};
+
+    for (let j = ids.length - 1; j >= 0; j--) {
+      const idx = rem % sizes[j];
+      rem = Math.floor(rem / sizes[j]);
+
+      const c = dims[j].cats[idx];
+
+      row[ids[j]] = {
+        code: c?.code ?? '',
+        label: c?.label ?? ''
+      };
+    }
+
+    row.value = vals[flat];
+    rows.push(row);
   }
-  return {ids,dims,rows};
+
+  return {
+    ids,
+    dims,
+    rows: sortRowsTerritorially(rows, dims)
+  };
 }
 
 function pivotDimensionLabel(dim) {
@@ -896,37 +983,64 @@ function pivotCombinationMap(rows, ids) {
 
   const result = [...map.values()];
 
-  // Ordenació específica quan entre les dimensions hi ha Província
-  const provinceId = ids.find(id => {
-    const dim = resultRows(state.lastData).dims.find(d => d.id === id);
+  // Ordenació específica quan entre les dimensions hi ha Província o comarca
+  const {dims} = resultRows(state.lastData);
 
+  const provinceId = ids.find(id => {
+    const dim = dims.find(d => d.id === id);
+  
     return dim &&
       (
         dim.label?.toLowerCase() === 'província' ||
         dim.label?.toLowerCase() === 'provincia'
       );
   });
+  
+  const comarcaId = ids.find(id => {
+    const dim = dims.find(d => d.id === id);
+  
+    return dim &&
+      (
+        dim.label?.toLowerCase() === 'comarca' ||
+        dim.label?.toLowerCase() === 'comarques'
+      );
+  });
 
   if (provinceId) {
+  result.sort((a, b) => {
+    const aCode = String(a.row[provinceId]?.code ?? '');
+    const bCode = String(b.row[provinceId]?.code ?? '');
+
+    const orderA = provinceSortOrder(aCode);
+    const orderB = provinceSortOrder(bCode);
+
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+
+    return aCode.localeCompare(bCode, 'ca', {
+      numeric: true
+    });
+  });
+  }
+  
+  if (comarcaId) {
     result.sort((a, b) => {
-      const aCode = String(a.row[provinceId]?.code ?? '');
-      const bCode = String(b.row[provinceId]?.code ?? '');
-
-      const orderA = provinceSortOrder(aCode);
-      const orderB = provinceSortOrder(bCode);
-
+      const aCode = String(a.row[comarcaId]?.code ?? '');
+      const bCode = String(b.row[comarcaId]?.code ?? '');
+  
+      const orderA = comarcaSortOrder(aCode);
+      const orderB = comarcaSortOrder(bCode);
+  
       if (orderA !== orderB) {
         return orderA - orderB;
       }
-
+  
       return aCode.localeCompare(bCode, 'ca', {
         numeric: true
       });
     });
   }
-
-  return result;
-}
 
 function renderPivotTable() {
   const result = $('pivotResult');
