@@ -2247,6 +2247,12 @@ function renderPivotBuilder() {
   const columnsValid =
     state.pivot.columns.length > 0;
 
+  const assignablePivotDims =
+    pivotDims.filter(
+      d =>
+        !isSingleValueDimension(d)
+    );
+
   /*
    * Amb una sola variable pivotable no cal exigir
    * que hi hagi variables als dos eixos. L'altre eix
@@ -2259,12 +2265,6 @@ function renderPivotBuilder() {
     onePivotDimension
       ? rowsValid || columnsValid
       : rowsValid && columnsValid;
-
-  const assignablePivotDims =
-    pivotDims.filter(
-      d =>
-        !isSingleValueDimension(d)
-    );
 
   const assignedPivotDims =
     new Set([
