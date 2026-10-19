@@ -237,7 +237,7 @@
 }
 
 /* Capçaleres de les variables de fila */
-#pivotResult th.pivot-row-header{
+#pivotResult .pivot-row-header{
   text-align:left;
 }
 
