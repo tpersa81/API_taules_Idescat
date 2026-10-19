@@ -2824,7 +2824,9 @@ function renderPivotTable() {
 
   const pivotDims =
     dims.filter(
-      d => !isConceptDimension(d)
+      d =>
+        !isConceptDimension(d) &&
+        !isSingleValueDimension(d)
     );
 
   const rowIds =
@@ -3216,7 +3218,9 @@ function buildPivotExportData() {
 
   const pivotDims =
     dims.filter(
-      d => !isConceptDimension(d)
+      d =>
+        !isConceptDimension(d) &&
+        !isSingleValueDimension(d)
     );
 
   const rowIds =
