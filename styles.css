@@ -219,6 +219,12 @@
   margin:18px 0 8px;
 }
 
+.pivot-table-subtitle{
+  font-weight:700;
+  color:#1f4e79;
+  margin:0 0 8px;
+}
+
 /* Taula dinàmica */
 #pivotResult table{
   border-collapse:collapse;
