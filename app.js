@@ -2248,15 +2248,11 @@ function renderPivotBuilder() {
     state.pivot.columns.length > 0;
 
   const assignablePivotDims =
-  state.dimensions.filter(
-    d =>
-      !isConceptDimension(d) &&
-      !isSingleValueDimension(d)
-  );
+  pivotAvailableDimensions();
 
-  const allAssigned =
-    assignedPivotDims.length ===
-    assignablePivotDims.length;
+const allAssigned =
+  assignedPivotDims.length ===
+  assignablePivotDims.length;
 
   builder.innerHTML = `
     <div class="pivot-intro">
