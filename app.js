@@ -600,7 +600,10 @@ function pivotDimensionById(dims, id) {
 
 function pivotAvailableDimensions(dims) {
   const used = new Set([...state.pivot.rows, ...state.pivot.columns]);
-  return dims.filter(d => !used.has(d.id));
+  return dims.filter(d => {
+    const label = String(d.label || '').trim().toLowerCase();
+    return label !== 'concepte' && !used.has(d.id);
+  });
 }
 
 function pivotMoveDimension(id, target) {
@@ -726,8 +729,11 @@ function renderPivotBuilder() {
   }
 
   const {dims} = resultRows(state.lastData);
-
-  const available = pivotAvailableDimensions(dims);
+  
+  const pivotDims = dims.filter(d =>
+    String(d.label || '').trim().toLowerCase() !== 'concepte');
+  
+  const available = pivotAvailableDimensions(pivotDims);
 
   const availableHtml = available.length
     ? available.map(d => `
@@ -746,7 +752,7 @@ function renderPivotBuilder() {
   const rowsValid = state.pivot.rows.length > 0;
   const columnsValid = state.pivot.columns.length > 0;
   const allAssigned =
-    state.pivot.rows.length + state.pivot.columns.length === dims.length;
+    state.pivot.rows.length + state.pivot.columns.length === pivotDims.length;
 
   builder.innerHTML = `
     <div class="pivot-intro">
@@ -929,6 +935,10 @@ function renderPivotTable() {
   `).join('');
 
   let html = `
+    <div class="pivot-table-title">
+      ${esc(state.metadata?.label || '')}
+    </div>
+
     <div class="pivot-result-meta">
       ${rowCombinations.length.toLocaleString('ca-ES')} files ·
       ${columnCombinations.length.toLocaleString('ca-ES')} columnes
