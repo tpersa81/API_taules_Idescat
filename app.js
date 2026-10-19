@@ -1889,13 +1889,8 @@ function resultRows(ds) {
 
   /*
    * JSON-stat pot representar "value" com:
-   *
-   *   [12, 15, 20, ...]
-   *
-   * o com un objecte sparse:
-   *
+   *   [12, 15, 20, ...] o com un objecte sparse:
    *   {"0": 12, "1": 15, "7": 20}
-   *
    * Normalitzem els dos casos.
    */
 
@@ -3241,7 +3236,31 @@ function exportInfo() {
     exportDate
   };
 }
+function formatCsvValue(value) {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ''
+  ) {
+    return '';
+  }
 
+  if (
+    typeof value === 'number' &&
+    Number.isFinite(value)
+  ) {
+    return value
+      .toLocaleString(
+        'ca-ES',
+        {
+          useGrouping: false,
+          maximumFractionDigits: 20
+        }
+      );
+  }
+
+  return String(value);
+}
 function exportCSV() {
   if (!state.lastData) {
     return;
@@ -3292,7 +3311,7 @@ function exportCSV() {
           ]
         )
         .concat(
-          r.value ?? ''
+          formatCsvValue(r.value)
         )
     );
   }
