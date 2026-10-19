@@ -2020,14 +2020,14 @@ function resultRows(ds) {
             console.log(
             'COM categories:',
             dims
-              .find(d => d.id === 'com')
+              .find(d => d.id === 'COM')
               ?.cats
           );
           
           console.log(
             'COM 31:',
             dims
-              .find(d => d.id === 'com')
+              .find(d => d.id === 'COM')
               ?.cats
               .find(c => c.code === '31')
           );
