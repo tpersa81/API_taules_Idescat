@@ -572,18 +572,433 @@ function resultRows(ds) {
   return {ids,dims,rows};
 }
 
-function renderResults(ds) {
-  const {ids,dims,rows}=resultRows(ds); const start=(state.page-1)*state.pageSize,end=Math.min(start+state.pageSize,rows.length); const pageRows=rows.slice(start,end);
-  const headers=dims.flatMap(d=>[`${d.id}_Codi`,`${d.id}_Etiqueta`]).concat('Valor');
-  let html=`<div class="result-meta">${rows.length.toLocaleString('ca-ES')} files · mostrant ${rows.length?start+1:0}–${end}</div><div class="table-wrap"><table class="data-table"><thead><tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>`;
-  for(const row of pageRows){html+='<tr>';for(const d of dims){html+=`<td>${esc(row[d.id].code)}</td><td>${esc(row[d.id].label)}</td>`;}const v=row.value;html+=`<td class="num">${v===null||v===undefined?'':esc(formatValue(v))}</td></tr>`;} html+='</tbody></table></div>';
-  const pages=Math.max(1,Math.ceil(rows.length/state.pageSize));
-  html+=`<div class="pager"><button class="secondary" id="prevPage" ${state.page<=1?'disabled':''}>Anterior</button><span>Pàgina ${state.page} / ${pages}</span><button class="secondary" id="nextPage" ${state.page>=pages?'disabled':''}>Següent</button><select id="pageSize"><option ${state.pageSize===50?'selected':''}>50</option><option ${state.pageSize===100?'selected':''}>100</option><option ${state.pageSize===250?'selected':''}>250</option></select></div>`;
-  $('results').innerHTML=html;
-  $('prevPage').onclick=()=>{state.page--;renderResults(ds);}; $('nextPage').onclick=()=>{state.page++;renderResults(ds);}; $('pageSize').onchange=e=>{state.pageSize=+e.target.value;state.page=1;renderResults(ds);};
+function pivotDimensionLabel(dim) {
+  return dim?.label || dim?.id || '';
 }
-function formatValue(v){return typeof v==='number'?v.toLocaleString('ca-ES',{maximumFractionDigits:20}):v;}
 
+function pivotDimensionById(dims, id) {
+  return dims.find(d => d.id === id);
+}
+
+function pivotAvailableDimensions(dims) {
+  const used = new Set([...state.pivot.rows, ...state.pivot.columns]);
+  return dims.filter(d => !used.has(d.id));
+}
+
+function pivotMoveDimension(id, target) {
+  state.pivot.rows = state.pivot.rows.filter(x => x !== id);
+  state.pivot.columns = state.pivot.columns.filter(x => x !== id);
+
+  if (target === 'rows') state.pivot.rows.push(id);
+  if (target === 'columns') state.pivot.columns.push(id);
+
+  renderPivotBuilder();
+}
+
+function pivotRemoveDimension(id) {
+  state.pivot.rows = state.pivot.rows.filter(x => x !== id);
+  state.pivot.columns = state.pivot.columns.filter(x => x !== id);
+  renderPivotBuilder();
+}
+
+function pivotReorder(list, fromId, toId) {
+  const from = list.indexOf(fromId);
+  const to = list.indexOf(toId);
+
+  if (from < 0 || to < 0 || from === to) return;
+
+  const [item] = list.splice(from, 1);
+  list.splice(to, 0, item);
+}
+
+function pivotDragStart(event, id) {
+  event.dataTransfer.setData('text/plain', id);
+  event.dataTransfer.effectAllowed = 'move';
+}
+
+function pivotAllowDrop(event) {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+}
+
+function pivotDrop(event, target) {
+  event.preventDefault();
+
+  const id = event.dataTransfer.getData('text/plain');
+  if (!id) return;
+
+  pivotMoveDimension(id, target);
+}
+
+function pivotDropOnItem(event, target, targetId) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  const id = event.dataTransfer.getData('text/plain');
+  if (!id || id === targetId) return;
+
+  const sourceList =
+    state.pivot.rows.includes(id) ? state.pivot.rows :
+    state.pivot.columns.includes(id) ? state.pivot.columns :
+    null;
+
+  if (!sourceList) return;
+
+  state.pivot.rows = state.pivot.rows.filter(x => x !== id);
+  state.pivot.columns = state.pivot.columns.filter(x => x !== id);
+
+  const targetList = target === 'rows' ? state.pivot.rows : state.pivot.columns;
+  const index = targetList.indexOf(targetId);
+
+  targetList.splice(index < 0 ? targetList.length : index, 0, id);
+
+  renderPivotBuilder();
+}
+
+function pivotZoneHtml(title, zone, ids, dims) {
+  const items = ids.map(id => {
+    const dim = pivotDimensionById(dims, id);
+
+    return `
+      <div
+        class="pivot-dimension"
+        draggable="true"
+        data-pivot-id="${esc(id)}"
+        ondragstart="pivotDragStart(event,'${esc(id)}')"
+        ondragover="pivotAllowDrop(event)"
+        ondrop="pivotDropOnItem(event,'${zone}','${esc(id)}')"
+      >
+        <span class="pivot-drag">☷</span>
+        <span>${esc(pivotDimensionLabel(dim))}</span>
+        <button
+          type="button"
+          class="pivot-remove"
+          onclick="pivotRemoveDimension('${esc(id)}')"
+          title="Treure"
+        >×</button>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="pivot-zone">
+      <div class="pivot-zone-title">${esc(title)}</div>
+      <div
+        class="pivot-dropzone ${ids.length ? 'has-items' : ''}"
+        data-pivot-zone="${zone}"
+        ondragover="pivotAllowDrop(event)"
+        ondrop="pivotDrop(event,'${zone}')"
+      >
+        ${items || `<span class="pivot-placeholder">Arrossega variables aquí</span>`}
+      </div>
+    </div>
+  `;
+}
+
+function renderPivotBuilder() {
+  const builder = $('pivotBuilder');
+
+  if (!state.lastData) {
+    builder.innerHTML = '<div class="empty">Primer fes una consulta.</div>';
+    return;
+  }
+
+  const {dims} = resultRows(state.lastData);
+
+  const available = pivotAvailableDimensions(dims);
+
+  const availableHtml = available.length
+    ? available.map(d => `
+        <div
+          class="pivot-dimension available"
+          draggable="true"
+          data-pivot-id="${esc(d.id)}"
+          ondragstart="pivotDragStart(event,'${esc(d.id)}')"
+        >
+          <span class="pivot-drag">☷</span>
+          <span>${esc(pivotDimensionLabel(d))}</span>
+        </div>
+      `).join('')
+    : '<span class="pivot-placeholder">Totes les variables estan assignades.</span>';
+
+  const rowsValid = state.pivot.rows.length > 0;
+  const columnsValid = state.pivot.columns.length > 0;
+  const allAssigned =
+    state.pivot.rows.length + state.pivot.columns.length === dims.length;
+
+  builder.innerHTML = `
+    <div class="pivot-intro">
+      <strong>Constructor de taula</strong>
+      <span>
+        Arrossega cada variable a Files o Columnes. Pots canviar-ne l'ordre.
+      </span>
+    </div>
+
+    <div class="pivot-layout">
+
+      <div class="pivot-panel">
+        <div class="pivot-panel-title">Variables disponibles</div>
+        <div class="pivot-available">
+          ${availableHtml}
+        </div>
+      </div>
+
+      <div class="pivot-panel">
+        ${pivotZoneHtml('Files', 'rows', state.pivot.rows, dims)}
+      </div>
+
+      <div class="pivot-panel">
+        ${pivotZoneHtml('Columnes', 'columns', state.pivot.columns, dims)}
+      </div>
+
+    </div>
+
+    <div class="pivot-actions">
+      <button
+        id="pivotBuild"
+        class="primary"
+        ${allAssigned && rowsValid && columnsValid ? '' : 'disabled'}
+      >
+        Genera la taula
+      </button>
+
+      <button
+        id="pivotReset"
+        class="secondary"
+      >
+        Restableix
+      </button>
+
+      <span class="pivot-help">
+        ${!allAssigned
+          ? 'Assigna totes les variables a Files o Columnes.'
+          : !rowsValid || !columnsValid
+            ? 'Cal tenir almenys una variable a Files i una a Columnes.'
+            : 'Configuració correcta.'}
+      </span>
+    </div>
+
+    <div id="pivotResult"></div>
+  `;
+
+  $('pivotBuild').onclick = () => renderPivotTable();
+  $('pivotReset').onclick = () => {
+    state.pivot.rows = [];
+    state.pivot.columns = [];
+    renderPivotBuilder();
+  };
+}
+
+function pivotKey(row, ids) {
+  return ids.map(id => row[id]?.code ?? '').join('¦');
+}
+
+function pivotLabel(row, ids) {
+  return ids.map(id => row[id]?.label ?? '').join(' · ');
+}
+
+function pivotCombinationMap(rows, ids) {
+  const map = new Map();
+
+  for (const row of rows) {
+    const key = pivotKey(row, ids);
+    map.set(key, {
+      key,
+      label: pivotLabel(row, ids),
+      row
+    });
+  }
+
+  return [...map.values()];
+}
+
+function renderPivotTable() {
+  const result = $('pivotResult');
+
+  if (!state.lastData) return;
+
+    const {dims, rows} = resultRows(state.lastData);
+  const rowIds = state.pivot.rows;
+  const columnIds = state.pivot.columns;
+
+  if (!rowIds.length || !columnIds.length) {
+    result.innerHTML = `
+      <div class="error">
+        Cal assignar almenys una variable a Files i una a Columnes.
+      </div>
+    `;
+    return;
+  }
+
+  const allIds = [...rowIds, ...columnIds];
+
+  if (allIds.length !== new Set(allIds).size) {
+    result.innerHTML = `
+      <div class="error">
+        Una variable només pot aparèixer una vegada.
+      </div>
+    `;
+    return;
+  }
+
+  if (allIds.length !== dims.length) {
+    result.innerHTML = `
+      <div class="error">
+        No totes les dimensions estan assignades.
+      </div>
+    `;
+    return;
+  }
+
+  const rowCombinations = pivotCombinationMap(rows, rowIds);
+  const columnCombinations = pivotCombinationMap(rows, columnIds);
+
+  const values = new Map();
+
+  for (const row of rows) {
+    const rKey = pivotKey(row, rowIds);
+    const cKey = pivotKey(row, columnIds);
+
+    values.set(`${rKey}§${cKey}`, row.value);
+  }
+
+  const rowHeader = rowIds.map(id => {
+    const dim = pivotDimensionById(
+      resultRows(state.lastData).dims,
+      id
+    );
+    return `<th>${esc(pivotDimensionLabel(dim))}</th>`;
+  }).join('');
+
+  const columnHeaders = columnCombinations.map(c => `
+    <th class="pivot-value-header">${esc(c.label)}</th>
+  `).join('');
+
+  let html = `
+    <div class="pivot-result-meta">
+      ${rowCombinations.length.toLocaleString('ca-ES')} files ·
+      ${columnCombinations.length.toLocaleString('ca-ES')} columnes
+    </div>
+
+    <div class="table-wrap pivot-table-wrap">
+      <table class="data-table pivot-table">
+        <thead>
+          <tr>
+            ${rowHeader}
+            ${columnHeaders}
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  for (const r of rowCombinations) {
+    html += '<tr>';
+
+    const rowParts = r.label.split(' · ');
+
+    for (const part of rowParts) {
+      html += `<td class="pivot-label">${esc(part)}</td>`;
+    }
+
+    for (const c of columnCombinations) {
+      const value = values.get(`${r.key}§${c.key}`);
+
+      html += `
+        <td class="num pivot-cell">
+          ${value === null || value === undefined
+            ? ''
+            : esc(formatValue(value))}
+        </td>
+      `;
+    }
+
+    html += '</tr>';
+  }
+
+  html += `
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  result.innerHTML = html;
+}
+
+function renderResults(ds) {
+  const {ids,dims,rows}=resultRows(ds);
+  state.pivot.rows = [];
+  state.pivot.columns = [];
+  const start=(state.page-1)*state.pageSize;
+  const end=Math.min(start+state.pageSize,rows.length);
+  const pageRows=rows.slice(start,end);
+  const headers=dims
+    .flatMap(d=>[`${d.id}_Codi`,`${d.id}_Etiqueta`])
+    .concat('Valor');
+
+  let html=`
+    <div class="result-meta">
+      ${rows.length.toLocaleString('ca-ES')} files ·
+      mostrant ${rows.length?start+1:0}–${end}
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>${headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr>
+        </thead>
+        <tbody>
+  `;
+
+  for(const row of pageRows) {
+    html+='<tr>';
+    for(const d of dims) {
+      html+=`<td>${esc(row[d.id].code)}</td>`;
+      html+=`<td>${esc(row[d.id].label)}</td>`;
+    }
+    const v=row.value;
+    html+=`
+      <td class="num">
+        ${v===null||v===undefined?'':esc(formatValue(v))}
+      </td>
+    `;
+    html+='</tr>';
+  }
+
+  html+='</tbody></table></div>';
+  const pages=Math.max(1,Math.ceil(rows.length/state.pageSize));
+  html+=`
+    <div class="pager">
+      <button class="secondary" id="prevPage" ${state.page<=1?'disabled':''}>
+        Anterior
+      </button>
+      <span>Pàgina ${state.page} / ${pages}</span>
+      <button class="secondary" id="nextPage" ${state.page>=pages?'disabled':''}>
+        Següent
+      </button>
+      <select id="pageSize">
+        <option ${state.pageSize===50?'selected':''}>50</option>
+        <option ${state.pageSize===100?'selected':''}>100</option>
+        <option ${state.pageSize===250?'selected':''}>250</option>
+      </select>
+    </div>
+  `;
+  $('results').innerHTML=html;
+  $('prevPage').onclick=()=>{
+    state.page--;
+    renderResults(ds);
+  };
+  $('nextPage').onclick=()=>{
+    state.page++;
+    renderResults(ds);
+  };
+  $('pageSize').onchange=e=>{
+    state.pageSize=+e.target.value;
+    state.page=1;
+    renderResults(ds);
+  };
+  renderPivotBuilder();
+}
+
+function formatValue(v){return typeof v==='number'?v.toLocaleString('ca-ES',{maximumFractionDigits:20}):v;}
 function exportInfo(){
   const tableName=state.metadata?.label || $('tableInfo').querySelector('strong')?.nextSibling?.textContent?.trim() || `Taula ${state.selected.table}`;
   const queryUrl=state.lastQueryUrl || (currentPath()+'/data?'+buildParams().toString());
@@ -645,10 +1060,56 @@ function bind(){
   $('node').onchange=onNodeChange;
   $('table').onchange=onTableChange;
   $('geo').onchange=onGeoChange;
-  $('concept').onchange=async()=>{state.selected.concept=$('concept').value; state.selected.cross=''; resetBelow('concept'); if(state.selected.concept) await updateCrossOptions();};
-  $('cross').onchange=async()=>{state.selected.cross=$('cross').value; resetBelow('cross'); if(state.selected.concept) await loadNodesForSelection();};
-  $('query').onclick=runQuery; $('exportCsv').onclick=exportCSV; $('exportXlsx').onclick=exportXLSX;
-  $('clear').onclick=()=>{state.filters.clear();state.lastData=null;$('results').innerHTML='';$('exportCsv').disabled=true;if(state.metadata)renderMetadata(state.metadata);};
+  $('concept').onchange=async()=>{
+    state.selected.concept=$('concept').value;
+    state.selected.cross='';
+    resetBelow('concept');
+
+    if(state.selected.concept)
+      await updateCrossOptions();
+  };
+
+  $('cross').onchange=async()=>{
+    state.selected.cross=$('cross').value;
+    resetBelow('cross');
+
+    if(state.selected.concept)
+      await loadNodesForSelection();
+  };
+
+  $('query').onclick=runQuery;
+  $('exportCsv').onclick=exportCSV;
+  $('exportXlsx').onclick=exportXLSX;
+
+  $('tabData').onclick=()=>{
+    $('tabData').classList.add('active');
+    $('tabPivot').classList.remove('active');
+    $('results').hidden=false;
+    $('pivotBuilder').hidden=true;
+  };
+
+  $('tabPivot').onclick=()=>{
+    $('tabPivot').classList.add('active');
+    $('tabData').classList.remove('active');
+    $('results').hidden=true;
+    $('pivotBuilder').hidden=false;
+
+    if (state.lastData) renderPivotBuilder();
+  };
+
+  $('clear').onclick=()=>{
+    state.filters.clear();
+    state.lastData=null;
+    state.pivot.rows=[];
+    state.pivot.columns=[];
+
+    $('results').innerHTML='';
+    $('pivotBuilder').innerHTML='';
+    $('exportCsv').disabled=true;
+
+    if(state.metadata)
+      renderMetadata(state.metadata);
+  };
 }
 
 (async function init(){
