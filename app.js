@@ -1056,44 +1056,84 @@ function jsonstatCategories(
       ? cat.label
       : {};
 
-  let codes = [];
+  const result = [];
+
+  /*
+   * JSON-stat permet que category.index sigui:
+   *
+   *  - un array:
+   *      ["01", "02", "03"]
+   *
+   *  - un objecte:
+   *      {"01": 0, "02": 1, "03": 2}
+   *
+   * Guardem sempre la posició original en "index".
+   */
+
+  if (
+    Array.isArray(cat.index)
+  ) {
+    cat.index.forEach(
+      (code, index) => {
+        const c =
+          String(code);
+
+        result.push({
+          code: c,
+          label:
+            String(
+              labels[c] ?? c
+            ),
+          index
+        });
+      }
+    );
+
+    return result;
+  }
 
   if (
     cat.index &&
-    !Array.isArray(cat.index) &&
     typeof cat.index === 'object'
   ) {
-    codes =
-      Object.entries(cat.index)
-        .sort(
-          (a, b) =>
-            Number(a[1]) -
-            Number(b[1])
-        )
-        .map(
-          ([c]) => String(c)
-        );
-
-  } else if (
-    Object.keys(labels).length
-  ) {
-    codes =
-      Object.keys(labels);
-
-  } else if (
-    Array.isArray(cat.index)
-  ) {
-    codes =
-      cat.index.map(String);
+    return Object.entries(
+      cat.index
+    )
+      .map(
+        ([code, index]) => ({
+          code:
+            String(code),
+          label:
+            String(
+              labels[code] ?? code
+            ),
+          index:
+            Number(index)
+        })
+      )
+      .sort(
+        (a, b) =>
+          a.index - b.index
+      );
   }
 
+  /*
+   * Dimensions amb una única categoria
+   * poden no tenir "index".
+   */
+
+  const codes =
+    Object.keys(labels);
+
   return codes.map(
-    code => ({
-      code: String(code),
+    (code, index) => ({
+      code:
+        String(code),
       label:
         String(
           labels[code] ?? code
-        )
+        ),
+      index
     })
   );
 }
@@ -1847,14 +1887,66 @@ function resultRows(ds) {
         )
     }));
 
-  const vals =
-    ds.value || [];
+  /*
+   * JSON-stat pot representar "value" com:
+   *
+   *   [12, 15, 20, ...]
+   *
+   * o com un objecte sparse:
+   *
+   *   {"0": 12, "1": 15, "7": 20}
+   *
+   * Normalitzem els dos casos.
+   */
+
+  const values =
+    ds.value ?? [];
+
+  function getValue(flat) {
+    if (
+      Array.isArray(values)
+    ) {
+      return values[flat];
+    }
+
+    if (
+      values &&
+      typeof values === 'object'
+    ) {
+      return values[String(flat)];
+    }
+
+    return undefined;
+  }
+
+  /*
+   * Nombre total de cel·les.
+   *
+   * No podem utilitzar values.length perquè
+   * en un JSON-stat sparse pot ser un objecte.
+   */
+
+  const totalCells =
+    sizes.reduce(
+      (a, b) => a * b,
+      1
+    );
 
   const rows = [];
 
+  /*
+   * Important:
+   *
+   * Recorrem totes les posicions del producte
+   * cartesià definit per "size", no només les
+   * posicions que tinguin un valor explícit.
+   *
+   * Això conserva també les cel·les amb valor null.
+   */
+
   for (
     let flat = 0;
-    flat < vals.length;
+    flat < totalCells;
     flat++
   ) {
     let rem = flat;
@@ -1866,16 +1958,39 @@ function resultRows(ds) {
       j >= 0;
       j--
     ) {
+      const size =
+        Number(
+          sizes[j] || 0
+        );
+
+      if (!size) {
+        continue;
+      }
+
       const idx =
-        rem % sizes[j];
+        rem % size;
 
       rem =
         Math.floor(
-          rem / sizes[j]
+          rem / size
         );
 
+      const cats =
+        dims[j].cats;
+
+      /*
+       * Busquem la categoria per la seva
+       * posició JSON-stat original.
+       *
+       * Això és important quan category.index
+       * no coincideix simplement amb la posició
+       * de l'array resultant.
+       */
+
       const c =
-        dims[j].cats[idx];
+        cats.find(
+          x => x.index === idx
+        );
 
       row[ids[j]] = {
         code:
@@ -1886,11 +2001,22 @@ function resultRows(ds) {
     }
 
     row.value =
-      vals[flat];
+      getValue(flat);
 
     rows.push(row);
   }
-
+            console.log(
+              'DIMENSIONS JSON-STAT:',
+              dims
+            );
+            
+            console.log(
+              'RIPOLLÈS:',
+              rows.filter(
+                r =>
+                  r.com?.code === '31'
+              )
+            );
   return {
     ids,
     dims,
