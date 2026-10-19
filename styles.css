@@ -210,3 +210,9 @@
     flex-wrap:wrap;
   }
 }
+.pivot-table-title{
+  font-size:17px;
+  font-weight:700;
+  color:#1f4e79;
+  margin:18px 0 8px;
+}
