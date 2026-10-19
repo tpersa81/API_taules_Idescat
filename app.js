@@ -2144,15 +2144,24 @@ function isConceptDimension(dim) {
   return String(dim?.label || '').trim().toLowerCase() === 'concepte';
 }
 
+function isSingleValueDimension(dim) {
+  return (
+    Array.isArray(dim?.categories) &&
+    dim.categories.length === 1
+  );
+}
+
 function pivotAvailableDimensions(dims) {
-  const used = new Set([
-    ...state.pivot.rows,
-    ...state.pivot.columns
-  ]);
+  const used =
+    new Set([
+      ...state.pivot.rows,
+      ...state.pivot.columns
+    ]);
 
   return dims.filter(
     d =>
       !isConceptDimension(d) &&
+      !isSingleValueDimension(d) &&
       !used.has(d.id)
   );
 }
@@ -2398,7 +2407,9 @@ function renderPivotBuilder() {
   const allAssigned =
     state.pivot.rows.length +
       state.pivot.columns.length ===
-    pivotDims.length;
+    pivotDims.filter(
+      d => !isSingleValueDimension(d)
+    ).length;
 
   builder.innerHTML = `
     <div class="pivot-intro">
