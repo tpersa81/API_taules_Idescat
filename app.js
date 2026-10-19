@@ -2248,13 +2248,14 @@ function renderPivotBuilder() {
     state.pivot.columns.length > 0;
 
   const assignablePivotDims =
-    pivotDims.filter(
-      d => !isSingleValueDimension(d)
-    );
-  
+  state.dimensions.filter(
+    d =>
+      !isConceptDimension(d) &&
+      !isSingleValueDimension(d)
+  );
+
   const allAssigned =
-    state.pivot.rows.length +
-      state.pivot.columns.length ===
+    assignedPivotDims.length ===
     assignablePivotDims.length;
 
   builder.innerHTML = `
