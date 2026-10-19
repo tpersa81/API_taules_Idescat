@@ -2005,33 +2005,7 @@ function resultRows(ds) {
 
     rows.push(row);
   }
-            console.log(
-              'DIMENSIONS JSON-STAT:',
-              dims
-            );
-            
-            console.log(
-              'RIPOLLÈS:',
-              rows.filter(
-                r =>
-                  r.com?.code === '31'
-              )
-            );
-            console.log(
-            'COM categories:',
-            dims
-              .find(d => d.id === 'COM')
-              ?.cats
-          );
-          
-          console.log(
-            'COM 31:',
-            dims
-              .find(d => d.id === 'COM')
-              ?.cats
-              .find(c => c.code === '31')
-          );
-  
+              
   return {
     ids,
     dims,
