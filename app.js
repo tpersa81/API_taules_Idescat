@@ -2731,30 +2731,6 @@ function pivotColumnGroups(
   return groups;
 }
 
-/*
- * Genera les files de capçalera del pivot.
- *
- * Cada variable situada a Columnes ocupa
- * un nivell propi.
- *
- * Exemple amb:
- *
- *   Sexe
- *   Nacionalitat
- *
- * genera:
- *
- *   <th colspan="3">Home</th>
- *   <th colspan="3">Dona</th>
- *   <th colspan="3">Total</th>
- *
- * i després:
- *
- *   <th>Espanyola</th>
- *   <th>Estrangera</th>
- *   <th>Total</th>
- *   ...
- */
 function buildPivotColumnHeaderHtml(
   rowIds,
   columnIds,
@@ -2764,10 +2740,6 @@ function buildPivotColumnHeaderHtml(
 ) {
   let html = '';
 
-  /*
-   * Una fila de capçalera per cada dimensió
-   * de Columnes.
-   */
   for (
     let level = 0;
     level < columnIds.length;
@@ -2775,11 +2747,6 @@ function buildPivotColumnHeaderHtml(
   ) {
     html += '<tr>';
 
-    /*
-     * Les columnes corresponents a Files
-     * només apareixen a la primera fila
-     * i ocupen tots els nivells de Columnes.
-     */
     if (level === 0) {
       for (
         const id of rowIds
@@ -2812,14 +2779,6 @@ function buildPivotColumnHeaderHtml(
     for (
       const group of groups
     ) {
-      /*
-       * En l'últim nivell cada categoria
-       * ocupa una sola columna.
-       *
-       * En els nivells superiors s'utilitza
-       * colspan per agrupar les categories
-       * dels nivells inferiors.
-       */
       html += `
         <th
           class="pivot-value-header pivot-header-level-${level}"
