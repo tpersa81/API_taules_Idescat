@@ -1175,165 +1175,47 @@ function capitalizeFirst(str) {
    ORDENACIÓ TERRITORIAL
    ===================================================== */
 
-function provinceSortOrder(code) {
-  const order = {
-    '08': 1,
-    '17': 2,
-    '25': 3,
-    '43': 4,
-    '99': 5
-  };
-
-  const c = String(code);
-
-  if (
-    c === 'cat' ||
-    c === 'CAT' ||
-    c === 'Total' ||
-    c === 'TOTAL'
-  ) {
-    return 6;
-  }
-
-  return order[c] ?? 999;
-}
-
-function comarcaSortOrder(code) {
-  const order = {
-    '01': 1,
-    '02': 2,
-    '03': 3,
-    '04': 4,
-    '05': 5,
-    '06': 6,
-    '39': 7,
-    '07': 8,
-    '08': 9,
-    '09': 10,
-    '10': 11,
-    '11': 12,
-    '12': 13,
-    '13': 14,
-    '14': 15,
-    '15': 16,
-    '16': 17,
-    '17': 18,
-    '18': 19,
-    '19': 20,
-    '20': 21,
-    '43': 22,
-    '21': 23,
-    '42': 24,
-    '22': 25,
-    '23': 26,
-    '24': 27,
-    '25': 28,
-    '26': 29,
-    '27': 30,
-    '28': 31,
-    '29': 32,
-    '30': 33,
-    '31': 34,
-    '32': 35,
-    '33': 36,
-    '34': 37,
-    '35': 38,
-    '36': 39,
-    '37': 40,
-    '38': 41,
-    '40': 42,
-    '41': 43,
-    '77': 44
-  };
-
-  const c = String(code);
-
-  if (
-    c === 'cat' ||
-    c === 'CAT' ||
-    c === 'Total' ||
-    c === 'TOTAL'
-  ) {
-    return 45;
-  }
-
-  return order[c] ?? 999;
-}
-
-function territorialSortOrder(
-  dim,
-  code
-) {
-  const id =
-    String(dim?.id || '')
-      .toLowerCase();
-
-  const label =
-    String(dim?.label || '')
-      .trim()
-      .toLowerCase();
-
-  if (
-    id === 'prov' ||
-    label === 'província' ||
-    label === 'provincia'
-  ) {
-    return provinceSortOrder(
-      code
-    );
-  }
-
-  if (
-    id === 'com' ||
-    label === 'comarca' ||
-    label === 'comarques'
-  ) {
-    return comarcaSortOrder(
-      code
-    );
-  }
-
-  return null;
-}
-
-function isTerritorialDimension(
-  dim
-) {
-  return (
-    territorialSortOrder(
-      dim,
-      '__TEST__'
-    ) !== null
-  );
-}
-
-function sortCategories(
-  categories
-) {
+function sortCategories(categories) {
   return [...categories].sort(
     (a, b) =>
-      a.index - b.index
+      Number(a.index) -
+      Number(b.index)
   );
 }
 
-function sortRowsTerritorially(
+function sortRowsByJsonStatIndex(
   rows,
   dims
 ) {
-  const territorialDims =
-    dims.filter(
-      isTerritorialDimension
-    );
+  const ranks = new Map();
 
-  if (!territorialDims.length) {
-    return rows;
+  for (const dim of dims) {
+    const categories =
+      dim.categories ??
+      dim.cats ??
+      [];
+
+    const rank = new Map();
+
+    for (const cat of categories) {
+      rank.set(
+        String(cat.code),
+        Number(cat.index)
+      );
+    }
+
+    ranks.set(
+      dim.id,
+      rank
+    );
   }
 
   return [...rows].sort(
     (a, b) => {
-      for (
-        const dim of territorialDims
-      ) {
+      for (const dim of dims) {
+        const rank =
+          ranks.get(dim.id);
+
         const ac =
           String(
             a[dim.id]?.code ?? ''
@@ -1344,28 +1226,16 @@ function sortRowsTerritorially(
             b[dim.id]?.code ?? ''
           );
 
-        const ao =
-          territorialSortOrder(
-            dim,
-            ac
-          );
+        const ai =
+          rank?.get(ac) ??
+          Number.MAX_SAFE_INTEGER;
 
-        const bo =
-          territorialSortOrder(
-            dim,
-            bc
-          );
+        const bi =
+          rank?.get(bc) ??
+          Number.MAX_SAFE_INTEGER;
 
-        if (ao !== bo) {
-          return ao - bo;
-        }
-
-        if (ac !== bc) {
-          return ac.localeCompare(
-            bc,
-            'ca',
-            { numeric: true }
-          );
+        if (ai !== bi) {
+          return ai - bi;
         }
       }
 
@@ -1976,7 +1846,7 @@ function resultRows(ds) {
     ids,
     dims,
     rows:
-      sortRowsTerritorially(
+      sortRowsByJsonStatIndex(
         rows,
         dims
       )
@@ -2116,9 +1986,12 @@ function isConceptDimension(dim) {
 }
 
 function isSingleValueDimension(dim) {
+  const categories =
+    dim?.categories ??
+    dim?.cats;
   return (
-    Array.isArray(dim?.categories) &&
-    dim.categories.length === 1
+    Array.isArray(categories) &&
+    categories.length === 1
   );
 }
 
@@ -2573,8 +2446,9 @@ function pivotCombinationMap(
 
     const categories =
       sortCategories(
-        dim.categories || [],
-        dim
+        dim.categories ??
+        dim.cats ??
+        []
       );
 
     const rank =
@@ -3168,12 +3042,23 @@ function exportInfo() {
   const exportDate =
     `${pad(now.getDate())}-${pad(now.getMonth() + 1)}-${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
+  const statOption =
+    $('stat')?.selectedOptions?.[0];
+  
+  const statName =
+    statOption?.textContent
+      ?.trim() ||
+    state.selected.stat;
+  
   return {
     tableName,
     queryUrl,
-    exportDate
+    exportDate,
+    source:
+      `Font: Idescat. ${statName}`
   };
 }
+
 function formatCsvValue(value) {
   if (
     value === null ||
@@ -3225,12 +3110,13 @@ function exportCSV() {
   const {
     tableName,
     queryUrl,
-    exportDate
-  } =
-    exportInfo();
+    exportDate,
+    source
+  } = exportInfo();
 
   const out = [
     [tableName],
+    [source],
     [`URL: ${queryUrl}`],
     [`Data de consulta: ${exportDate}`],
     [],
@@ -3390,19 +3276,17 @@ function buildPivotExportData() {
     );
   }
 
+  const {source} =
+    exportInfo();
   const out = [];
-
   out.push([
     state.metadata?.label ||
       ''
   ]);
-
-  out.push([
-    `Files: ${rowCombinations.length} · Columnes: ${columnCombinations.length}`
-  ]);
-
+  
+  out.push([source]);
   out.push([]);
-
+    
   const header = [];
 
   for (
@@ -3500,7 +3384,8 @@ function exportXLSX() {
   const {
     tableName,
     queryUrl,
-    exportDate
+    exportDate,
+    source
   } =
     exportInfo();
 
@@ -3508,6 +3393,7 @@ function exportXLSX() {
 
   const out = [
     [tableName],
+    [source],
     [`URL: ${queryUrl}`],
     [`Data de consulta: ${exportDate}`],
     [],
