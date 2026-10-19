@@ -180,6 +180,7 @@
   margin-bottom:8px;
 }
 
+
 .pivot-table th{
   text-align:center;
 }
@@ -198,7 +199,7 @@
 }
 
 .pivot-table .pivot-cell{
-  border-left:1px solid #e0e5e9;
+  border-left:1px solid #ADADAD;
 }
 
 @media(max-width:900px){
@@ -210,31 +211,37 @@
     flex-wrap:wrap;
   }
 }
+
 .pivot-table-title{
   font-size:17px;
   font-weight:700;
   color:#1f4e79;
   margin:18px 0 8px;
 }
-#pivotResult table {
-  border-collapse: collapse;
-  width: 100%;
+
+/* Taula dinàmica */
+#pivotResult table{
+  border-collapse:collapse;
+  width:100%;
 }
 
 #pivotResult th,
-#pivotResult td {
-  border: 1px solid #ADADAD;
-  padding: 6px 8px;
+#pivotResult td{
+  border:1px solid #ADADAD;
+  padding:6px 8px;
 }
 
-#pivotResult th {
-  text-align: center;
+/* Capçaleres de columna */
+#pivotResult th{
+  text-align:center;
 }
 
-#pivotResult th.pivot-row-header {
-  text-align: left;
+/* Capçaleres de les variables de fila */
+#pivotResult th.pivot-row-header{
+  text-align:left;
 }
 
-#pivotResult td {
-  text-align: right;
+/* Valors */
+#pivotResult td{
+  text-align:right;
 }
