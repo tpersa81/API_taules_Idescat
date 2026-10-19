@@ -2137,46 +2137,23 @@ function formatValue(v) {
    CONSTRUCTOR DE TAULES
    ===================================================== */
 
-function pivotDimensionLabel(
-  dim
-) {
-  return (
-    dim?.label ||
-    dim?.id ||
-    ''
-  );
+function pivotDimensionLabel(dim) {
+  return dim?.label || dim?.id || '';
 }
 
-function pivotDimensionById(
-  dims,
-  id
-) {
-  return dims.find(
-    d => d.id === id
-  );
+function pivotDimensionById(dims, id) {
+  return dims.find(d => d.id === id);
 }
 
-function isConceptDimension(
-  dim
-) {
-  return (
-    String(
-      dim?.label || ''
-    )
-      .trim()
-      .toLowerCase() ===
-    'concepte'
-  );
+function isConceptDimension(dim) {
+  return String(dim?.label || '').trim().toLowerCase() === 'concepte';
 }
 
-function pivotAvailableDimensions(
-  dims
-) {
-  const used =
-    new Set([
-      ...state.pivot.rows,
-      ...state.pivot.columns
-    ]);
+function pivotAvailableDimensions(dims) {
+  const used = new Set([
+    ...state.pivot.rows,
+    ...state.pivot.columns
+  ]);
 
   return dims.filter(
     d =>
@@ -2185,10 +2162,7 @@ function pivotAvailableDimensions(
   );
 }
 
-function pivotMoveDimension(
-  id,
-  target
-) {
+function pivotMoveDimension(id, target) {
   state.pivot.rows =
     state.pivot.rows.filter(
       x => x !== id
@@ -2199,24 +2173,18 @@ function pivotMoveDimension(
       x => x !== id
     );
 
-  if (
-    target === 'rows'
-  ) {
+  if (target === 'rows') {
     state.pivot.rows.push(id);
   }
 
-  if (
-    target === 'columns'
-  ) {
+  if (target === 'columns') {
     state.pivot.columns.push(id);
   }
 
   renderPivotBuilder();
 }
 
-function pivotRemoveDimension(
-  id
-) {
+function pivotRemoveDimension(id) {
   state.pivot.rows =
     state.pivot.rows.filter(
       x => x !== id
@@ -2230,10 +2198,7 @@ function pivotRemoveDimension(
   renderPivotBuilder();
 }
 
-function pivotDragStart(
-  event,
-  id
-) {
+function pivotDragStart(event, id) {
   event.dataTransfer.setData(
     'text/plain',
     id
@@ -2243,19 +2208,13 @@ function pivotDragStart(
     'move';
 }
 
-function pivotAllowDrop(
-  event
-) {
+function pivotAllowDrop(event) {
   event.preventDefault();
-
   event.dataTransfer.dropEffect =
     'move';
 }
 
-function pivotDrop(
-  event,
-  target
-) {
+function pivotDrop(event, target) {
   event.preventDefault();
 
   const id =
@@ -2263,9 +2222,7 @@ function pivotDrop(
       'text/plain'
     );
 
-  if (!id) {
-    return;
-  }
+  if (!id) return;
 
   pivotMoveDimension(
     id,
@@ -2331,34 +2288,37 @@ function pivotZoneHtml(
   dims
 ) {
   const items =
-    ids.map(id => {
-      const dim =
-        pivotDimensionById(
-          dims,
-          id
-        );
+    ids
+      .map(id => {
+        const dim =
+          pivotDimensionById(
+            dims,
+            id
+          );
 
-      return `
-        <div
-          class="pivot-dimension"
-          draggable="true"
-          data-pivot-id="${esc(id)}"
-          ondragstart="pivotDragStart(event,'${esc(id)}')"
-          ondragover="pivotAllowDrop(event)"
-          ondrop="pivotDropOnItem(event,'${zone}','${esc(id)}')"
-        >
-          <span class="pivot-drag">☷</span>
-          <span>${esc(pivotDimensionLabel(dim))}</span>
-          <button
-            type="button"
-            class="pivot-remove"
-            onclick="pivotRemoveDimension('${esc(id)}')"
-            title="Treure"
-          >×</button>
-        </div>
-      `;
-    })
-    .join('');
+        return `
+          <div
+            class="pivot-dimension"
+            draggable="true"
+            data-pivot-id="${esc(id)}"
+            ondragstart="pivotDragStart(event,'${esc(id)}')"
+            ondragover="pivotAllowDrop(event)"
+            ondrop="pivotDropOnItem(event,'${zone}','${esc(id)}')"
+          >
+            <span class="pivot-drag">☷</span>
+            <span>${esc(
+              pivotDimensionLabel(dim)
+            )}</span>
+            <button
+              type="button"
+              class="pivot-remove"
+              onclick="pivotRemoveDimension('${esc(id)}')"
+              title="Treure"
+            >×</button>
+          </div>
+        `;
+      })
+      .join('');
 
   return `
     <div class="pivot-zone">
@@ -2374,7 +2334,9 @@ function pivotZoneHtml(
       >
         ${
           items ||
-          `<span class="pivot-placeholder">Arrossega variables aquí</span>`
+          `<span class="pivot-placeholder">
+            Arrossega variables aquí
+          </span>`
         }
       </div>
     </div>
@@ -2392,9 +2354,7 @@ function renderPivotBuilder() {
     return;
   }
 
-  const {
-    dims
-  } =
+  const { dims } =
     resultRows(
       state.lastData
     );
@@ -2421,20 +2381,24 @@ function renderPivotBuilder() {
                 ondragstart="pivotDragStart(event,'${esc(d.id)}')"
               >
                 <span class="pivot-drag">☷</span>
-                <span>${esc(pivotDimensionLabel(d))}</span>
+                <span>${esc(
+                  pivotDimensionLabel(d)
+                )}</span>
               </div>
             `
           )
           .join('')
-      : '<span class="pivot-placeholder">Totes les variables estan assignades.</span>';
+      : `
+          <span class="pivot-placeholder">
+            Totes les variables estan assignades.
+          </span>
+        `;
 
   const rowsValid =
-    state.pivot.rows.length >
-    0;
+    state.pivot.rows.length > 0;
 
   const columnsValid =
-    state.pivot.columns.length >
-    0;
+    state.pivot.columns.length > 0;
 
   const allAssigned =
     state.pivot.rows.length +
@@ -2445,7 +2409,8 @@ function renderPivotBuilder() {
     <div class="pivot-intro">
       <strong>Constructor de taula</strong>
       <span>
-        Arrossega cada variable a Files o Columnes. Pots canviar-ne l'ordre.
+        Arrossega cada variable a Files o Columnes.
+        Pots canviar-ne l'ordre.
       </span>
     </div>
 
@@ -2510,8 +2475,8 @@ function renderPivotBuilder() {
             ? 'Assigna totes les variables a Files o Columnes.'
             : !rowsValid ||
               !columnsValid
-              ? 'Cal tenir almenys una variable a Files i una a Columnes.'
-              : 'Configuració correcta.'
+            ? 'Cal tenir almenys una variable a Files i una a Columnes.'
+            : 'Configuració correcta.'
         }
       </span>
 
@@ -2556,6 +2521,17 @@ function pivotLabel(
     .join(' · ');
 }
 
+/*
+ * Retorna les combinacions existents
+ * per a un conjunt de dimensions.
+ *
+ * La diferència respecte de la versió anterior
+ * és que ara també ordenem les categories segons
+ * l'ordre propi de cada dimensió.
+ *
+ * Això és important perquè les capçaleres
+ * jeràrquiques quedin agrupades correctament.
+ */
 function pivotCombinationMap(
   rows,
   ids,
@@ -2573,18 +2549,20 @@ function pivotCombinationMap(
         ids
       );
 
-    map.set(
-      key,
-      {
+    if (!map.has(key)) {
+      map.set(
         key,
-        label:
-          pivotLabel(
-            row,
-            ids
-          ),
-        row
-      }
-    );
+        {
+          key,
+          label:
+            pivotLabel(
+              row,
+              ids
+            ),
+          row
+        }
+      );
+    }
   }
 
   const dims =
@@ -2596,25 +2574,53 @@ function pivotCombinationMap(
   const result =
     [...map.values()];
 
+  /*
+   * Preparem la posició de cada categoria
+   * dins de cada dimensió.
+   */
+  const ranks =
+    new Map();
+
+  for (
+    const id of ids
+  ) {
+    const dim =
+      pivotDimensionById(
+        dims,
+        id
+      );
+
+    if (!dim) continue;
+
+    const categories =
+      sortCategories(
+        dim.categories || [],
+        dim
+      );
+
+    const rank =
+      new Map();
+
+    categories.forEach(
+      (cat, index) => {
+        rank.set(
+          String(cat.code),
+          index
+        );
+      }
+    );
+
+    ranks.set(
+      id,
+      rank
+    );
+  }
+
   return result.sort(
     (a, b) => {
       for (
         const id of ids
       ) {
-        const dim =
-          pivotDimensionById(
-            dims,
-            id
-          );
-
-        if (
-          !isTerritorialDimension(
-            dim
-          )
-        ) {
-          continue;
-        }
-
         const ac =
           String(
             a.row[id]?.code ?? ''
@@ -2625,27 +2631,30 @@ function pivotCombinationMap(
             b.row[id]?.code ?? ''
           );
 
-        const ao =
-          territorialSortOrder(
-            dim,
-            ac
-          );
+        const rank =
+          ranks.get(id);
 
-        const bo =
-          territorialSortOrder(
-            dim,
-            bc
-          );
+        const ar =
+          rank?.has(ac)
+            ? rank.get(ac)
+            : Number.MAX_SAFE_INTEGER;
 
-        if (ao !== bo) {
-          return ao - bo;
+        const br =
+          rank?.has(bc)
+            ? rank.get(bc)
+            : Number.MAX_SAFE_INTEGER;
+
+        if (ar !== br) {
+          return ar - br;
         }
 
         if (ac !== bc) {
           return ac.localeCompare(
             bc,
             'ca',
-            { numeric: true }
+            {
+              numeric: true
+            }
           );
         }
       }
@@ -2653,6 +2662,332 @@ function pivotCombinationMap(
       return 0;
     }
   );
+}
+
+/*
+ * Calcula quantes columnes consecutives
+ * ocupa cada categoria d'una dimensió.
+ *
+ * Exemple:
+ *
+ * Sexe:
+ *   Home  -> 3
+ *   Dona  -> 3
+ *   Total -> 3
+ *
+ * si la dimensió següent té 3 categories.
+ */
+function pivotColumnGroups(
+  combinations,
+  ids,
+  level
+) {
+  const groups = [];
+
+  if (
+    !combinations.length ||
+    level >= ids.length
+  ) {
+    return groups;
+  }
+
+  let start = 0;
+
+  while (
+    start <
+    combinations.length
+  ) {
+    const code =
+      String(
+        combinations[start].row[
+          ids[level]
+        ]?.code ?? ''
+      );
+
+    let end =
+      start + 1;
+
+    while (
+      end <
+      combinations.length &&
+      String(
+        combinations[end].row[
+          ids[level]
+        ]?.code ?? ''
+      ) === code
+    ) {
+      end++;
+    }
+
+    groups.push({
+      code,
+      label:
+        combinations[start].row[
+          ids[level]
+        ]?.label ?? '',
+      start,
+      span:
+        end - start
+    });
+
+    start = end;
+  }
+
+  return groups;
+}
+
+/*
+ * Genera les files de capçalera del pivot.
+ *
+ * Cada variable situada a Columnes ocupa
+ * un nivell propi.
+ *
+ * Exemple amb:
+ *
+ *   Sexe
+ *   Nacionalitat
+ *
+ * genera:
+ *
+ *   <th colspan="3">Home</th>
+ *   <th colspan="3">Dona</th>
+ *   <th colspan="3">Total</th>
+ *
+ * i després:
+ *
+ *   <th>Espanyola</th>
+ *   <th>Estrangera</th>
+ *   <th>Total</th>
+ *   ...
+ */
+function buildPivotColumnHeaderHtml(
+  rowIds,
+  columnIds,
+  rowCombinations,
+  columnCombinations,
+  dims
+) {
+  let html = '';
+
+  /*
+   * Una fila de capçalera per cada dimensió
+   * de Columnes.
+   */
+  for (
+    let level = 0;
+    level < columnIds.length;
+    level++
+  ) {
+    html += '<tr>';
+
+    /*
+     * Les columnes corresponents a Files
+     * només apareixen a la primera fila
+     * i ocupen tots els nivells de Columnes.
+     */
+    if (level === 0) {
+      for (
+        const id of rowIds
+      ) {
+        html += `
+          <th
+            class="pivot-row-header"
+            rowspan="${columnIds.length}"
+          >
+            ${esc(
+              pivotDimensionLabel(
+                pivotDimensionById(
+                  dims,
+                  id
+                )
+              )
+            )}
+          </th>
+        `;
+      }
+    }
+
+    const groups =
+      pivotColumnGroups(
+        columnCombinations,
+        columnIds,
+        level
+      );
+
+    for (
+      const group of groups
+    ) {
+      /*
+       * En l'últim nivell cada categoria
+       * ocupa una sola columna.
+       *
+       * En els nivells superiors s'utilitza
+       * colspan per agrupar les categories
+       * dels nivells inferiors.
+       */
+      html += `
+        <th
+          class="pivot-value-header pivot-header-level-${level}"
+          colspan="${group.span}"
+        >
+          ${esc(group.label)}
+        </th>
+      `;
+    }
+
+    html += '</tr>';
+  }
+
+  return html;
+}
+
+/*
+ * Calcula el rowspan d'una categoria
+ * de les files.
+ *
+ * Exemple:
+ *
+ * Home
+ *   Espanyola
+ *   Estrangera
+ *   Total
+ *
+ * "Home" tindrà rowspan="3".
+ */
+function pivotRowSpan(
+  combinations,
+  ids,
+  rowIndex,
+  level
+) {
+  if (
+    !ids.length ||
+    level >= ids.length
+  ) {
+    return 1;
+  }
+
+  const current =
+    combinations[rowIndex];
+
+  const code =
+    String(
+      current?.row[
+        ids[level]
+      ]?.code ?? ''
+    );
+
+  /*
+   * Només agrupem les files que tenen
+   * els mateixos valors en tots els nivells
+   * anteriors.
+   */
+  function samePrefix(index) {
+    for (
+      let i = 0;
+      i <= level;
+      i++
+    ) {
+      const a =
+        String(
+          combinations[index]?.row[
+            ids[i]
+          ]?.code ?? ''
+        );
+
+      const b =
+        String(
+          current?.row[
+            ids[i]
+          ]?.code ?? ''
+        );
+
+      if (a !== b) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /*
+   * Si no és el primer element del grup,
+   * aquest <td> no s'ha de generar.
+   */
+  if (
+    rowIndex > 0 &&
+    samePrefix(rowIndex - 1)
+  ) {
+    return 0;
+  }
+
+  let span = 1;
+
+  while (
+    rowIndex + span <
+      combinations.length &&
+    samePrefix(
+      rowIndex + span
+    )
+  ) {
+    span++;
+  }
+
+  return span;
+}
+
+/*
+ * Genera les cel·les jeràrquiques de Files
+ * per a una fila concreta.
+ */
+function buildPivotRowHeaderHtml(
+  combinations,
+  rowIds,
+  rowIndex
+) {
+  let html = '';
+
+  for (
+    let level = 0;
+    level < rowIds.length;
+    level++
+  ) {
+    const span =
+      pivotRowSpan(
+        combinations,
+        rowIds,
+        rowIndex,
+        level
+      );
+
+    /*
+     * span === 0 significa que la categoria
+     * ja està representada per un rowspan
+     * iniciat en una fila anterior.
+     */
+    if (span === 0) {
+      continue;
+    }
+
+    const id =
+      rowIds[level];
+
+    const label =
+      combinations[rowIndex]
+        ?.row[id]
+        ?.label ?? '';
+
+    html += `
+      <td
+        class="pivot-label pivot-row-level-${level}"
+        rowspan="${span}"
+      >
+        ${esc(label)}
+      </td>
+    `;
+  }
+
+  return html;
 }
 
 function renderPivotTable() {
@@ -2687,9 +3022,7 @@ function renderPivotTable() {
     !columnIds.length
   ) {
     result.innerHTML =
-      `<div class="error">
-        Cal assignar almenys una variable a Files i una a Columnes.
-      </div>`;
+      '<div class="error">Cal assignar almenys una variable a Files i una a Columnes.</div>';
 
     return;
   }
@@ -2705,9 +3038,7 @@ function renderPivotTable() {
     new Set(allIds).size
   ) {
     result.innerHTML =
-      `<div class="error">
-        Una variable només pot aparèixer una vegada.
-      </div>`;
+      '<div class="error">Una variable només pot aparèixer una vegada.</div>';
 
     return;
   }
@@ -2717,9 +3048,7 @@ function renderPivotTable() {
     pivotDims.length
   ) {
     result.innerHTML =
-      `<div class="error">
-        No totes les dimensions estan assignades.
-      </div>`;
+      '<div class="error">No totes les dimensions estan assignades.</div>';
 
     return;
   }
@@ -2738,6 +3067,11 @@ function renderPivotTable() {
       dims
     );
 
+  /*
+   * Mapa de valors:
+   *
+   * fila × columna
+   */
   const values =
     new Map();
 
@@ -2762,87 +3096,105 @@ function renderPivotTable() {
     );
   }
 
-  const rowHeader =
-    rowIds
-      .map(id => {
-        const dim =
-          pivotDimensionById(
-            dims,
-            id
-          );
-
-        return `<th>${esc(
-          pivotDimensionLabel(
-            dim
-          )
-        )}</th>`;
-      })
-      .join('');
-
+  /*
+   * Construïm les diverses files de
+   * capçalera de Columnes.
+   */
   const columnHeaders =
-    columnCombinations
-      .map(
-        c =>
-          `<th class="pivot-value-header">${esc(c.label)}</th>`
-      )
-      .join('');
+    buildPivotColumnHeaderHtml(
+      rowIds,
+      columnIds,
+      rowCombinations,
+      columnCombinations,
+      dims
+    );
 
-  let html =
-    `<div class="pivot-table-title">${esc(state.metadata?.label || '')}</div>
-     <div class="pivot-result-meta">
-       ${rowCombinations.length.toLocaleString('ca-ES')} files ·
-       ${columnCombinations.length.toLocaleString('ca-ES')} columnes
-     </div>
+  let html = `
+    <div class="pivot-table-title">
+      ${esc(
+        state.metadata?.label || ''
+      )}
+    </div>
 
-     <div class="table-wrap pivot-table-wrap">
-       <table class="data-table pivot-table">
-         <thead>
-           <tr>
-             ${rowHeader}
-             ${columnHeaders}
-           </tr>
-         </thead>
-         <tbody>`;
+    <div class="pivot-result-meta">
+      ${rowCombinations.length.toLocaleString('ca-ES')}
+      files ·
+      ${columnCombinations.length.toLocaleString('ca-ES')}
+      columnes
+    </div>
 
+    <div class="table-wrap pivot-table-wrap">
+
+      <table class="data-table pivot-table">
+
+        <thead>
+          ${columnHeaders}
+        </thead>
+
+        <tbody>
+  `;
+
+  /*
+   * Construïm les files.
+   *
+   * Les etiquetes de les dimensions de Files
+   * s'agrupen mitjançant rowspan.
+   */
   for (
-    const r of rowCombinations
+    let rIndex = 0;
+    rIndex <
+    rowCombinations.length;
+    rIndex++
   ) {
+    const r =
+      rowCombinations[rIndex];
+
     html += '<tr>';
 
-    for (
-      const id of rowIds
-    ) {
-      html +=
-        `<td class="pivot-label">${esc(r.row[id]?.label ?? '')}</td>`;
-    }
+    html +=
+      buildPivotRowHeaderHtml(
+        rowCombinations,
+        rowIds,
+        rIndex
+      );
 
     for (
-      const c of columnCombinations
+      const c of
+      columnCombinations
     ) {
       const value =
         values.get(
           `${r.key}§${c.key}`
         );
 
-      html +=
-        `<td class="num pivot-cell">${
-          value === null ||
-          value === undefined
-            ? ''
-            : esc(formatValue(value))
-        }</td>`;
+      html += `
+        <td class="num pivot-cell">
+          ${
+            value === null ||
+            value === undefined
+              ? ''
+              : esc(
+                  formatValue(
+                    value
+                  )
+                )
+          }
+        </td>
+      `;
     }
 
     html += '</tr>';
   }
 
-  html +=
-    `</tbody>
-       </table>
-     </div>`;
+  html += `
+        </tbody>
 
-  result.innerHTML =
-    html;
+      </table>
+
+    </div>
+  `;
+
+  result.innerHTML = html;
 }
 
 
