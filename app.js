@@ -2247,6 +2247,19 @@ function renderPivotBuilder() {
   const columnsValid =
     state.pivot.columns.length > 0;
 
+  /*
+   * Amb una sola variable pivotable no cal exigir
+   * que hi hagi variables als dos eixos. L'altre eix
+   * representa implícitament un únic valor.
+   */
+  const onePivotDimension =
+    assignablePivotDims.length === 1;
+
+  const axesValid =
+    onePivotDimension
+      ? rowsValid || columnsValid
+      : rowsValid && columnsValid;
+
   const assignablePivotDims =
     pivotDims.filter(
       d =>
@@ -2314,8 +2327,7 @@ function renderPivotBuilder() {
         class="primary"
         ${
           allAssigned &&
-          rowsValid &&
-          columnsValid
+          axesValid
             ? ''
             : 'disabled'
         }
@@ -2334,9 +2346,12 @@ function renderPivotBuilder() {
         ${
           !allAssigned
             ? 'Assigna totes les variables a Files o Columnes.'
-            : !rowsValid ||
-              !columnsValid
-            ? 'Cal tenir almenys una variable a Files i una a Columnes.'
+            : !axesValid
+            ? onePivotDimension
+              ? 'Mou la variable a Files o a Columnes.'
+              : 'Cal tenir almenys una variable a Files i una a Columnes.'
+            : onePivotDimension
+            ? 'Configuració correcta. L’altre eix tindrà un únic valor.'
             : 'Configuració correcta.'
         }
       </span>
@@ -2606,6 +2621,28 @@ function buildPivotColumnHeaderHtml(
   dims
 ) {
   let html = '';
+
+  if (!columnIds.length) {
+    html += '<tr>';
+
+    for (const id of rowIds) {
+      html += '<th class="pivot-row-header">' +
+        esc(
+          pivotDimensionLabel(
+            pivotDimensionById(
+              dims,
+              id
+            )
+          )
+        ) +
+        '</th>';
+    }
+
+    html += '<th class="pivot-value-header">Valor</th>';
+    html += '</tr>';
+
+    return html;
+  }
 
   for (
     let level = 0;
@@ -2895,11 +2932,11 @@ function renderPivotTable() {
     state.pivot.columns;
 
   if (
-    !rowIds.length ||
+    !rowIds.length &&
     !columnIds.length
   ) {
     result.innerHTML =
-      '<div class="error">Cal assignar almenys una variable a Files i una a Columnes.</div>';
+      '<div class="error">Cal assignar almenys una variable a Files o Columnes.</div>';
 
     return;
   }
@@ -3298,7 +3335,7 @@ function buildPivotExportData() {
     state.pivot.columns;
 
   if (
-    !rowIds.length ||
+    !rowIds.length &&
     !columnIds.length
   ) {
     return null;
@@ -3394,12 +3431,16 @@ function buildPivotExportData() {
     );
   }
 
-  for (
-    const c of columnCombinations
-  ) {
-    header.push(
-      c.label
-    );
+  if (columnIds.length) {
+    for (
+      const c of columnCombinations
+    ) {
+      header.push(
+        c.label
+      );
+    }
+  } else {
+    header.push('Valor');
   }
 
   out.push(header);
