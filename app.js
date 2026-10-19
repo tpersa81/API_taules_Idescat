@@ -2017,6 +2017,21 @@ function resultRows(ds) {
                   r.com?.code === '31'
               )
             );
+            console.log(
+            'COM categories:',
+            dims
+              .find(d => d.id === 'com')
+              ?.cats
+          );
+          
+          console.log(
+            'COM 31:',
+            dims
+              .find(d => d.id === 'com')
+              ?.cats
+              .find(c => c.code === '31')
+          );
+  
   return {
     ids,
     dims,
