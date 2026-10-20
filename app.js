@@ -1976,38 +1976,87 @@ function pivotTableTitle() {
   const base =
     state.metadata?.label || '';
 
-  const dataDims =
-    state.lastData
-      ? resultRows(
-          state.lastData
-        ).dims
-      : [];
+  const datasets = [
+    state.lastData,
+    state.metadata
+  ].filter(Boolean);
 
-  const metricDim =
-    dataDims.find(
-      d =>
-        String(d.id)
-          .toLowerCase() === 'metric'
-    );
+  const labels = [];
 
-  if (!metricDim) {
-    return base;
+  for (const ds of datasets) {
+    /*
+     * En algunes taules d'Idescat l'indicador es
+     * presenta a la dimensió "metric" i el text
+     * descriptiu pot arribar com INDICATOR_Etiqueta.
+     * Conservem també la via JSON-stat estàndard
+     * (category.label) com a alternativa.
+     */
+    const metric =
+      ds?.dimension?.metric;
+
+    const metricCategory =
+      metric?.category;
+
+    const indicatorLabel =
+      metricCategory?.label?.INDICATOR_Etiqueta ??
+      metricCategory?.label?.INDICATOR ??
+      metricCategory?.INDICATOR_Etiqueta ??
+      metricCategory?.INDICATOR ??
+      ds?.INDICATOR_Etiqueta ??
+      ds?.extension?.INDICATOR_Etiqueta;
+
+    if (
+      indicatorLabel !== undefined &&
+      indicatorLabel !== null &&
+      String(indicatorLabel).trim()
+    ) {
+      labels.push(
+        String(indicatorLabel).trim()
+      );
+    }
+
+    /*
+     * Via JSON-stat normalitzada: busquem la
+     * categoria INDICATOR de la dimensió metric.
+     */
+    if (metricCategory) {
+      const categories =
+        jsonstatCategories(
+          ds,
+          'metric'
+        );
+
+      for (const category of categories) {
+        if (
+          String(category.code).toUpperCase() ===
+          'INDICATOR' &&
+          category.label
+        ) {
+          labels.push(
+            String(category.label).trim()
+          );
+        }
+      }
+    }
   }
 
   const indicators =
     [...new Set(
-      metricDim.categories
-        .map(c => c.label)
-        .filter(Boolean)
+      labels.filter(Boolean)
     )];
 
   if (!indicators.length) {
     return base;
   }
 
-  return base + ' · ' + indicators.join(' · ');
+  return (
+    base +
+    ' · ' +
+    indicators
+      .map(capitalizeFirst)
+      .join(' · ')
+  );
 }
-
 function pivotDimensionLabel(dim) {
   return capitalizeFirst(
     dim?.label || dim?.id || ''
