@@ -4041,21 +4041,7 @@ function exportXLSX() {
       ...(pivotHeaderRow > 4 ? [3] : [2])
     ];
 
-    pivotWs['!merges'] =
-      mergeRows.map(r => ({
-        s: {
-          r,
-          c: 0
-        },
-        e: {
-          r,
-          c:
-            Math.max(
-              0,
-              width - 1
-            )
-        }
-      }));
+    pivotWs['!merges'] = [];
 
     if (
       pivotOut.length >
