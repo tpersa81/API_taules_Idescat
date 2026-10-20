@@ -3028,12 +3028,8 @@ function selectedSingleCategoryLabels() {
   /*
    * IMPORTANT:
    * state.lastData és la resposta ja filtrada de l'API.
-   * Per tant, una dimensió de la qual l'usuari ha triat
-   * una sola categoria només conté una categoria a lastData.
-   *
-   * Per saber si era realment una dimensió amb diverses
-   * categories possibles, hem de consultar state.metadata,
-   * que és la resposta original de metadades sense filtres.
+   * Per saber si una dimensió tenia realment diverses
+   * categories possibles, consultem state.metadata.
    */
   const dims =
     dimensions(
@@ -3053,8 +3049,9 @@ function selectedSingleCategoryLabels() {
         state.filters.get(d.id);
 
       /*
-       * No mostrem dimensions que ja només tenen
-       * una categoria possible a la taula original.
+       * Només mostrem dimensions que tenien diverses
+       * categories possibles i de les quals l'usuari
+       * n'ha seleccionat exactament una.
        */
       if (
         categories.length <= 1 ||
@@ -3080,6 +3077,63 @@ function selectedSingleCategoryLabels() {
       );
     })
     .filter(Boolean);
+}
+
+/*
+ * Retorna l'etiqueta del CONCEPTE de la resposta.
+ *
+ * El concepte és una dimensió especial que no participa
+ * en la construcció de la taula dinàmica, però la seva
+ * categoria descriu què mesura la taula (p. ex.
+ * "Durada mitjana diària per persona (minuts)").
+ */
+function pivotConceptLabel(dims) {
+  const conceptDim =
+    dims.find(
+      d => isConceptDimension(d)
+    );
+
+  if (!conceptDim) {
+    return '';
+  }
+
+  const categories =
+    conceptDim.categories ?? [];
+
+  if (categories.length !== 1) {
+    return '';
+  }
+
+  return capitalizeFirst(
+    categories[0]?.label ??
+    categories[0]?.code ??
+    ''
+  ).trim();
+}
+
+/*
+ * Indica si l'usuari ha seleccionat més d'una categoria
+ * en alguna variable que no sigui el CONCEPTE.
+ */
+function hasMultipleSelectedCategories() {
+  const dims =
+    dimensions(
+      state.metadata || {}
+    );
+
+  return dims.some(d => {
+    if (isConceptDimension(d)) {
+      return false;
+    }
+
+    const selected =
+      state.filters.get(d.id);
+
+    return (
+      selected instanceof Set &&
+      selected.size > 1
+    );
+  });
 }
 
 function renderPivotTable() {
@@ -3219,6 +3273,14 @@ function renderPivotTable() {
   const singleCategoryLabels =
     selectedSingleCategoryLabels();
 
+  const showConceptSubtitle =
+    hasMultipleSelectedCategories();
+
+  const conceptLabel =
+    showConceptSubtitle
+      ? pivotConceptLabel(dims)
+      : '';
+
   let html = `
     <div class="pivot-table-title">
       ${esc(
@@ -3229,6 +3291,12 @@ function renderPivotTable() {
     ${
       singleCategoryLabels.length
         ? `<div class="pivot-table-subtitle">${esc(singleCategoryLabels.join('. '))}</div>`
+        : ''
+    }
+
+    ${
+      conceptLabel
+        ? `<div class="pivot-table-subtitle">${esc(conceptLabel)}</div>`
         : ''
     }
 
@@ -3614,6 +3682,14 @@ function buildPivotExportData() {
   const singleCategoryLabels =
     selectedSingleCategoryLabels();
 
+  const showConceptSubtitle =
+    hasMultipleSelectedCategories();
+
+  const conceptLabel =
+    showConceptSubtitle
+      ? pivotConceptLabel(dims)
+      : '';
+
   const out = [];
 
   out.push([
@@ -3625,6 +3701,12 @@ function buildPivotExportData() {
       ? [singleCategoryLabels.join('. ')]
       : []
   );
+
+  if (conceptLabel) {
+    out.push([conceptLabel]);
+  } else {
+    out.push([]);
+  }
 
   out.push([source]);
   out.push([]);
