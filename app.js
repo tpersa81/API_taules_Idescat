@@ -4021,12 +4021,9 @@ function exportXLSX() {
         (row, index) =>
           index > 0 &&
           Array.isArray(row) &&
-          row.some(
-            value =>
-              String(value ?? '').trim() === 'Valor' ||
-              String(value ?? '').trim() === 'Concepte'
-          )
-      );
+          String(row[0] ?? '').trim() ===
+            String(source).trim()
+      ) + 2;
 
     const headerRow =
       pivotHeaderRow >= 0
