@@ -2021,56 +2021,78 @@ function pivotTableTitle() {
   const base =
     state.metadata?.label || '';
 
-  const datasets = [
-    state.lastData,
-    state.metadata
-  ].filter(Boolean);
-
   const labels = [];
 
-  for (const ds of datasets) {
-    /*
-     * Via explícita: INDICATOR_Etiqueta.
-     * La cerca és recursiva perquè l'API pot situar
-     * aquest camp en diferents branques de "metric".
-     */
-    labels.push(
-      ...findIndicatorLabels(ds)
-    );
+  /*
+   * A les taules que tenen indicador, Idescat pot
+   * retornar-lo com una dimensió especial de primer
+   * nivell:
+   *
+   *   "INDICATOR": {
+   *     "category": {
+   *       "index": ["POP_Y_GE10"],
+   *       "label": {
+   *         "POP_Y_GE10": "població de 10 anys o més"
+   *       }
+   *     }
+   *   }
+   *
+   * No forma part de ds.id, per tant no es pot
+   * recuperar amb dimensions() ni amb resultRows().
+   * El busquem explícitament a metadata i a les dades.
+   */
+  for (const ds of [
+    state.metadata,
+    state.lastData
+  ].filter(Boolean)) {
+    const indicator =
+      ds?.INDICATOR ??
+      ds?.dimension?.INDICATOR ??
+      ds?.extension?.INDICATOR;
 
-    /*
-     * Via JSON-stat estàndard: si la dimensió metric
-     * conté una categoria INDICATOR amb etiqueta,
-     * també la recuperem.
-     */
-    const metric =
-      ds?.dimension?.metric;
+    const category =
+      indicator?.category;
 
-    if (metric?.category) {
-      const categories =
-        jsonstatCategories(
-          ds,
-          'metric'
+    if (!category) {
+      continue;
+    }
+
+    const index =
+      Array.isArray(category.index)
+        ? category.index
+        : category.index &&
+          typeof category.index === 'object'
+          ? Object.keys(category.index).sort(
+              (a, b) =>
+                Number(category.index[a]) -
+                Number(category.index[b])
+            )
+          : [];
+
+    const labelMap =
+      category.label &&
+      typeof category.label === 'object'
+        ? category.label
+        : {};
+
+    for (const code of index) {
+      const label =
+        labelMap[String(code)];
+
+      if (
+        label !== undefined &&
+        label !== null &&
+        String(label).trim()
+      ) {
+        labels.push(
+          String(label).trim()
         );
-
-      for (const category of categories) {
-        if (
-          String(category.code).toUpperCase() ===
-            'INDICATOR' &&
-          category.label
-        ) {
-          labels.push(
-            String(category.label).trim()
-          );
-        }
       }
     }
   }
 
   const indicators =
-    [...new Set(
-      labels.filter(Boolean)
-    )];
+    [...new Set(labels)];
 
   if (!indicators.length) {
     return base;
