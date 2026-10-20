@@ -1972,6 +1972,51 @@ function formatValue(v) {
    CONSTRUCTOR DE TAULES
    ===================================================== */
 
+function findIndicatorLabels(obj) {
+  const found = [];
+
+  function walk(value, seen) {
+    if (!value || typeof value !== 'object' || seen.has(value)) {
+      return;
+    }
+
+    seen.add(value);
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        walk(item, seen);
+      }
+      return;
+    }
+
+    for (const [key, val] of Object.entries(value)) {
+      const normalizedKey =
+        String(key).replace(/[^a-z0-9]/gi, '').toLowerCase();
+
+      if (
+        normalizedKey === 'indicatoretiqueta' &&
+        val !== null &&
+        val !== undefined &&
+        String(val).trim()
+      ) {
+        found.push(String(val).trim());
+      }
+
+      /*
+       * En algunes respostes d'Idescat, INDICATOR_Etiqueta
+       * pot estar dins de "metric" o d'una altra branca
+       * de les metadades, no necessàriament dins de
+       * dimension.metric.category.label.
+       */
+      walk(val, seen);
+    }
+  }
+
+  walk(obj, new Set());
+
+  return [...new Set(found)];
+}
+
 function pivotTableTitle() {
   const base =
     state.metadata?.label || '';
@@ -1985,41 +2030,23 @@ function pivotTableTitle() {
 
   for (const ds of datasets) {
     /*
-     * En algunes taules d'Idescat l'indicador es
-     * presenta a la dimensió "metric" i el text
-     * descriptiu pot arribar com INDICATOR_Etiqueta.
-     * Conservem també la via JSON-stat estàndard
-     * (category.label) com a alternativa.
+     * Via explícita: INDICATOR_Etiqueta.
+     * La cerca és recursiva perquè l'API pot situar
+     * aquest camp en diferents branques de "metric".
+     */
+    labels.push(
+      ...findIndicatorLabels(ds)
+    );
+
+    /*
+     * Via JSON-stat estàndard: si la dimensió metric
+     * conté una categoria INDICATOR amb etiqueta,
+     * també la recuperem.
      */
     const metric =
       ds?.dimension?.metric;
 
-    const metricCategory =
-      metric?.category;
-
-    const indicatorLabel =
-      metricCategory?.label?.INDICATOR_Etiqueta ??
-      metricCategory?.label?.INDICATOR ??
-      metricCategory?.INDICATOR_Etiqueta ??
-      metricCategory?.INDICATOR ??
-      ds?.INDICATOR_Etiqueta ??
-      ds?.extension?.INDICATOR_Etiqueta;
-
-    if (
-      indicatorLabel !== undefined &&
-      indicatorLabel !== null &&
-      String(indicatorLabel).trim()
-    ) {
-      labels.push(
-        String(indicatorLabel).trim()
-      );
-    }
-
-    /*
-     * Via JSON-stat normalitzada: busquem la
-     * categoria INDICATOR de la dimensió metric.
-     */
-    if (metricCategory) {
+    if (metric?.category) {
       const categories =
         jsonstatCategories(
           ds,
@@ -2029,7 +2056,7 @@ function pivotTableTitle() {
       for (const category of categories) {
         if (
           String(category.code).toUpperCase() ===
-          'INDICATOR' &&
+            'INDICATOR' &&
           category.label
         ) {
           labels.push(
