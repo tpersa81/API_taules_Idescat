@@ -1972,8 +1972,46 @@ function formatValue(v) {
    CONSTRUCTOR DE TAULES
    ===================================================== */
 
+function pivotTableTitle() {
+  const base =
+    state.metadata?.label || '';
+
+  const dataDims =
+    state.lastData
+      ? resultRows(
+          state.lastData
+        ).dims
+      : [];
+
+  const metricDim =
+    dataDims.find(
+      d =>
+        String(d.id)
+          .toLowerCase() === 'metric'
+    );
+
+  if (!metricDim) {
+    return base;
+  }
+
+  const indicators =
+    [...new Set(
+      metricDim.categories
+        .map(c => c.label)
+        .filter(Boolean)
+    )];
+
+  if (!indicators.length) {
+    return base;
+  }
+
+  return base + ' · ' + indicators.join(' · ');
+}
+
 function pivotDimensionLabel(dim) {
-  return dim?.label || dim?.id || '';
+  return capitalizeFirst(
+    dim?.label || dim?.id || ''
+  );
 }
 
 function pivotDimensionById(dims, id) {
@@ -2430,7 +2468,9 @@ function pivotLabel(
   return ids
     .map(
       id =>
-        row[id]?.label ?? ''
+        capitalizeFirst(
+          row[id]?.label ?? ''
+        )
     )
     .join(' · ');
 }
@@ -2637,9 +2677,11 @@ function pivotColumnGroups(
     groups.push({
       code,
       label:
-        combinations[start].row[
-          ids[level]
-        ]?.label ?? '',
+        capitalizeFirst(
+          combinations[start].row[
+            ids[level]
+          ]?.label ?? ''
+        ),
       start,
       span:
         end - start
@@ -2864,9 +2906,11 @@ function buildPivotRowHeaderHtml(
       rowIds[level];
 
     const label =
-      combinations[rowIndex]
-        ?.row[id]
-        ?.label ?? '';
+      capitalizeFirst(
+        combinations[rowIndex]
+          ?.row[id]
+          ?.label ?? ''
+      );
 
     html += `
       <td
@@ -2932,7 +2976,7 @@ function selectedSingleCategoryLabels() {
             String(code)
         );
 
-      return (
+      return capitalizeFirst(
         category?.label ??
         String(code)
       );
@@ -3080,7 +3124,7 @@ function renderPivotTable() {
   let html = `
     <div class="pivot-table-title">
       ${esc(
-        state.metadata?.label || ''
+        pivotTableTitle()
       )}
     </div>
 
@@ -3468,8 +3512,7 @@ function buildPivotExportData() {
   const out = [];
 
   out.push([
-    state.metadata?.label ||
-      ''
+    pivotTableTitle()
   ]);
 
   out.push(
