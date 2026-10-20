@@ -3256,10 +3256,17 @@ function exportInfo() {
   const statOption =
     $('stat')?.selectedOptions?.[0];
   
-  const statName =
+  const statLabel =
     statOption?.textContent
       ?.trim() ||
     state.selected.stat;
+
+  const statName =
+    statLabel.includes('·')
+      ? statLabel.slice(
+          statLabel.indexOf('·') + 1
+        ).trim()
+      : statLabel;
   
   return {
     tableName,
