@@ -2099,11 +2099,11 @@ function pivotTableTitle() {
   }
 
   return (
-    base +
-    ' · ' +
+    base.trim() +
+    '. ' +
     indicators
-      .map(capitalizeFirst)
-      .join(' · ')
+      .map(label => capitalizeFirst(label).trim())
+      .join('. ')
   );
 }
 function pivotDimensionLabel(dim) {
