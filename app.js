@@ -3704,8 +3704,6 @@ function buildPivotExportData() {
 
   if (conceptLabel) {
     out.push([conceptLabel]);
-  } else {
-    out.push([]);
   }
 
   out.push([source]);
@@ -3941,63 +3939,59 @@ function exportXLSX() {
         pivotOut
       );
 
+    const pivotHeaderRow =
+      pivotOut.findIndex(
+        (row, index) =>
+          index > 0 &&
+          Array.isArray(row) &&
+          row.some(
+            value =>
+              String(value ?? '').trim() === 'Valor' ||
+              String(value ?? '').trim() === 'Concepte'
+          )
+      );
+
+    const headerRow =
+      pivotHeaderRow >= 0
+        ? pivotHeaderRow
+        : 4;
+
     const width =
-      pivotOut[4]?.length ||
+      pivotOut[headerRow]?.length ||
       1;
 
-    pivotWs['!merges'] = [
-      {
-        s: {
-          r: 0,
-          c: 0
-        },
-        e: {
-          r: 0,
-          c:
-            Math.max(
-              0,
-              width - 1
-            )
-        }
-      },
-      {
-        s: {
-          r: 1,
-          c: 0
-        },
-        e: {
-          r: 1,
-          c:
-            Math.max(
-              0,
-              width - 1
-            )
-        }
-      },
-      {
-        s: {
-          r: 2,
-          c: 0
-        },
-        e: {
-          r: 2,
-          c:
-            Math.max(
-              0,
-              width - 1
-            )
-        }
-      }
+    const mergeRows = [
+      0,
+      1,
+      ...(pivotHeaderRow > 4 ? [2] : []),
+      ...(pivotHeaderRow > 4 ? [3] : [2])
     ];
 
+    pivotWs['!merges'] =
+      mergeRows.map(r => ({
+        s: {
+          r,
+          c: 0
+        },
+        e: {
+          r,
+          c:
+            Math.max(
+              0,
+              width - 1
+            )
+        }
+      }));
+
     if (
-      pivotOut.length > 4
+      pivotOut.length >
+      headerRow
     ) {
       pivotWs['!autofilter'] = {
         ref:
           XLSX.utils.encode_range({
             s: {
-              r: 4,
+              r: headerRow,
               c: 0
             },
             e: {
