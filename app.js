@@ -3088,6 +3088,83 @@ function selectedSingleCategoryLabels() {
  * "Durada mitjana diària per persona (minuts)").
  */
 function pivotConceptLabel(dims) {
+  /*
+   * Idescat pot retornar el CONCEPT com una
+   * metadada especial de primer nivell, fora de
+   * ds.id / ds.dimension.
+   *
+   * Exemple:
+   *
+   * "CONCEPT": {
+   *   "category": {
+   *     "index": ["TIME_SP"],
+   *     "label": {
+   *       "TIME_SP":
+   *         "durada mitjana diària per persona (minuts)"
+   *     }
+   *   },
+   *   "label": "concepte"
+   * }
+   *
+   * Aquesta és la mateixa etiqueta que apareix
+   * a la pestanya Dades com CONCEPT_Etiqueta.
+   */
+
+  for (const ds of [
+    state.metadata,
+    state.lastData
+  ].filter(Boolean)) {
+    const concept =
+      ds?.CONCEPT ??
+      ds?.concept ??
+      ds?.dimension?.CONCEPT ??
+      ds?.extension?.CONCEPT;
+
+    const category =
+      concept?.category;
+
+    if (!category) {
+      continue;
+    }
+
+    const index =
+      Array.isArray(category.index)
+        ? category.index
+        : category.index &&
+          typeof category.index === 'object'
+          ? Object.keys(category.index).sort(
+              (a, b) =>
+                Number(category.index[a]) -
+                Number(category.index[b])
+            )
+          : [];
+
+    const labelMap =
+      category.label &&
+      typeof category.label === 'object'
+        ? category.label
+        : {};
+
+    for (const code of index) {
+      const label =
+        labelMap[String(code)];
+
+      if (
+        label !== undefined &&
+        label !== null &&
+        String(label).trim()
+      ) {
+        return capitalizeFirst(
+          String(label).trim()
+        );
+      }
+    }
+  }
+
+  /*
+   * Compatibilitat amb respostes en què CONCEPT sí
+   * que forma part de les dimensions JSON-stat.
+   */
   const conceptDim =
     dims.find(
       d => isConceptDimension(d)
