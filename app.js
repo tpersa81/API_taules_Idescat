@@ -3941,50 +3941,7 @@ function exportXLSX() {
       })
   };
 
-  ws['!merges'] = [
-    {
-      s: {
-        r: 0,
-        c: 0
-      },
-      e: {
-        r: 0,
-        c:
-          Math.max(
-            0,
-            headers.length - 1
-          )
-      }
-    },
-    {
-      s: {
-        r: 1,
-        c: 0
-      },
-      e: {
-        r: 1,
-        c:
-          Math.max(
-            0,
-            headers.length - 1
-          )
-      }
-    },
-    {
-      s: {
-        r: 2,
-        c: 0
-      },
-      e: {
-        r: 2,
-        c:
-          Math.max(
-            0,
-            headers.length - 1
-          )
-      }
-    }
-  ];
+  ws['!merges'] = [];
 
   if (ws['A1']) {
     ws['A1'].s = {
@@ -4025,10 +3982,18 @@ function exportXLSX() {
             String(source).trim()
       ) + 2;
 
-    const headerRow =
-      pivotHeaderRow >= 0
-        ? pivotHeaderRow
-        : 4;
+    const sourceRow =
+    pivotOut.findIndex(
+      row =>
+        Array.isArray(row) &&
+        String(row[0] ?? '').trim() ===
+          String(source).trim()
+    );
+  
+  const headerRow =
+    sourceRow >= 0
+      ? sourceRow + 2
+      : 4;
 
     const width =
       pivotOut[headerRow]?.length ||
