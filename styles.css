@@ -257,10 +257,29 @@
   main{
     padding:0 10px;
     margin:12px auto;
+    width:100%;
+    max-width:100%;
   }
 
   .card{
     padding:12px;
+    min-width:0;
+    max-width:100%;
+    overflow:hidden;
+  }
+
+  .grid{
+    grid-template-columns:minmax(0,1fr);
+    gap:10px;
+    min-width:0;
+    width:100%;
+    max-width:100%;
+  }
+
+  .grid > label{
+    min-width:0;
+    width:100%;
+    max-width:100%;
   }
 
   select,
@@ -268,11 +287,6 @@
     width:100%;
     max-width:100%;
     min-width:0;
-  }
-
-  .grid{
-    grid-template-columns:1fr;
-    gap:10px;
   }
 
   .options{
