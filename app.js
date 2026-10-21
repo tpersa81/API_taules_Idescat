@@ -2698,7 +2698,8 @@ function pivotCombinationMap(
       sortCategories(
         dim.categories ??
         dim.cats ??
-        []
+        [],
+        dim
       );
 
     const rank =
