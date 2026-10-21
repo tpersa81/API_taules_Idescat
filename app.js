@@ -1738,17 +1738,6 @@ function renderMetadata(ds) {
       none
     );
 
-    addTemporalQuickControls(
-      toolbar,
-      d,
-      categories,
-      list
-    );
-
-    section.append(
-      toolbar
-    );
-
     const list =
       document.createElement(
         'div'
@@ -1820,6 +1809,17 @@ function renderMetadata(ds) {
 
       list.append(option);
     }
+
+    addTemporalQuickControls(
+      toolbar,
+      d,
+      categories,
+      list
+    );
+
+    section.append(
+      toolbar
+    );
 
     section.append(list);
     box.append(section);
