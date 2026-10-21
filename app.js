@@ -1627,9 +1627,8 @@ function addTemporalQuickControls(
   );
 
     toolbar.append(relativeRow);
+  }
 }
-
-
 
 function renderMetadata(ds) {
   const dims =
