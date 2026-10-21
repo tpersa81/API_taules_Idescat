@@ -1481,16 +1481,17 @@ function addTemporalQuickControls(
     return;
   }
 
-  /*
-   * "Tria els últims n períodes":
-   * l'input queda integrat amb el botó perquè
-   * l'usuari pugui indicar qualsevol n.
-   */
-  const lastWrap =
+  const lastRow =
+    document.createElement('div');
+
+  lastRow.className =
+    'temporal-row';
+
+  const lastText =
     document.createElement('span');
 
-  lastWrap.className =
-    'temporal-last';
+  lastText.textContent =
+    'Tria els últims ';
 
   const lastInput =
     document.createElement('input');
@@ -1501,18 +1502,19 @@ function addTemporalQuickControls(
     String(categories.length);
   lastInput.value =
     String(
-      Math.min(
-        3,
-        categories.length
-      )
+      Math.min(3, categories.length)
     );
   lastInput.inputMode = 'numeric';
   lastInput.setAttribute(
     'aria-label',
     'Nombre d\'últims períodes'
   );
-  lastInput.title =
-    'Nombre d\'últims períodes';
+
+  const lastText2 =
+    document.createElement('span');
+
+  lastText2.textContent =
+    ' períodes';
 
   const lastButton =
     document.createElement('button');
@@ -1521,17 +1523,13 @@ function addTemporalQuickControls(
   lastButton.className =
     'secondary';
   lastButton.textContent =
-    'Últims n';
-  lastButton.title =
-    'Selecciona els últims n períodes';
+    'Selecciona';
 
   lastButton.addEventListener(
     'click',
     () => {
       let n =
-        Number(
-          lastInput.value
-        );
+        Number(lastInput.value);
 
       if (!Number.isFinite(n)) {
         n = 1;
@@ -1569,94 +1567,60 @@ function addTemporalQuickControls(
     }
   );
 
-  lastWrap.append(
+  lastRow.append(
+    lastText,
     lastInput,
+    lastText2,
     lastButton
   );
 
-  toolbar.append(
-    lastWrap
-  );
+  toolbar.append(lastRow);
 
-  const current =
+  const relativeRow =
+    document.createElement('div');
+
+  relativeRow.className =
+    'temporal-row';
+
+  const relativeCodes = [
+    ...(quick.latest || []),
+    ...(quick.previous || []),
+    ...(quick.previousYear || [])
+  ];
+
+  const uniqueRelativeCodes =
+    [...new Set(relativeCodes)];
+
+  const relativeButton =
     document.createElement('button');
 
-  current.type = 'button';
-  current.className =
+  relativeButton.type = 'button';
+  relativeButton.className =
     'secondary';
-  current.textContent =
-    'Període actual';
-  current.title =
-    'Selecciona l\'últim període disponible';
+  relativeButton.textContent =
+    'Últim + anterior + mateix període de l\'any anterior';
+  relativeButton.title =
+    'Selecciona l\'últim període, l\'anterior i el mateix període de l\'any anterior';
 
-  current.addEventListener(
+  relativeButton.disabled =
+    uniqueRelativeCodes.length === 0;
+
+  relativeButton.addEventListener(
     'click',
     () =>
       setFilterSelection(
         dim,
         categories,
-        quick.latest,
+        uniqueRelativeCodes,
         list
       )
   );
 
-  toolbar.append(current);
-
-  const previous =
-    document.createElement('button');
-
-  previous.type = 'button';
-  previous.className =
-    'secondary';
-  previous.textContent =
-    'Període anterior';
-  previous.title =
-    'Selecciona el penúltim període disponible';
-
-  previous.disabled =
-    !quick.previous.length;
-
-  previous.addEventListener(
-    'click',
-    () =>
-      setFilterSelection(
-        dim,
-        categories,
-        quick.previous,
-        list
-      )
+  relativeRow.append(
+    relativeButton
   );
 
-  toolbar.append(previous);
-
-  const previousYear =
-    document.createElement('button');
-
-  previousYear.type = 'button';
-  previousYear.className =
-    'secondary';
-  previousYear.textContent =
-    'Mateix període any anterior';
-  previousYear.title =
-    'Selecciona el mateix període de l\'any anterior';
-
-  previousYear.disabled =
-    !quick.previousYear.length;
-
-  previousYear.addEventListener(
-    'click',
-    () =>
-      setFilterSelection(
-        dim,
-        categories,
-        quick.previousYear,
-        list
-      )
-  );
-
-  toolbar.append(
-    previousYear
-  );
+  toolbar.append(relativeRow);
 }
 
 
