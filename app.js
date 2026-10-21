@@ -1174,12 +1174,62 @@ function capitalizeFirst(str) {
    ORDENACIÓ TERRITORIAL
    ===================================================== */
 
-function sortCategories(categories) {
-  return [...categories].sort(
+function isTemporalDimension(dim) {
+  const id =
+    String(dim?.id ?? '')
+      .trim()
+      .toUpperCase();
+
+  const role =
+    String(dim?.role ?? '')
+      .trim()
+      .toUpperCase();
+
+  /*
+   * Dimensions temporals habituals de l'API
+   * (MONTH, YEAR, QUARTER, etc.). També admetem
+   * TIME/PERIOD i rols temporals per cobrir
+   * diferents taules de l'Idescat.
+   */
+  return (
+    [
+      'YEAR',
+      'MONTH',
+      'QUARTER',
+      'SEMESTER',
+      'BIMONTH',
+      'WEEK',
+      'DAY',
+      'DATE',
+      'TIME',
+      'TIME_PERIOD',
+      'PERIOD',
+      'TEMPORALITY',
+      'TEMPORAL'
+    ].includes(id) ||
+    id.startsWith('TIME_') ||
+    id.endsWith('_TIME') ||
+    role.includes('TIME') ||
+    role.includes('TEMPOR')
+  );
+}
+
+function sortCategories(categories, dim = null) {
+  const sorted = [...categories].sort(
     (a, b) =>
       Number(a.index) -
       Number(b.index)
   );
+
+  /*
+   * En els selectors de dimensions temporals
+   * volem mostrar el període més recent primer.
+   * No modifiquem l'índex original de les categories:
+   * només invertim l'ordre visual del selector.
+   */
+  return isTemporalDimension(dim)
+    ? sorted.reverse()
+    : sorted;
 }
 
 function sortRowsByJsonStatIndex(
