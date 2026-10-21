@@ -1321,6 +1321,7 @@ function temporalPeriodicity(categories) {
       .filter(Boolean);
 
   for (const code of codes) {
+    if (/^\d{4}$/.test(code)) return 'year';
     if (/^\d{4}M\d{1,2}$/i.test(code)) return 'month';
     if (/^\d{4}Q\d{1}$/i.test(code)) return 'quarter';
     if (/^\d{4}S\d{1}$/i.test(code)) return 'semester';
@@ -1391,6 +1392,7 @@ function temporalQuickSelections(dim, categories) {
     categories[1] || null;
 
   const result = {
+    periodicity,
     latest:
       latest
         ? [String(latest.code)]
@@ -1576,7 +1578,10 @@ function addTemporalQuickControls(
 
   toolbar.append(lastRow);
 
-  const relativeRow =
+  if (
+    quick.periodicity !== 'year' &&
+    (quick.previousYear || []).length
+  ) {
     document.createElement('div');
 
   relativeRow.className =
@@ -1620,7 +1625,7 @@ function addTemporalQuickControls(
     relativeButton
   );
 
-  toolbar.append(relativeRow);
+    toolbar.append(relativeRow);
 }
 
 
