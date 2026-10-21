@@ -1582,10 +1582,11 @@ function addTemporalQuickControls(
     quick.periodicity !== 'year' &&
     (quick.previousYear || []).length
   ) {
-    document.createElement('div');
+    const relativeRow =
+      document.createElement('div');
 
-  relativeRow.className =
-    'temporal-row';
+    relativeRow.className =
+      'temporal-row';
 
   const relativeCodes = [
     ...(quick.latest || []),
