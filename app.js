@@ -1598,7 +1598,7 @@ function addTemporalQuickControls(
   relativeButton.className =
     'secondary';
   relativeButton.textContent =
-    'Últim + anterior + mateix període de l\'any anterior';
+    'Últim període, període anterior i mateix període de l\'any anterior';
   relativeButton.title =
     'Selecciona l\'últim període, l\'anterior i el mateix període de l\'any anterior';
 
