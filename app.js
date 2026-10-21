@@ -1298,6 +1298,369 @@ function sortRowsByJsonStatIndex(
    FILTRES
    ===================================================== */
 
+/*
+ * Detecta el patró de periodicitat d'una dimensió temporal
+ * a partir dels codis de les seves categories.
+ *
+ * Exemples habituals de l'Idescat:
+ *   2026M09 -> mensual
+ *   2026Q3  -> trimestral
+ *   2026S2  -> semestral
+ *   2026B05 -> bimestral
+ *   2026W42 -> setmanal
+ *   2026D274 -> diària
+ *
+ * També admet dates ISO simplificades:
+ *   2026-09
+ *   2026-09-30
+ */
+function temporalPeriodicity(categories) {
+  const codes =
+    (categories || [])
+      .map(c => String(c?.code ?? '').trim())
+      .filter(Boolean);
+
+  for (const code of codes) {
+    if (/^\d{4}M\d{1,2}$/i.test(code)) return 'month';
+    if (/^\d{4}Q\d{1}$/i.test(code)) return 'quarter';
+    if (/^\d{4}S\d{1}$/i.test(code)) return 'semester';
+    if (/^\d{4}B\d{1,2}$/i.test(code)) return 'bimonth';
+    if (/^\d{4}W\d{1,2}$/i.test(code)) return 'week';
+    if (/^\d{4}D\d{1,3}$/i.test(code)) return 'day';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(code)) return 'day';
+    if (/^\d{4}-\d{2}$/.test(code)) return 'month';
+  }
+
+  return null;
+}
+
+/*
+ * Retorna el codi del mateix període de l'any anterior.
+ * No fa cap suposició sobre quants períodes hi ha:
+ * simplement conserva el període intraanual i resta 1 a l'any.
+ */
+function previousYearPeriodCode(code) {
+  const value =
+    String(code ?? '').trim();
+
+  if (/^\d{4}[MQSBDW]\d{1,3}$/i.test(value)) {
+    return value.replace(
+      /^(\d{4})/,
+      (_, year) => String(Number(year) - 1)
+    );
+  }
+
+  if (/^\d{4}-\d{2}(?:-\d{2})?$/.test(value)) {
+    return value.replace(
+      /^(\d{4})/,
+      (_, year) => String(Number(year) - 1)
+    );
+  }
+
+  return '';
+}
+
+/*
+ * Retorna els codis seleccionables per a les accions
+ * ràpides d'una dimensió temporal.
+ *
+ * Les categories ja arriben ordenades de més recent
+ * a més antiga per sortCategories().
+ */
+function temporalQuickSelections(dim, categories) {
+  if (!isTemporalDimension(dim)) {
+    return null;
+  }
+
+  const periodicity =
+    temporalPeriodicity(categories);
+
+  if (!periodicity) {
+    return null;
+  }
+
+  const codes =
+    categories.map(
+      c => String(c.code)
+    );
+
+  const latest =
+    categories[0];
+
+  const previous =
+    categories[1] || null;
+
+  const result = {
+    latest:
+      latest
+        ? [String(latest.code)]
+        : [],
+    previous:
+      previous
+        ? [String(previous.code)]
+        : [],
+    previousYear: []
+  };
+
+  /*
+   * Les opcions "actual/anterior/mateix període
+   * de l'any anterior" només tenen sentit per a
+   * periodicitats inferiors a l'any.
+   */
+  if (periodicity !== 'year') {
+    const target =
+      previousYearPeriodCode(
+        latest?.code
+      );
+
+    if (target) {
+      const match =
+        codes.find(
+          code =>
+            code === target
+        );
+
+      if (match) {
+        result.previousYear = [
+          match
+        ];
+      }
+    }
+  }
+
+  return result;
+}
+
+function setFilterSelection(
+  dim,
+  categories,
+  codes,
+  list
+) {
+  const selected =
+    new Set(
+      (codes || []).map(
+        code => String(code)
+      )
+    );
+
+  state.filters.set(
+    dim.id,
+    selected
+  );
+
+  list
+    .querySelectorAll('.option')
+    .forEach(option => {
+      updateOptionButton(
+        option,
+        selected.has(
+          String(
+            option.dataset.code
+          )
+        )
+      );
+    });
+
+  updateCells();
+}
+
+function addTemporalQuickControls(
+  toolbar,
+  dim,
+  categories,
+  list
+) {
+  const quick =
+    temporalQuickSelections(
+      dim,
+      categories
+    );
+
+  if (!quick) {
+    return;
+  }
+
+  /*
+   * "Tria els últims n períodes":
+   * l'input queda integrat amb el botó perquè
+   * l'usuari pugui indicar qualsevol n.
+   */
+  const lastWrap =
+    document.createElement('span');
+
+  lastWrap.className =
+    'temporal-last';
+
+  const lastInput =
+    document.createElement('input');
+
+  lastInput.type = 'number';
+  lastInput.min = '1';
+  lastInput.max =
+    String(categories.length);
+  lastInput.value =
+    String(
+      Math.min(
+        3,
+        categories.length
+      )
+    );
+  lastInput.inputMode = 'numeric';
+  lastInput.setAttribute(
+    'aria-label',
+    'Nombre d\'últims períodes'
+  );
+  lastInput.title =
+    'Nombre d\'últims períodes';
+
+  const lastButton =
+    document.createElement('button');
+
+  lastButton.type = 'button';
+  lastButton.className =
+    'secondary';
+  lastButton.textContent =
+    'Últims n';
+  lastButton.title =
+    'Selecciona els últims n períodes';
+
+  lastButton.addEventListener(
+    'click',
+    () => {
+      let n =
+        Number(
+          lastInput.value
+        );
+
+      if (!Number.isFinite(n)) {
+        n = 1;
+      }
+
+      n = Math.max(
+        1,
+        Math.min(
+          categories.length,
+          Math.trunc(n)
+        )
+      );
+
+      lastInput.value =
+        String(n);
+
+      setFilterSelection(
+        dim,
+        categories,
+        categories
+          .slice(0, n)
+          .map(c => c.code),
+        list
+      );
+    }
+  );
+
+  lastInput.addEventListener(
+    'keydown',
+    event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        lastButton.click();
+      }
+    }
+  );
+
+  lastWrap.append(
+    lastInput,
+    lastButton
+  );
+
+  toolbar.append(
+    lastWrap
+  );
+
+  const current =
+    document.createElement('button');
+
+  current.type = 'button';
+  current.className =
+    'secondary';
+  current.textContent =
+    'Període actual';
+  current.title =
+    'Selecciona l\'últim període disponible';
+
+  current.addEventListener(
+    'click',
+    () =>
+      setFilterSelection(
+        dim,
+        categories,
+        quick.latest,
+        list
+      )
+  );
+
+  toolbar.append(current);
+
+  const previous =
+    document.createElement('button');
+
+  previous.type = 'button';
+  previous.className =
+    'secondary';
+  previous.textContent =
+    'Període anterior';
+  previous.title =
+    'Selecciona el penúltim període disponible';
+
+  previous.disabled =
+    !quick.previous.length;
+
+  previous.addEventListener(
+    'click',
+    () =>
+      setFilterSelection(
+        dim,
+        categories,
+        quick.previous,
+        list
+      )
+  );
+
+  toolbar.append(previous);
+
+  const previousYear =
+    document.createElement('button');
+
+  previousYear.type = 'button';
+  previousYear.className =
+    'secondary';
+  previousYear.textContent =
+    'Mateix període any anterior';
+  previousYear.title =
+    'Selecciona el mateix període de l\'any anterior';
+
+  previousYear.disabled =
+    !quick.previousYear.length;
+
+  previousYear.addEventListener(
+    'click',
+    () =>
+      setFilterSelection(
+        dim,
+        categories,
+        quick.previousYear,
+        list
+      )
+  );
+
+  toolbar.append(
+    previousYear
+  );
+}
+
+
+
 function renderMetadata(ds) {
   const dims =
     dimensions(ds);
@@ -1373,6 +1736,13 @@ function renderMetadata(ds) {
     toolbar.append(
       all,
       none
+    );
+
+    addTemporalQuickControls(
+      toolbar,
+      d,
+      categories,
+      list
     );
 
     section.append(
