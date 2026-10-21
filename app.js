@@ -1680,6 +1680,17 @@ function renderMetadata(ds) {
     toolbar.className =
       'filter-tools';
 
+    const hasMultipleCategories =
+      categories.length > 1;
+
+    const buttonsRow =
+      document.createElement(
+        'div'
+      );
+
+    buttonsRow.className =
+      'filter-buttons';
+
     const all =
       document.createElement(
         'button'
@@ -1702,10 +1713,16 @@ function renderMetadata(ds) {
     none.textContent =
       'Cap';
 
-    toolbar.append(
-      all,
-      none
-    );
+    if (hasMultipleCategories) {
+      buttonsRow.append(
+        all,
+        none
+      );
+
+      toolbar.append(
+        buttonsRow
+      );
+    }
 
     const list =
       document.createElement(
@@ -1754,6 +1771,10 @@ function renderMetadata(ds) {
       option.addEventListener(
         'click',
         () => {
+          if (!hasMultipleCategories) {
+            return;
+          }
+
           const s =
             state.filters.get(
               d.id
@@ -1779,12 +1800,14 @@ function renderMetadata(ds) {
       list.append(option);
     }
 
-    addTemporalQuickControls(
-      toolbar,
-      d,
-      categories,
-      list
-    );
+    if (hasMultipleCategories) {
+      addTemporalQuickControls(
+        toolbar,
+        d,
+        categories,
+        list
+      );
+    }
 
     section.append(
       toolbar
@@ -1796,6 +1819,9 @@ function renderMetadata(ds) {
     all.addEventListener(
       'click',
       () => {
+        if (!hasMultipleCategories) {
+          return;
+        }
         state.filters.set(
           d.id,
           new Set(
@@ -1824,6 +1850,9 @@ function renderMetadata(ds) {
     none.addEventListener(
       'click',
       () => {
+        if (!hasMultipleCategories) {
+          return;
+        }
         state.filters.set(
           d.id,
           new Set()
