@@ -321,3 +321,21 @@
     font-size:19px;
   }
 }
+
+
+/* Cistella de consultes */
+.cart-panel[hidden]{display:none!important}
+.cart-panel{margin-top:-4px}
+.cart-items{display:flex;flex-direction:column;gap:8px}
+.cart-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #e5e9ed}
+.cart-item:last-child{border-bottom:0}
+.cart-item-info{display:flex;flex-direction:column;gap:3px;min-width:0}
+.cart-item-info strong{font-size:13px;color:#1f3347}
+.cart-item-info span,.cart-empty{font-size:12px;color:#68737e}
+.cart-remove{flex:0 0 auto}
+.cart-empty{padding:14px 4px}
+@media(max-width:600px){
+  .actions{flex-wrap:wrap}
+  .actions #status{width:100%;margin:4px 0 0}
+  .cart-item{align-items:flex-start}
+}
