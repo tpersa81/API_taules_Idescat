@@ -4023,6 +4023,10 @@ function addToCart() {
     stat: state.selected.stat,
     table: state.selected.table,
     geo: state.selected.geo,
+    geoLabel:
+      state.geos.find(
+        geo => String(geo.value) === String(state.selected.geo)
+      )?.label || state.selected.geo,
     queryUrl: info.queryUrl,
     exportDate: info.exportDate,
     source: info.source,
@@ -4237,7 +4241,7 @@ function exportCartXLSX() {
       number,
       item.name || '',
       item.tableName || '',
-      item.geo || '',
+      item.geoLabel || item.geo || '',
       item.exportDate || '',
       item.rowCount || 0,
       dataSheetName ? 'Obre' : '—',
@@ -4249,14 +4253,14 @@ function exportCartXLSX() {
       indexRows[indexRow - 1][6] = {
         t: 's',
         v: 'Obre',
-        l: { Target: `#'${dataSheetName}'!A1` }
+        l: { Target: `#'${dataSheetName.replace(/'/g, "''")}'!A1` }
       };
     }
     if (pivotSheetName) {
       indexRows[indexRow - 1][7] = {
         t: 's',
         v: 'Obre',
-        l: { Target: `#'${pivotSheetName}'!A1` }
+        l: { Target: `#'${pivotSheetName.replace(/'/g, "''")}'!A1` }
       };
     }
   });
