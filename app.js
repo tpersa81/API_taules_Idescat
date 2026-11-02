@@ -4812,6 +4812,9 @@ function bind() {
       $('exportXlsx').disabled =
         true;
 
+      $('addToCart').disabled =
+        true;
+
       if (
         state.metadata
       ) {
