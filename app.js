@@ -4167,7 +4167,7 @@ function exportCartXLSX() {
       XLSX.utils.book_append_sheet(
         wb,
         ws,
-        uniqueSheetName(`Dades ${number}`, usedNames)
+        uniqueSheetName(`Dades ${number} ${item.name}`, usedNames)
       );
     }
 
@@ -4203,7 +4203,7 @@ function exportCartXLSX() {
       XLSX.utils.book_append_sheet(
         wb,
         ws,
-        uniqueSheetName(`Taula ${number}`, usedNames)
+        uniqueSheetName(`Taula ${number} ${item.name}`, usedNames)
       );
     }
   });
