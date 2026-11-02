@@ -326,7 +326,7 @@
 /* Cistella de consultes */
 .cart-panel[hidden]{display:none!important}
 .cart-panel{margin-top:-4px}
-.cart-items{display:flex;flex-direction:column;gap:8px}
+#cartItems{display:flex;flex-direction:column;gap:8px}
 .cart-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #e5e9ed}
 .cart-item:last-child{border-bottom:0}
 .cart-item-info{display:flex;flex-direction:column;gap:3px;min-width:0}
