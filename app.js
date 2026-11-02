@@ -4315,8 +4315,10 @@ function exportCartXLSX() {
   const pad = value => String(value).padStart(2, '0');
   const date =
     `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
+  const time =
+    `${pad(now.getHours())}${pad(now.getMinutes())}`;
 
-  XLSX.writeFile(wb, `idescat_cistella_${date}.xlsx`);
+  XLSX.writeFile(wb, `idescat_cistella_${date}_${time}.xlsx`);
 
   status(
     `S'ha generat l'Excel amb ${state.cart.length} consultes i ${wb.SheetNames.length} fulls.`,
