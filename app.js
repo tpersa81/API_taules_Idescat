@@ -4114,7 +4114,7 @@ function uniqueSheetName(base, usedNames) {
   let suffix = 2;
 
   while (usedNames.has(name.toLowerCase())) {
-    const ending = \` (\${suffix++})\`;
+    const ending = ` (${suffix++})`;
     name =
       cleaned.slice(0, 31 - ending.length) +
       ending;
