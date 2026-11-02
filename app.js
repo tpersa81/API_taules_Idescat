@@ -4070,6 +4070,8 @@ function renderCart() {
 
   $('cartCount').textContent = String(count);
   $('cartClear').disabled = count === 0;
+  $('cartExport').disabled = count === 0;
+  $('cartExport').textContent = `Exporta Excel (${count})`;
 
   if (!count) {
     $('cartItems').innerHTML =
@@ -4095,6 +4097,131 @@ function renderCart() {
         removeFromCart(Number(button.dataset.cartId));
       });
     });
+}
+
+
+function uniqueSheetName(base, usedNames) {
+  const cleaned =
+    String(base || 'Full')
+      .replace(/[\\\\/?*\\[\\]:]/g, ' ')
+      .replace(/\\s+/g, ' ')
+      .trim()
+      .slice(0, 31) || 'Full';
+
+  let name = cleaned;
+  let suffix = 2;
+
+  while (usedNames.has(name.toLowerCase())) {
+    const ending = ` (${suffix++})`;
+    name =
+      cleaned.slice(0, 31 - ending.length) +
+      ending;
+  }
+
+  usedNames.add(name.toLowerCase());
+  return name;
+}
+
+function exportCartXLSX() {
+  if (!state.cart.length) {
+    return;
+  }
+
+  if (typeof XLSX === 'undefined') {
+    status(
+      "No s'ha pogut carregar el mòdul d'exportació XLSX.",
+      'error'
+    );
+    return;
+  }
+
+  const wb = XLSX.utils.book_new();
+  const usedNames = new Set();
+
+  state.cart.forEach((item, index) => {
+    const number = index + 1;
+
+    if (Array.isArray(item.rawOut) && item.rawOut.length) {
+      const ws = XLSX.utils.aoa_to_sheet(item.rawOut);
+      const headerRow = 5;
+      const header = item.rawOut[headerRow] || [];
+      const lastRow = item.rawOut.length - 1;
+
+      if (lastRow > headerRow && header.length) {
+        ws['!autofilter'] = {
+          ref: XLSX.utils.encode_range({
+            s: { r: headerRow, c: 0 },
+            e: { r: lastRow, c: header.length - 1 }
+          })
+        };
+      }
+
+      ws['!merges'] = [];
+
+      if (ws.A1) {
+        ws.A1.s = { font: { bold: true } };
+      }
+
+      XLSX.utils.book_append_sheet(
+        wb,
+        ws,
+        uniqueSheetName(`Dades ${number}`, usedNames)
+      );
+    }
+
+    if (Array.isArray(item.pivotOut) && item.pivotOut.length) {
+      const ws = XLSX.utils.aoa_to_sheet(item.pivotOut);
+      const sourceRow = item.pivotOut.findIndex(
+        row =>
+          Array.isArray(row) &&
+          String(row[0] ?? '').trim() ===
+            String(item.source ?? '').trim()
+      );
+      const headerRow = sourceRow >= 0
+        ? sourceRow + 2
+        : -1;
+      const header = item.pivotOut[headerRow] || [];
+      const lastRow = item.pivotOut.length - 1;
+
+      if (headerRow >= 0 && lastRow > headerRow && header.length) {
+        ws['!autofilter'] = {
+          ref: XLSX.utils.encode_range({
+            s: { r: headerRow, c: 0 },
+            e: { r: lastRow, c: header.length - 1 }
+          })
+        };
+      }
+
+      ws['!merges'] = [];
+
+      if (ws.A1) {
+        ws.A1.s = { font: { bold: true } };
+      }
+
+      XLSX.utils.book_append_sheet(
+        wb,
+        ws,
+        uniqueSheetName(`Taula ${number}`, usedNames)
+      );
+    }
+  });
+
+  if (!wb.SheetNames.length) {
+    status("La cistella no conté dades exportables.", 'error');
+    return;
+  }
+
+  const now = new Date();
+  const pad = value => String(value).padStart(2, '0');
+  const date =
+    `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
+
+  XLSX.writeFile(wb, `idescat_cistella_${date}.xlsx`);
+
+  status(
+    `S'ha generat l'Excel amb ${state.cart.length} consultes i ${wb.SheetNames.length} fulls.`,
+    'ok'
+  );
 }
 
 function formatCsvValue(value) {
@@ -4742,6 +4869,9 @@ function bind() {
 
   $('cartClear').onclick =
     clearCart;
+
+  $('cartExport').onclick =
+    exportCartXLSX;
 
   $('tabData').onclick =
     () => {
