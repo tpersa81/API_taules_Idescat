@@ -4023,6 +4023,10 @@ function addToCart() {
     stat: state.selected.stat,
     table: state.selected.table,
     geo: state.selected.geo,
+    geoLabel:
+      state.geos.find(
+        geo => String(geo.value) === String(state.selected.geo)
+      )?.label || state.selected.geo,
     queryUrl: info.queryUrl,
     exportDate: info.exportDate,
     source: info.source,
@@ -4139,9 +4143,25 @@ function exportCartXLSX() {
 
   const wb = XLSX.utils.book_new();
   const usedNames = new Set();
+  const indexRows = [
+    ['ÍNDEX DE CONSULTES'],
+    [],
+    [
+      'Núm.',
+      'Consulta',
+      'Taula',
+      'Geografia',
+      'Data de consulta',
+      'Registres',
+      'Dades',
+      'Taula construïda'
+    ]
+  ];
 
   state.cart.forEach((item, index) => {
     const number = index + 1;
+    let dataSheetName = '';
+    let pivotSheetName = '';
 
     if (Array.isArray(item.rawOut) && item.rawOut.length) {
       const ws = XLSX.utils.aoa_to_sheet(item.rawOut);
@@ -4164,10 +4184,15 @@ function exportCartXLSX() {
         ws.A1.s = { font: { bold: true } };
       }
 
+      dataSheetName = uniqueSheetName(
+        `Dades ${number} ${item.name}`,
+        usedNames
+      );
+
       XLSX.utils.book_append_sheet(
         wb,
         ws,
-        uniqueSheetName(`Dades ${number} ${item.name}`, usedNames)
+        dataSheetName
       );
     }
 
@@ -4200,11 +4225,43 @@ function exportCartXLSX() {
         ws.A1.s = { font: { bold: true } };
       }
 
+      pivotSheetName = uniqueSheetName(
+        `Taula ${number} ${item.name}`,
+        usedNames
+      );
+
       XLSX.utils.book_append_sheet(
         wb,
         ws,
-        uniqueSheetName(`Taula ${number} ${item.name}`, usedNames)
+        pivotSheetName
       );
+    }
+
+    indexRows.push([
+      number,
+      item.name || '',
+      item.tableName || '',
+      item.geoLabel || item.geo || '',
+      item.exportDate || '',
+      item.rowCount || 0,
+      dataSheetName ? 'Obre' : '—',
+      pivotSheetName ? 'Obre' : '—'
+    ]);
+
+    const indexRow = indexRows.length;
+    if (dataSheetName) {
+      indexRows[indexRow - 1][6] = {
+        t: 's',
+        v: 'Obre',
+        l: { Target: `#'${dataSheetName.replace(/'/g, "''")}'!A1` }
+      };
+    }
+    if (pivotSheetName) {
+      indexRows[indexRow - 1][7] = {
+        t: 's',
+        v: 'Obre',
+        l: { Target: `#'${pivotSheetName.replace(/'/g, "''")}'!A1` }
+      };
     }
   });
 
@@ -4212,6 +4269,47 @@ function exportCartXLSX() {
     status("La cistella no conté dades exportables.", 'error');
     return;
   }
+
+  const indexWs = XLSX.utils.aoa_to_sheet(indexRows);
+  const lastIndexRow = indexRows.length - 1;
+  const lastIndexCol = indexRows[2].length - 1;
+
+  indexWs['!autofilter'] = {
+    ref: XLSX.utils.encode_range({
+      s: { r: 2, c: 0 },
+      e: { r: lastIndexRow, c: lastIndexCol }
+    })
+  };
+  indexWs['!cols'] = [
+    { wch: 7 },
+    { wch: 38 },
+    { wch: 32 },
+    { wch: 14 },
+    { wch: 22 },
+    { wch: 12 },
+    { wch: 14 },
+    { wch: 20 }
+  ];
+  indexWs['!merges'] = [];
+
+  if (indexWs.A1) {
+    indexWs.A1.s = {
+      font: { bold: true, sz: 14 }
+    };
+  }
+
+  for (let col = 0; col <= lastIndexCol; col++) {
+    const cell = XLSX.utils.encode_cell({ r: 2, c: col });
+    if (indexWs[cell]) {
+      indexWs[cell].s = {
+        font: { bold: true },
+        fill: { fgColor: { rgb: 'D9EAF7' } }
+      };
+    }
+  }
+
+  XLSX.utils.book_append_sheet(wb, indexWs, 'Índex');
+  wb.SheetNames.unshift(wb.SheetNames.pop());
 
   const now = new Date();
   const pad = value => String(value).padStart(2, '0');
