@@ -4103,8 +4103,10 @@ function renderCart() {
 function uniqueSheetName(base, usedNames) {
   const cleaned =
     String(base || 'Full')
-      .replace(/[\\\\/?*\\[\\]:]/g, ' ')
-      .replace(/\\s+/g, ' ')
+      .split('')
+      .map(char => ':\\/?*[]'.includes(char) ? ' ' : char)
+      .join('')
+      .replace(/\s+/g, ' ')
       .trim()
       .slice(0, 31) || 'Full';
 
@@ -4112,7 +4114,7 @@ function uniqueSheetName(base, usedNames) {
   let suffix = 2;
 
   while (usedNames.has(name.toLowerCase())) {
-    const ending = ` (${suffix++})`;
+    const ending = \` (\${suffix++})\`;
     name =
       cleaned.slice(0, 31 - ending.length) +
       ending;
