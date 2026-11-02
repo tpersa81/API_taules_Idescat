@@ -339,3 +339,5 @@
   .actions #status{width:100%;margin:4px 0 0}
   .cart-item{align-items:flex-start}
 }
+
+.cart-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
