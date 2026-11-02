@@ -8,6 +8,8 @@ const state = {
   geos: [],
   metadata: null,
   lastData: null,
+  cart: [],
+  nextCartId: 1,
   selected: {
     stat: '',
     concept: '',
@@ -170,6 +172,7 @@ function resetBelow(level) {
   $('query').disabled = true;
   $('exportCsv').disabled = true;
   $('exportXlsx').disabled = true;
+  $('addToCart').disabled = true;
 
   $('tableInfo').hidden = true;
   $('cellInfo').hidden = true;
@@ -492,6 +495,7 @@ async function updateCrossOptions() {
   $('query').disabled = true;
   $('exportCsv').disabled = true;
   $('exportXlsx').disabled = true;
+  $('addToCart').disabled = true;
 
   $('tableInfo').hidden = true;
   $('cellInfo').hidden = true;
@@ -738,6 +742,7 @@ async function onNodeChange() {
   $('query').disabled = true;
   $('exportCsv').disabled = true;
   $('exportXlsx').disabled = true;
+  $('addToCart').disabled = true;
 
   if (!state.selected.node) {
     return;
@@ -844,6 +849,7 @@ async function onTableChange() {
   $('query').disabled = true;
   $('exportCsv').disabled = true;
   $('exportXlsx').disabled = true;
+  $('addToCart').disabled = true;
 
   if (!state.selected.table) {
     return;
@@ -928,6 +934,7 @@ async function onGeoChange() {
   $('query').disabled = true;
   $('exportCsv').disabled = true;
   $('exportXlsx').disabled = true;
+  $('addToCart').disabled = true;
 
   if (!state.selected.geo) {
     return;
@@ -2093,6 +2100,7 @@ async function runQuery() {
 
     $('exportXlsx').disabled =
       false;
+    $('addToCart').disabled = false;
 
     status(
       `${(ds.value || []).length.toLocaleString('ca-ES')} valors retornats`,
@@ -3939,6 +3947,285 @@ function exportInfo() {
   };
 }
 
+
+/* =====================================================
+   CISTELLA DE CONSULTES
+   ===================================================== */
+
+function buildRawCartData() {
+  if (!state.lastData) {
+    return null;
+  }
+
+  const {dims, rows} =
+    resultRows(state.lastData);
+
+  const {
+    tableName,
+    queryUrl,
+    exportDate,
+    source
+  } = exportInfo();
+
+  const headers =
+    dims
+      .flatMap(d => [
+        `${d.id}_Codi`,
+        `${d.id}_Etiqueta`
+      ])
+      .concat('Valor');
+
+  const out = [
+    [tableName],
+    [source],
+    [`URL: ${queryUrl}`],
+    [`Data de consulta: ${exportDate}`],
+    [],
+    headers
+  ];
+
+  for (const r of rows) {
+    out.push(
+      dims
+        .flatMap(d => [
+          r[d.id].code,
+          r[d.id].label
+        ])
+        .concat(r.value ?? '')
+    );
+  }
+
+  return out;
+}
+
+function addToCart() {
+  if (!state.lastData) {
+    return;
+  }
+
+  const info = exportInfo();
+  const rawOut = buildRawCartData();
+
+  if (!rawOut) {
+    return;
+  }
+
+  const pivotOut = buildPivotExportData();
+  const name =
+    pivotTableTitle() ||
+    info.tableName ||
+    `Taula ${state.selected.table}`;
+
+  const item = {
+    id: state.nextCartId++,
+    name,
+    tableName: info.tableName,
+    stat: state.selected.stat,
+    table: state.selected.table,
+    geo: state.selected.geo,
+    queryUrl: info.queryUrl,
+    exportDate: info.exportDate,
+    source: info.source,
+    rowCount: Math.max(0, rawOut.length - 6),
+    rawOut,
+    pivotOut
+  };
+
+  state.cart.push(item);
+  renderCart();
+
+  $('cartPanel').hidden = false;
+  $('cartToggle').setAttribute('aria-expanded', 'true');
+
+  status(
+    `S'ha afegit «${name}» a la cistella.`,
+    'ok'
+  );
+}
+
+function removeFromCart(id) {
+  state.cart =
+    state.cart.filter(item => item.id !== id);
+
+  renderCart();
+}
+
+function clearCart() {
+  state.cart = [];
+  renderCart();
+}
+
+function toggleCart() {
+  const panel = $('cartPanel');
+  panel.hidden = !panel.hidden;
+
+  $('cartToggle').setAttribute(
+    'aria-expanded',
+    panel.hidden ? 'false' : 'true'
+  );
+}
+
+function renderCart() {
+  const count = state.cart.length;
+
+  $('cartCount').textContent = String(count);
+  $('cartClear').disabled = count === 0;
+  $('cartExport').disabled = count === 0;
+  $('cartExport').textContent = `Exporta Excel (${count})`;
+
+  if (!count) {
+    $('cartItems').innerHTML =
+      '<div class="cart-empty">La cistella és buida. Afegeix-hi una consulta després de construir-ne la taula.</div>';
+    return;
+  }
+
+  $('cartItems').innerHTML =
+    state.cart.map(item => `
+      <div class="cart-item">
+        <div class="cart-item-info">
+          <strong>${esc(item.name)}</strong>
+          <span>${item.rowCount.toLocaleString('ca-ES')} registres · Taula ${esc(item.table)} · Geografia ${esc(item.geo)}</span>
+        </div>
+        <button type="button" class="secondary cart-remove" data-cart-id="${item.id}" aria-label="Eliminar ${esc(item.name)}">Elimina</button>
+      </div>
+    `).join('');
+
+  $('cartItems')
+    .querySelectorAll('.cart-remove')
+    .forEach(button => {
+      button.addEventListener('click', () => {
+        removeFromCart(Number(button.dataset.cartId));
+      });
+    });
+}
+
+
+function uniqueSheetName(base, usedNames) {
+  const cleaned =
+    String(base || 'Full')
+      .split('')
+      .map(char => ':\\/?*[]'.includes(char) ? ' ' : char)
+      .join('')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 31) || 'Full';
+
+  let name = cleaned;
+  let suffix = 2;
+
+  while (usedNames.has(name.toLowerCase())) {
+    const ending = ` (${suffix++})`;
+    name =
+      cleaned.slice(0, 31 - ending.length) +
+      ending;
+  }
+
+  usedNames.add(name.toLowerCase());
+  return name;
+}
+
+function exportCartXLSX() {
+  if (!state.cart.length) {
+    return;
+  }
+
+  if (typeof XLSX === 'undefined') {
+    status(
+      "No s'ha pogut carregar el mòdul d'exportació XLSX.",
+      'error'
+    );
+    return;
+  }
+
+  const wb = XLSX.utils.book_new();
+  const usedNames = new Set();
+
+  state.cart.forEach((item, index) => {
+    const number = index + 1;
+
+    if (Array.isArray(item.rawOut) && item.rawOut.length) {
+      const ws = XLSX.utils.aoa_to_sheet(item.rawOut);
+      const headerRow = 5;
+      const header = item.rawOut[headerRow] || [];
+      const lastRow = item.rawOut.length - 1;
+
+      if (lastRow > headerRow && header.length) {
+        ws['!autofilter'] = {
+          ref: XLSX.utils.encode_range({
+            s: { r: headerRow, c: 0 },
+            e: { r: lastRow, c: header.length - 1 }
+          })
+        };
+      }
+
+      ws['!merges'] = [];
+
+      if (ws.A1) {
+        ws.A1.s = { font: { bold: true } };
+      }
+
+      XLSX.utils.book_append_sheet(
+        wb,
+        ws,
+        uniqueSheetName(`Dades ${number} ${item.name}`, usedNames)
+      );
+    }
+
+    if (Array.isArray(item.pivotOut) && item.pivotOut.length) {
+      const ws = XLSX.utils.aoa_to_sheet(item.pivotOut);
+      const sourceRow = item.pivotOut.findIndex(
+        row =>
+          Array.isArray(row) &&
+          String(row[0] ?? '').trim() ===
+            String(item.source ?? '').trim()
+      );
+      const headerRow = sourceRow >= 0
+        ? sourceRow + 2
+        : -1;
+      const header = item.pivotOut[headerRow] || [];
+      const lastRow = item.pivotOut.length - 1;
+
+      if (headerRow >= 0 && lastRow > headerRow && header.length) {
+        ws['!autofilter'] = {
+          ref: XLSX.utils.encode_range({
+            s: { r: headerRow, c: 0 },
+            e: { r: lastRow, c: header.length - 1 }
+          })
+        };
+      }
+
+      ws['!merges'] = [];
+
+      if (ws.A1) {
+        ws.A1.s = { font: { bold: true } };
+      }
+
+      XLSX.utils.book_append_sheet(
+        wb,
+        ws,
+        uniqueSheetName(`Taula ${number} ${item.name}`, usedNames)
+      );
+    }
+  });
+
+  if (!wb.SheetNames.length) {
+    status("La cistella no conté dades exportables.", 'error');
+    return;
+  }
+
+  const now = new Date();
+  const pad = value => String(value).padStart(2, '0');
+  const date =
+    `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
+
+  XLSX.writeFile(wb, `idescat_cistella_${date}.xlsx`);
+
+  status(
+    `S'ha generat l'Excel amb ${state.cart.length} consultes i ${wb.SheetNames.length} fulls.`,
+    'ok'
+  );
+}
+
 function formatCsvValue(value) {
   if (
     value === null ||
@@ -4576,6 +4863,18 @@ function bind() {
   $('exportXlsx').onclick =
     exportXLSX;
 
+  $('addToCart').onclick =
+    addToCart;
+
+  $('cartToggle').onclick =
+    toggleCart;
+
+  $('cartClear').onclick =
+    clearCart;
+
+  $('cartExport').onclick =
+    exportCartXLSX;
+
   $('tabData').onclick =
     () => {
       $('tabData')
@@ -4643,6 +4942,9 @@ function bind() {
         true;
 
       $('exportXlsx').disabled =
+        true;
+
+      $('addToCart').disabled =
         true;
 
       if (
