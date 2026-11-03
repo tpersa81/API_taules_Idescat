@@ -4128,7 +4128,7 @@ function uniqueSheetName(base, usedNames) {
   return name;
 }
 
-function exportCartXLSX() {
+async function exportCartXLSX() {
   if (!state.cart.length) {
     return;
   }
