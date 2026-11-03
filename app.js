@@ -281,15 +281,15 @@ async function onStatChange() {
       status(
         countMessage(
           concepts.length,
-          'concepte',
-          'conceptes',
+          'tema',
+          'temes',
           "Tria'l",
           "Tria'n un"
         )
       );
     } else {
       status(
-        "Aquesta estadística no té conceptes disponibles.",
+        "Aquesta estadística no té temes disponibles.",
         'error'
       );
     }
@@ -580,12 +580,12 @@ async function updateCrossOptions() {
       nodeItems.length
         ? countMessage(
             nodeItems.length,
-            'node',
-            'nodes',
+            'entrada',
+            'entrades',
             "Tria'l",
             "Tria'n un"
           )
-        : 'Aquest concepte no té nodes disponibles.',
+        : 'Aquest tema no té entrades disponibles.',
       nodeItems.length
         ? ''
         : 'error'
