@@ -428,3 +428,28 @@
     min-height:40px;
   }
 }
+
+/* Afinaments de la navegació i dels resultats */
+.selection-count{
+  font-size:13px;
+  color:#59636d;
+  margin:-5px 0 13px;
+}
+.result-count{
+  margin-left:auto;
+  font-size:13px;
+  color:#68737e;
+  white-space:nowrap;
+}
+.results .export-actions{
+  margin:0 0 14px;
+}
+.cart-flight{
+  transition:transform .9s cubic-bezier(.2,.75,.25,1), opacity .9s ease;
+}
+@media(max-width:600px){
+  .result-count{
+    white-space:normal;
+    text-align:right;
+  }
+}
