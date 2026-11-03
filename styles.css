@@ -388,3 +388,43 @@
     flex-wrap:wrap;
   }
 }
+
+
+/* Ajustos de navegació i animació de la cistella */
+.query-actions .cart-jump{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  min-width:46px;
+  min-height:42px;
+  padding:7px 10px;
+}
+.query-actions .cart-jump img{
+  width:24px;
+  height:24px;
+  object-fit:contain;
+}
+.export-actions{
+  margin-top:14px;
+  margin-bottom:0;
+}
+.cart-flight{
+  position:fixed;
+  z-index:9999;
+  width:30px;
+  height:30px;
+  object-fit:contain;
+  pointer-events:none;
+  transform:translate(0,0) scale(1);
+  opacity:1;
+  transition:transform .55s cubic-bezier(.2,.75,.25,1), opacity .55s ease;
+  margin-left:-15px;
+  margin-top:-15px;
+}
+@media(max-width:600px){
+  .query-actions .cart-jump{
+    min-width:44px;
+    min-height:40px;
+  }
+}
