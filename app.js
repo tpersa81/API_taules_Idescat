@@ -2381,16 +2381,66 @@ function renderResults(ds) {
   renderPivotBuilder();
 }
 
-function formatValue(v) {
-  return typeof v === 'number'
-    ? v.toLocaleString(
-        'ca-ES',
-        {
-          maximumFractionDigits:
-            20
-        }
+function valueDecimals(ds, row) {
+  const unit = ds?.unit;
+
+  if (!unit || typeof unit !== 'object') {
+    return null;
+  }
+
+  const entries = Object.entries(unit);
+
+  /*
+   * JSON-stat d'Idescat defineix els decimals a "unit".
+   * En alguns casos el codi de la unitat apareix com
+   * una categoria d'una dimensió; si no el podem associar,
+   * i només hi ha una unitat, la podem aplicar directament.
+   */
+  for (const [code, metadata] of entries) {
+    const decimals = Number(metadata?.decimals);
+
+    if (
+      Number.isInteger(decimals) &&
+      decimals >= 0 &&
+      Object.values(row || {}).some(
+        x =>
+          x &&
+          typeof x === 'object' &&
+          String(x.code) === String(code)
       )
-    : v;
+    ) {
+      return decimals;
+    }
+  }
+
+  if (entries.length === 1) {
+    const decimals = Number(entries[0][1]?.decimals);
+
+    if (
+      Number.isInteger(decimals) &&
+      decimals >= 0
+    ) {
+      return decimals;
+    }
+  }
+
+  return null;
+}
+
+function formatValue(v, decimals = null) {
+  if (typeof v !== 'number') {
+    return v;
+  }
+
+  return v.toLocaleString(
+    'ca-ES',
+    {
+      maximumFractionDigits:
+        decimals === null ? 20 : decimals,
+      minimumFractionDigits:
+        decimals === null ? 0 : decimals
+    }
+  );
 }
 
 
