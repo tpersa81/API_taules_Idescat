@@ -168,6 +168,7 @@ function resetBelow(level) {
 
   $('filters').innerHTML = '';
   $('results').innerHTML = '';
+  $('resultCount').textContent = '';
 
   $('query').disabled = true;
   $('exportCsv').disabled = true;
@@ -224,6 +225,9 @@ async function onStatChange() {
     $('stat').value;
 
   resetBelow('stat');
+  $('themeCount').hidden = true;
+  $('themeCount').textContent = '';
+  $('themeCount').className = 'selection-count';
 
   if (!state.selected.stat) {
     status('');
@@ -278,20 +282,18 @@ async function onStatChange() {
     $('cross').disabled = true;
 
     if (concepts.length) {
-      status(
-        countMessage(
-          concepts.length,
-          'tema',
-          'temes',
-          "Tria'l",
-          "Tria'n un"
-        )
+      $('themeCount').hidden = false;
+      $('themeCount').textContent = countMessage(
+        concepts.length,
+        'tema',
+        'temes',
+        "Tria'l",
+        "Tria'n un"
       );
     } else {
-      status(
-        "Aquesta estadística no té temes disponibles.",
-        'error'
-      );
+      $('themeCount').hidden = false;
+      $('themeCount').textContent = "Aquesta estadística no té temes disponibles.";
+      $('themeCount').className = 'selection-count error';
     }
 
     setStep(
@@ -2091,6 +2093,8 @@ async function runQuery() {
 
     renderResults(ds);
 
+    $('resultCount').textContent = `${(Array.isArray(ds.value) ? ds.value.length : Object.keys(ds.value || {}).length).toLocaleString('ca-ES')} valors retornats`;
+
     $('exportCsv').disabled =
       false;
 
@@ -2098,10 +2102,7 @@ async function runQuery() {
       false;
     $('addToCart').disabled = false;
 
-    status(
-      `${(ds.value || []).length.toLocaleString('ca-ES')} valors retornats`,
-      'ok'
-    );
+    status('');
 
     updateUrl(true);
 
@@ -4153,6 +4154,15 @@ function addToCart() {
 
   const pivotOut = buildPivotExportData();
 
+  const duplicate = state.cart.some(
+    item => item.queryUrl === info.queryUrl
+  );
+
+  if (duplicate) {
+    status('Aquesta consulta ja és a la cistella.');
+    return;
+  }
+
   const item = {
     id: state.nextCartId++,
     name,
@@ -4207,7 +4217,7 @@ function animateCartAdd() {
     icon.style.opacity = '0';
   });
 
-  setTimeout(() => icon.remove(), 650);
+  setTimeout(() => icon.remove(), 1000);
 }
 
 function removeFromCart(id) {
