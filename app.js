@@ -4318,7 +4318,55 @@ function exportCartXLSX() {
   const time =
     `${pad(now.getHours())}${pad(now.getMinutes())}`;
 
-  XLSX.writeFile(wb, `idescat_cistella_${date}_${time}.xlsx`);
+  const defaultFileName =
+    `idescat_cistella_${date}_${time}.xlsx`;
+
+  if (typeof window.showSaveFilePicker === 'function') {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: defaultFileName,
+        types: [
+          {
+            description: 'Excel',
+            accept: {
+              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
+            }
+          }
+        ]
+      });
+
+      const buffer = XLSX.write(wb, {
+        bookType: 'xlsx',
+        type: 'array'
+      });
+
+      const writable = await handle.createWritable();
+      await writable.write(buffer);
+      await writable.close();
+
+      status(
+        `S'ha desat l'Excel amb ${state.cart.length} consultes i ${wb.SheetNames.length} fulls.`,
+        'ok'
+      );
+
+      return;
+
+    } catch (e) {
+      if (e?.name === 'AbortError') {
+        status('Exportació cancel·lada.');
+        return;
+      }
+
+      status(
+        `No s'ha pogut desar l'Excel: ${e.message}`,
+        'error'
+      );
+
+      return;
+    }
+  }
+
+  XLSX.writeFile(wb, defaultFileName);
 
   status(
     `S'ha generat l'Excel amb ${state.cart.length} consultes i ${wb.SheetNames.length} fulls.`,
