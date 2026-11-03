@@ -283,6 +283,7 @@ async function onStatChange() {
 
     if (concepts.length) {
       $('themeCount').hidden = false;
+      $('themeCount').className = 'selection-count';
       $('themeCount').textContent = countMessage(
         concepts.length,
         'tema',
