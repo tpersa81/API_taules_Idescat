@@ -4413,7 +4413,7 @@ async function exportCartXLSX() {
       variantSheetNames.push(sheetName);
     });
 
-    indexRows.push([
+    const firstIndexRow = [
       number,
       item.name || '',
       item.tableName || '',
@@ -4421,23 +4421,45 @@ async function exportCartXLSX() {
       item.exportDate || '',
       item.rowCount || 0,
       dataSheetName ? 'Obre' : '—',
-      variantSheetNames.length
-        ? (variantSheetNames.length === 1 ? 'Obre' : `Obre (${variantSheetNames.length})`)
-        : '—'
-    ]);
+      '—'
+    ];
 
-    const indexRow = indexRows.length;
     if (dataSheetName) {
-      indexRows[indexRow - 1][6] = {
+      firstIndexRow[6] = {
         t: 's', v: 'Obre',
         l: { Target: `#'${dataSheetName.replace(/'/g, "''")}'!A1` }
       };
     }
-    if (variantSheetNames.length === 1) {
-      indexRows[indexRow - 1][7] = {
-        t: 's', v: 'Obre',
-        l: { Target: `#'${variantSheetNames[0].replace(/'/g, "''")}'!A1` }
+
+    if (variantSheetNames.length) {
+      firstIndexRow[7] = {
+        t: 's',
+        v: variantSheetNames.length === 1 ? 'Obre' : 'Obre (variant 1)',
+        l: {
+          Target: `#'${variantSheetNames[0].replace(/'/g, "''")}'!A1`
+        }
       };
+    }
+
+    indexRows.push(firstIndexRow);
+
+    for (let variantIndex = 1; variantIndex < variantSheetNames.length; variantIndex++) {
+      indexRows.push([
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        {
+          t: 's',
+          v: `Obre (variant ${variantIndex + 1})`,
+          l: {
+            Target: `#'${variantSheetNames[variantIndex].replace(/'/g, "''")}'!A1`
+          }
+        }
+      ]);
     }
   });
 
