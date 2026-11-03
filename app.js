@@ -4195,12 +4195,18 @@ function clearCart() {
 
 function toggleCart() {
   const panel = $('cartPanel');
-  panel.hidden = !panel.hidden;
+
+  panel.hidden = false;
 
   $('cartToggle').setAttribute(
     'aria-expanded',
-    panel.hidden ? 'false' : 'true'
+    'true'
   );
+
+  panel.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start'
+  });
 }
 
 function renderCart() {
