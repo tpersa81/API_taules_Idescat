@@ -4643,26 +4643,16 @@ function buildPivotExportData() {
       state.lastData
     );
 
-  const pivotDims =
-    dims.filter(
-      d =>
-        !isConceptDimension(d) &&
-        !isSingleValueDimension(d)
-    );
-
-  const conceptDim =
-    dims.find(
-      d => isConceptDimension(d)
-    );
-
-  const scalarResult =
-    rows.length === 1 &&
-    pivotDims.length === 0;
-
+  /*
+   * CONCEPT és pivotable quan és una dimensió amb
+   * diverses categories. Mantinguem la mateixa regla
+   * que al constructor visual perquè l'exportació no
+   * perdi els diferents conceptes.
+   */
   const effectivePivotDims =
-    scalarResult && conceptDim
-      ? [conceptDim]
-      : pivotDims;
+    dims.filter(
+      d => !isSingleValueDimension(d)
+    );
 
   const rowIds =
     state.pivot.rows;
