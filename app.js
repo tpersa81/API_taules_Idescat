@@ -2383,74 +2383,110 @@ function renderResults(ds) {
 
 function valueDecimals(ds, row) {
   /*
-   * A JSON-stat, Idescat publica la precisió a:
-   *
-   *   "unit": {
-   *     "CODI_UNITAT": {
-   *       "decimals": 2
-   *     }
-   *   }
-   *
-   * Normalment "unit" és a l'arrel del dataset, però
-   * acceptem també la forma dins d'"extension" per
-   * mantenir la funció robusta.
+   * Idescat pot exposar la precisió JSON-stat a "unit"
+   * en diferents nivells de la resposta. No assumim que
+   * sempre sigui ds.unit.
    */
-  const unit =
-    ds?.unit ??
-    ds?.extension?.unit ??
-    null;
+  const candidates = [];
 
-  if (!unit) {
+  function collect(value, seen = new Set()) {
+    if (
+      !value ||
+      typeof value !== 'object' ||
+      seen.has(value)
+    ) {
+      return;
+    }
+
+    seen.add(value);
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        collect(item, seen);
+      }
+      return;
+    }
+
+    for (const [key, val] of Object.entries(value)) {
+      if (
+        String(key).toLowerCase() === 'unit' &&
+        val &&
+        typeof val === 'object'
+      ) {
+        candidates.push(val);
+      }
+
+      collect(val, seen);
+    }
+  }
+
+  collect(ds);
+
+  /*
+   * Extreu totes les precisions decimals que trobem
+   * dins de les definicions de unitat.
+   */
+  const decimalDefinitions = [];
+
+  for (const unit of candidates) {
+    const entries =
+      Array.isArray(unit)
+        ? unit.map((metadata, index) => [
+            String(index),
+            metadata
+          ])
+        : Object.entries(unit);
+
+    for (const [code, metadata] of entries) {
+      const decimals =
+        Number(metadata?.decimals);
+
+      if (
+        Number.isInteger(decimals) &&
+        decimals >= 0
+      ) {
+        decimalDefinitions.push({
+          code: String(code),
+          decimals
+        });
+      }
+    }
+  }
+
+  if (!decimalDefinitions.length) {
     return null;
   }
 
-  let entries = [];
-
-  if (Array.isArray(unit)) {
-    entries = unit.map((metadata, index) => [
-      String(index),
-      metadata
-    ]);
-  } else if (typeof unit === 'object') {
-    entries = Object.entries(unit);
-  }
-
   /*
-   * Primer intentem associar la unitat amb una categoria
-   * de la fila. Això és necessari quan hi ha més d'una
-   * unitat definida al dataset.
+   * Si la unitat forma part de les dimensions de la fila,
+   * prioritzem la definició que coincideix amb el seu codi.
    */
-  for (const [code, metadata] of entries) {
-    const decimals = Number(metadata?.decimals);
-
+  for (const definition of decimalDefinitions) {
     if (
-      Number.isInteger(decimals) &&
-      decimals >= 0 &&
       Object.values(row || {}).some(
         x =>
           x &&
           typeof x === 'object' &&
-          String(x.code) === String(code)
+          String(x.code) === definition.code
       )
     ) {
-      return decimals;
+      return definition.decimals;
     }
   }
 
   /*
-   * Si només hi ha una unitat definida, és la precisió
-   * de tots els valors del dataset encara que el codi de
-   * la unitat no formi part de les dimensions de la fila.
+   * En el cas habitual d'una única unitat, aquesta precisió
+   * és aplicable a totes les cel·les de la resposta.
    */
-  if (entries.length === 1) {
-    const decimals = Number(entries[0][1]?.decimals);
+  const uniqueDecimals =
+    [...new Set(
+      decimalDefinitions.map(
+        x => x.decimals
+      )
+    )];
 
-    if (
-      Number.isInteger(decimals) &&
-      decimals >= 0
-    ) {
-      return decimals;
-    }
+  if (uniqueDecimals.length === 1) {
+    return uniqueDecimals[0];
   }
 
   return null;
