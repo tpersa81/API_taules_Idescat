@@ -3757,7 +3757,10 @@ function renderPivotTable() {
 
     values.set(
       `${rKey}§${cKey}`,
-      row.value
+      {
+        value: row.value,
+        decimals: valueDecimals(state.lastData, row)
+      }
     );
   }
 
@@ -3850,10 +3853,12 @@ function renderPivotTable() {
       const c of
       columnCombinations
     ) {
-      const value =
+      const cell =
         values.get(
           `${r.key}§${c.key}`
         );
+
+      const value = cell?.value;
 
       html += `
         <td class="num pivot-cell">
@@ -3863,7 +3868,8 @@ function renderPivotTable() {
               ? ''
               : esc(
                   formatValue(
-                    value
+                    value,
+                    cell?.decimals ?? null
                   )
                 )
           }
