@@ -4127,17 +4127,31 @@ function addToCart() {
   }
 
   const info = exportInfo();
+
+  const singleCategoryLabels =
+    selectedSingleCategoryLabels();
+
+  const baseName =
+    pivotTableTitle() ||
+    info.tableName ||
+    `Taula ${state.selected.table}`;
+
+  const name =
+    singleCategoryLabels.length
+      ? `${baseName}. ${singleCategoryLabels.join('. ')}`
+      : baseName;
+
   const rawOut = buildRawCartData();
 
   if (!rawOut) {
     return;
   }
 
+  if (rawOut[0]) {
+    rawOut[0][0] = name;
+  }
+
   const pivotOut = buildPivotExportData();
-  const name =
-    pivotTableTitle() ||
-    info.tableName ||
-    `Taula ${state.selected.table}`;
 
   const item = {
     id: state.nextCartId++,
@@ -4160,9 +4174,6 @@ function addToCart() {
 
   state.cart.push(item);
   renderCart();
-
-  $('cartPanel').hidden = false;
-  $('cartToggle').setAttribute('aria-expanded', 'true');
 
   status(
     `S'ha afegit «${name}» a la cistella.`,
