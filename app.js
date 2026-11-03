@@ -3791,6 +3791,9 @@ function renderPivotTable() {
   const values =
     new Map();
 
+  const valueDecimalsMap =
+    new Map();
+
   for (
     const row of rows
   ) {
@@ -3805,12 +3808,17 @@ function renderPivotTable() {
         columnIds
       );
 
+    const key =
+      `${rKey}§${cKey}`;
+
     values.set(
-      `${rKey}§${cKey}`,
-      {
-        value: row.value,
-        decimals: valueDecimals(state.lastData, row)
-      }
+      key,
+      row.value
+    );
+
+    valueDecimalsMap.set(
+      key,
+      valueDecimals(state.lastData, row)
     );
   }
 
@@ -3908,7 +3916,7 @@ function renderPivotTable() {
           `${r.key}§${c.key}`
         );
 
-      const value = cell?.value;
+      const value = cell;
 
       html += `
         <td class="num pivot-cell">
@@ -3919,7 +3927,9 @@ function renderPivotTable() {
               : esc(
                   formatValue(
                     value,
-                    cell?.decimals ?? null
+                    valueDecimalsMap.get(
+                      `${r.key}§${c.key}`
+                    ) ?? null
                   )
                 )
           }
