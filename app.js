@@ -2692,12 +2692,12 @@ function isSingleValueDimension(dim) {
 
 function pivotAvailableDimensions(dims) {
   const used = new Set([
-    ...state.pivot.rows,    ...state.pivot.columns
+    ...state.pivot.rows,
+    ...state.pivot.columns
   ]);
 
   return dims.filter(
     d =>
-      !isConceptDimension(d) &&
       !isSingleValueDimension(d) &&
       !used.has(d.id)
   );
@@ -2903,57 +2903,31 @@ function renderPivotBuilder() {
       state.lastData
     );
 
+  /*
+   * CONCEPT és una dimensió com qualsevol altra quan
+   * forma part de ds.id. Això és especialment important
+   * quan category.index conté més d'un concepte: no podem
+   * descartar-la perquè això faria que els valors dels
+   * diferents conceptes es col·lapsessin en una mateixa
+   * cel·la del constructor.
+   *
+   * Les dimensions d'una sola categoria continuen sense
+   * ser variables pivotables.
+   */
   const pivotDims =
     dims.filter(
-      d => !isConceptDimension(d)
+      d => !isSingleValueDimension(d)
     );
 
   const assignablePivotDims =
-    pivotDims.filter(
-      d =>
-        !isSingleValueDimension(d)
-    );
-
-  /*
-   * Si la consulta retorna un únic valor,
-   * no queda cap variable pivotable.
-   * En aquest cas utilitzem el Concepte com
-   * a variable de Files.
-   */
-  const scalarResult =
-    rows.length === 1 &&
-    assignablePivotDims.length === 0;
-
-  const conceptDim =
-    dims.find(
-      d => isConceptDimension(d)
-    );
+    pivotDims;
 
   const effectivePivotDims =
-    scalarResult && conceptDim
-      ? [conceptDim]
-      : assignablePivotDims;
-
-  /*
-   * En el cas escalar, el Concepte queda
-   * automàticament a Files.
-   */
-  if (
-    scalarResult &&
-    conceptDim &&
-    state.pivot.rows.length === 0 &&
-    state.pivot.columns.length === 0
-  ) {
-    state.pivot.rows = [
-      conceptDim.id
-    ];
-  }
+    assignablePivotDims;
 
   const available =
     pivotAvailableDimensions(
-      scalarResult
-        ? []
-        : pivotDims
+      pivotDims
     );
 
   const availableHtml =
@@ -3706,19 +3680,24 @@ function pivotConceptLabel(dims) {
         ? category.label
         : {};
 
-    for (const code of index) {
-      const label =
-        labelMap[String(code)];
-
-      if (
-        label !== undefined &&
-        label !== null &&
-        String(label).trim()
-      ) {
-        return capitalizeFirst(
+    const labels = index
+      .map(code => labelMap[String(code)])
+      .filter(
+        label =>
+          label !== undefined &&
+          label !== null &&
           String(label).trim()
-        );
-      }
+      )
+      .map(label => capitalizeFirst(String(label).trim()));
+
+    if (labels.length) {
+      /*
+       * Si CONCEPT té diverses categories i encara no
+       * participa com a dimensió JSON-stat, no en mostrem
+       * només la primera: totes formen part de la definició
+       * de la resposta.
+       */
+      return [...new Set(labels)].join('. ');
     }
   }
 
@@ -3790,26 +3769,20 @@ function renderPivotTable() {
       state.lastData
     );
 
+  /*
+   * CONCEPT també és una dimensió pivotable quan té
+   * diverses categories. Excloure-la aquí faria que
+   * múltiples conceptes acabessin sobrescrivint-se
+   * en el mateix mapa de valors.
+   */
   const pivotDims =
     dims.filter(
       d =>
-        !isConceptDimension(d) &&
         !isSingleValueDimension(d)
     );
 
-  const conceptDim =
-    dims.find(
-      d => isConceptDimension(d)
-    );
-
-  const scalarResult =
-    rows.length === 1 &&
-    pivotDims.length === 0;
-
   const effectivePivotDims =
-    scalarResult && conceptDim
-      ? [conceptDim]
-      : pivotDims;
+    pivotDims;
 
   const rowIds =
     state.pivot.rows;
