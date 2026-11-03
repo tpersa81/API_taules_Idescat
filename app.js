@@ -262,8 +262,6 @@ async function onStatChange() {
       rows
         .map(r => r.Concepte)
         .filter(Boolean)
-    ).sort((a, b) =>
-      a.localeCompare(b, 'ca')
     );
 
     fill(
@@ -513,8 +511,6 @@ async function updateCrossOptions() {
         )
         .map(r => r.Encreuament)
         .filter(Boolean)
-    ).sort((a, b) =>
-      a.localeCompare(b, 'ca')
     );
 
   fill(
