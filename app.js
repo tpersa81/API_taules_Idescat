@@ -2382,19 +2382,43 @@ function renderResults(ds) {
 }
 
 function valueDecimals(ds, row) {
-  const unit = ds?.unit;
+  /*
+   * A JSON-stat, Idescat publica la precisió a:
+   *
+   *   "unit": {
+   *     "CODI_UNITAT": {
+   *       "decimals": 2
+   *     }
+   *   }
+   *
+   * Normalment "unit" és a l'arrel del dataset, però
+   * acceptem també la forma dins d'"extension" per
+   * mantenir la funció robusta.
+   */
+  const unit =
+    ds?.unit ??
+    ds?.extension?.unit ??
+    null;
 
-  if (!unit || typeof unit !== 'object') {
+  if (!unit) {
     return null;
   }
 
-  const entries = Object.entries(unit);
+  let entries = [];
+
+  if (Array.isArray(unit)) {
+    entries = unit.map((metadata, index) => [
+      String(index),
+      metadata
+    ]);
+  } else if (typeof unit === 'object') {
+    entries = Object.entries(unit);
+  }
 
   /*
-   * JSON-stat d'Idescat defineix els decimals a "unit".
-   * En alguns casos el codi de la unitat apareix com
-   * una categoria d'una dimensió; si no el podem associar,
-   * i només hi ha una unitat, la podem aplicar directament.
+   * Primer intentem associar la unitat amb una categoria
+   * de la fila. Això és necessari quan hi ha més d'una
+   * unitat definida al dataset.
    */
   for (const [code, metadata] of entries) {
     const decimals = Number(metadata?.decimals);
@@ -2413,6 +2437,11 @@ function valueDecimals(ds, row) {
     }
   }
 
+  /*
+   * Si només hi ha una unitat definida, és la precisió
+   * de tots els valors del dataset encara que el codi de
+   * la unitat no formi part de les dimensions de la fila.
+   */
   if (entries.length === 1) {
     const decimals = Number(entries[0][1]?.decimals);
 
@@ -2428,11 +2457,34 @@ function valueDecimals(ds, row) {
 }
 
 function formatValue(v, decimals = null) {
-  if (typeof v !== 'number') {
+  if (
+    v === null ||
+    v === undefined ||
+    v === ''
+  ) {
     return v;
   }
 
-  return v.toLocaleString(
+  /*
+   * JSON-stat normalment retorna números, però acceptem
+   * també valors numèrics en forma de text.
+   */
+  const number =
+    typeof v === 'number'
+      ? v
+      : (
+          typeof v === 'string' &&
+          v.trim() !== '' &&
+          Number.isFinite(Number(v))
+        )
+        ? Number(v)
+        : null;
+
+  if (number === null || !Number.isFinite(number)) {
+    return v;
+  }
+
+  return number.toLocaleString(
     'ca-ES',
     {
       maximumFractionDigits:
