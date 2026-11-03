@@ -2333,7 +2333,7 @@ function renderResults(ds) {
       row.value;
 
     html +=
-      `<td class="num">${v === null || v === undefined ? '' : esc(formatValue(v))}</td>`;
+      `<td class="num">${v === null || v === undefined ? '' : esc(formatValue(v, valueDecimals(ds, row)))}</td>`;
 
     html += '</tr>';
   }
