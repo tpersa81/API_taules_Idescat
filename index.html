@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Consultes API JSON-Stat · Idescat</title>
-<link rel="stylesheet" href="styles.css?v=20261102-index1">
+<link rel="stylesheet" href="styles.css?v=20261103-layout1">
 </head>
 <body>
 <header>
@@ -26,11 +26,7 @@
   <div id="cellInfo" class="cell-info" hidden></div>
   <p class="filter-help">Selecciona els valors identificant-los pel <strong>codi</strong> i l’<strong>etiqueta</strong>. Utilitza el cercador per localitzar ràpidament els valors.</p><div id="filters"></div>
 </section>
-<section class="actions"><button id="query" class="primary" disabled>Consultar</button><button id="exportCsv" class="secondary" disabled>Exporta CSV</button><button id="exportXlsx" class="secondary" disabled>Exporta XLSX</button><button id="addToCart" class="secondary" disabled>Afegeix a la cistella</button><button id="cartToggle" class="secondary" aria-expanded="false">Cistella (<span id="cartCount">0</span>)</button><span id="status"></span></section>
-<section class="card cart-panel" id="cartPanel" hidden>
-  <div class="section-title"><h2>Cistella de consultes</h2><div class="cart-actions"><button id="cartExport" class="primary" disabled>Exporta Excel (0)</button><button id="cartClear" class="secondary" disabled>Buidar cistella</button></div></div>
-  <div id="cartItems"><div class="cart-empty">La cistella és buida.</div></div>
-</section>
+<section class="actions query-actions"><button id="query" class="primary query-button" disabled>Consultar</button><button id="cartToggle" class="secondary cart-jump" aria-expanded="false">Cistella (<span id="cartCount">0</span>)</button><span id="status"></span></section>
 <section class="card results">
   <div class="section-title">
     <h2>4. Resultats</h2>
@@ -47,8 +43,13 @@
 
   <div id="pivotBuilder" hidden></div>
 </section>
+<section class="actions export-actions"><button id="exportCsv" class="secondary" disabled>Exporta CSV</button><button id="exportXlsx" class="secondary" disabled>Exporta XLSX</button><button id="addToCart" class="secondary" disabled>Afegeix a la cistella</button></section>
+<section class="card cart-panel" id="cartPanel" hidden>
+  <div class="section-title"><h2>Cistella de consultes</h2><div class="cart-actions"><button id="cartExport" class="primary" disabled>Exporta Excel (0)</button><button id="cartClear" class="secondary" disabled>Buidar cistella</button></div></div>
+  <div id="cartItems"><div class="cart-empty">La cistella és buida.</div></div>
+</section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
-<script src="app.js?v=20261102-index1"></script>
+<script src="app.js?v=20261103-layout1"></script>
 </body>
 </html>
