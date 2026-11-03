@@ -474,7 +474,20 @@ async function buildCatalogForConcept(
   return rows;
 }
 
-async function updateCrossOptions() {
+async function setSelectionCount(n, singular, plural, oneEnding, manyEnding, errorMessage = '') {
+  const el = $('themeCount');
+  if (!el) return;
+  el.hidden = false;
+  if (errorMessage) {
+    el.textContent = errorMessage;
+    el.className = 'selection-count error';
+    return;
+  }
+  el.className = 'selection-count';
+  el.textContent = countMessage(n, singular, plural, oneEnding, manyEnding);
+}
+
+function updateCrossOptions() {
   const concept =
     $('concept').value;
 
@@ -579,20 +592,7 @@ async function updateCrossOptions() {
       nodeItems.length > 0
     );
 
-    status(
-      nodeItems.length
-        ? countMessage(
-            nodeItems.length,
-            'entrada',
-            'entrades',
-            "Tria'l",
-            "Tria'n un"
-          )
-        : 'Aquest tema no té entrades disponibles.',
-      nodeItems.length
-        ? ''
-        : 'error'
-    );
+    setSelectionCount(nodeItems.length, 'entrada', 'entrades', "Tria'n una", "Tria'n una", nodeItems.length ? '' : 'Aquest tema no té entrades disponibles.');
 
     if (
       nodeItems.length === 1
@@ -604,15 +604,7 @@ async function updateCrossOptions() {
     }
 
   } else {
-    status(
-      countMessage(
-        crosses.length,
-        'encreuament',
-        'encreuaments',
-        "Tria'l",
-        "Tria'n un"
-      )
-    );
+    setSelectionCount(crosses.length, 'encreuament', 'encreuaments', "Tria'n un", "Tria'n un");
 
     if (crosses.length === 1) {
       $('cross').value =
@@ -695,15 +687,7 @@ async function loadNodesForSelection() {
     );
 
   } else {
-    status(
-      countMessage(
-        nodeItems.length,
-        'node',
-        'nodes',
-        "Tria'l",
-        "Tria'n un"
-      )
-    );
+    setSelectionCount(nodeItems.length, 'entrada', 'entrades', "Tria'n una", "Tria'n una");
 
     if (
       nodeItems.length === 1
@@ -797,17 +781,7 @@ async function onNodeChange() {
       state.tables.length > 0
     );
 
-    status(
-      state.tables.length
-        ? countMessage(
-            state.tables.length,
-            'taula',
-            'taules',
-            'Tria-la',
-            "Tria'n una"
-          )
-        : 'No hi ha taules per a aquest node.'
-    );
+    setSelectionCount(state.tables.length, 'taula', 'taules', "Tria'n una", "Tria'n una", state.tables.length ? '' : 'No hi ha taules per a aquest node.');
 
     if (
       state.tables.length === 1
@@ -887,17 +861,7 @@ async function onTableChange() {
       state.geos.length > 0
     );
 
-    status(
-      state.geos.length
-        ? countMessage(
-            state.geos.length,
-            'geografia',
-            'geografies',
-            'Tria-la',
-            "Tria'n una"
-          )
-        : 'No hi ha geografies per a aquesta taula.'
-    );
+    setSelectionCount(state.geos.length, 'geografia', 'geografies', "Tria'n una", "Tria'n una", state.geos.length ? '' : 'No hi ha geografies per a aquesta taula.');
 
     if (
       state.geos.length === 1
@@ -4123,44 +4087,87 @@ function buildRawCartData() {
   return out;
 }
 
+function pivotVariantSignature() {
+  return JSON.stringify({
+    rows: [...state.pivot.rows],
+    columns: [...state.pivot.columns]
+  });
+}
+
+function pivotVariantName(baseName) {
+  const dims = dimensions(state.lastData || {});
+  const labelFor = id =>
+    pivotDimensionLabel(dims.find(d => d.id === id));
+
+  const rows = state.pivot.rows.map(labelFor);
+  const columns = state.pivot.columns.map(labelFor);
+  const parts = [];
+
+  if (rows.length) parts.push(`Files: ${rows.join(' · ')}`);
+  if (columns.length) parts.push(`Columnes: ${columns.join(' · ')}`);
+
+  return parts.length
+    ? `${baseName} · ${parts.join(' · ')}`
+    : baseName;
+}
+
 function addToCart() {
-  if (!state.lastData) {
-    return;
-  }
+  if (!state.lastData) return;
 
   const info = exportInfo();
-
-  const singleCategoryLabels =
-    selectedSingleCategoryLabels();
-
+  const singleCategoryLabels = selectedSingleCategoryLabels();
   const baseName =
     pivotTableTitle() ||
     info.tableName ||
     `Taula ${state.selected.table}`;
 
-  const name =
-    singleCategoryLabels.length
-      ? `${baseName}. ${singleCategoryLabels.join('. ')}`
-      : baseName;
+  const name = singleCategoryLabels.length
+    ? `${baseName}. ${singleCategoryLabels.join('. ')}`
+    : baseName;
 
   const rawOut = buildRawCartData();
+  if (!rawOut) return;
 
-  if (!rawOut) {
-    return;
-  }
-
-  if (rawOut[0]) {
-    rawOut[0][0] = name;
-  }
+  if (rawOut[0]) rawOut[0][0] = name;
 
   const pivotOut = buildPivotExportData();
+  const queryUrl = info.queryUrl;
+  const signature = pivotOut ? pivotVariantSignature() : null;
 
-  const duplicate = state.cart.some(
-    item => item.queryUrl === info.queryUrl
+  const existing = state.cart.find(
+    item => item.queryUrl === queryUrl
   );
 
-  if (duplicate) {
-    status('Aquesta consulta ja és a la cistella.');
+  if (existing) {
+    if (!signature) {
+      status('Aquesta consulta ja és a la cistella.');
+      return;
+    }
+
+    if (!Array.isArray(existing.variants)) {
+      existing.variants = existing.pivotOut
+        ? [{
+            signature: existing.pivotSignature || '',
+            name: existing.name,
+            pivotOut: existing.pivotOut
+          }]
+        : [];
+    }
+
+    if (existing.variants.some(v => v.signature === signature)) {
+      status('Aquesta variant de la taula ja és a la cistella.');
+      return;
+    }
+
+    existing.variants.push({
+      signature,
+      name: pivotVariantName(name),
+      pivotOut
+    });
+
+    renderCart();
+    status('');
+    animateCartAdd();
     return;
   }
 
@@ -4175,17 +4182,24 @@ function addToCart() {
       state.geos.find(
         geo => String(geo.value) === String(state.selected.geo)
       )?.label || state.selected.geo,
-    queryUrl: info.queryUrl,
+    queryUrl,
     exportDate: info.exportDate,
     source: info.source,
     rowCount: Math.max(0, rawOut.length - 6),
     rawOut,
-    pivotOut
+    pivotOut,
+    pivotSignature: signature,
+    variants: pivotOut
+      ? [{
+          signature,
+          name: pivotVariantName(name),
+          pivotOut
+        }]
+      : []
   };
 
   state.cart.push(item);
   renderCart();
-
   status('');
   animateCartAdd();
 }
@@ -4214,11 +4228,12 @@ function animateCartAdd() {
   document.body.appendChild(icon);
 
   requestAnimationFrame(() => {
-    icon.style.transform = `translate(${endX - startX}px, ${endY - startY}px) scale(.35)`;
+    icon.style.transform =
+      `translate(${endX - startX}px, ${endY - startY}px) scale(.35)`;
     icon.style.opacity = '0';
   });
 
-  setTimeout(() => icon.remove(), 1000);
+  setTimeout(() => icon.remove(), 1600);
 }
 
 function removeFromCart(id) {
@@ -4264,25 +4279,28 @@ function renderCart() {
   }
 
   $('cartItems').innerHTML =
-    state.cart.map(item => `
-      <div class="cart-item">
-        <div class="cart-item-info">
-          <strong>${esc(item.name)}</strong>
-          <span>${item.rowCount.toLocaleString('ca-ES')} registres · Taula ${esc(item.table)} · Geografia ${esc(item.geo)}</span>
+    state.cart.map(item => {
+      const variantCount = Array.isArray(item.variants)
+        ? item.variants.length
+        : (item.pivotOut ? 1 : 0);
+
+      return `
+        <div class="cart-item">
+          <div class="cart-item-info">
+            <strong>${esc(item.name)}</strong>
+            <span>${item.rowCount.toLocaleString('ca-ES')} registres · Taula ${esc(item.table)} · Geografia ${esc(item.geo)} · ${variantCount} ${variantCount === 1 ? 'variant de taula' : 'variants de taula'}</span>
+          </div>
+          <button type="button" class="secondary cart-remove" data-cart-id="${item.id}" aria-label="Eliminar ${esc(item.name)}">Elimina</button>
         </div>
-        <button type="button" class="secondary cart-remove" data-cart-id="${item.id}" aria-label="Eliminar ${esc(item.name)}">Elimina</button>
-      </div>
-    `).join('');
+      `;
+    }).join('');
 
-  $('cartItems')
-    .querySelectorAll('.cart-remove')
-    .forEach(button => {
-      button.addEventListener('click', () => {
-        removeFromCart(Number(button.dataset.cartId));
-      });
+  $('cartItems').querySelectorAll('.cart-remove').forEach(button => {
+    button.addEventListener('click', () => {
+      removeFromCart(Number(button.dataset.cartId));
     });
+  });
 }
-
 
 function uniqueSheetName(base, usedNames) {
   const cleaned =
@@ -4341,81 +4359,59 @@ async function exportCartXLSX() {
   state.cart.forEach((item, index) => {
     const number = index + 1;
     let dataSheetName = '';
-    let pivotSheetName = '';
 
     if (Array.isArray(item.rawOut) && item.rawOut.length) {
       const ws = XLSX.utils.aoa_to_sheet(item.rawOut);
       const headerRow = 5;
       const header = item.rawOut[headerRow] || [];
       const lastRow = item.rawOut.length - 1;
-
       if (lastRow > headerRow && header.length) {
-        ws['!autofilter'] = {
-          ref: XLSX.utils.encode_range({
-            s: { r: headerRow, c: 0 },
-            e: { r: lastRow, c: header.length - 1 }
-          })
-        };
+        ws['!autofilter'] = { ref: XLSX.utils.encode_range({
+          s: { r: headerRow, c: 0 },
+          e: { r: lastRow, c: header.length - 1 }
+        })};
       }
-
       ws['!merges'] = [];
+      if (ws.A1) ws.A1.s = { font: { bold: true } };
 
-      if (ws.A1) {
-        ws.A1.s = { font: { bold: true } };
-      }
-
-      dataSheetName = uniqueSheetName(
-        `Dades ${number} ${item.name}`,
-        usedNames
-      );
-
-      XLSX.utils.book_append_sheet(
-        wb,
-        ws,
-        dataSheetName
-      );
+      dataSheetName = uniqueSheetName(`Dades ${number} ${item.name}`, usedNames);
+      XLSX.utils.book_append_sheet(wb, ws, dataSheetName);
     }
 
-    if (Array.isArray(item.pivotOut) && item.pivotOut.length) {
-      const ws = XLSX.utils.aoa_to_sheet(item.pivotOut);
-      const sourceRow = item.pivotOut.findIndex(
-        row =>
-          Array.isArray(row) &&
-          String(row[0] ?? '').trim() ===
-            String(item.source ?? '').trim()
+    const variants = Array.isArray(item.variants)
+      ? item.variants
+      : (item.pivotOut ? [{ signature: item.pivotSignature || '', name: item.name, pivotOut: item.pivotOut }] : []);
+
+    const variantSheetNames = [];
+
+    variants.forEach((variant, variantIndex) => {
+      if (!Array.isArray(variant.pivotOut) || !variant.pivotOut.length) return;
+
+      const ws = XLSX.utils.aoa_to_sheet(variant.pivotOut);
+      const sourceRow = variant.pivotOut.findIndex(row =>
+        Array.isArray(row) &&
+        String(row[0] ?? '').trim() === String(item.source ?? '').trim()
       );
-      const headerRow = sourceRow >= 0
-        ? sourceRow + 2
-        : -1;
-      const header = item.pivotOut[headerRow] || [];
-      const lastRow = item.pivotOut.length - 1;
+      const headerRow = sourceRow >= 0 ? sourceRow + 2 : -1;
+      const header = variant.pivotOut[headerRow] || [];
+      const lastRow = variant.pivotOut.length - 1;
 
       if (headerRow >= 0 && lastRow > headerRow && header.length) {
-        ws['!autofilter'] = {
-          ref: XLSX.utils.encode_range({
-            s: { r: headerRow, c: 0 },
-            e: { r: lastRow, c: header.length - 1 }
-          })
-        };
+        ws['!autofilter'] = { ref: XLSX.utils.encode_range({
+          s: { r: headerRow, c: 0 },
+          e: { r: lastRow, c: header.length - 1 }
+        })};
       }
-
       ws['!merges'] = [];
+      if (ws.A1) ws.A1.s = { font: { bold: true } };
 
-      if (ws.A1) {
-        ws.A1.s = { font: { bold: true } };
-      }
-
-      pivotSheetName = uniqueSheetName(
-        `Taula ${number} ${item.name}`,
+      const sheetName = uniqueSheetName(
+        `Taula ${number} ${variantIndex + 1} ${variant.name || item.name}`,
         usedNames
       );
-
-      XLSX.utils.book_append_sheet(
-        wb,
-        ws,
-        pivotSheetName
-      );
-    }
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+      variantSheetNames.push(sheetName);
+    });
 
     indexRows.push([
       number,
@@ -4425,22 +4421,22 @@ async function exportCartXLSX() {
       item.exportDate || '',
       item.rowCount || 0,
       dataSheetName ? 'Obre' : '—',
-      pivotSheetName ? 'Obre' : '—'
+      variantSheetNames.length
+        ? (variantSheetNames.length === 1 ? 'Obre' : `Obre (${variantSheetNames.length})`)
+        : '—'
     ]);
 
     const indexRow = indexRows.length;
     if (dataSheetName) {
       indexRows[indexRow - 1][6] = {
-        t: 's',
-        v: 'Obre',
+        t: 's', v: 'Obre',
         l: { Target: `#'${dataSheetName.replace(/'/g, "''")}'!A1` }
       };
     }
-    if (pivotSheetName) {
+    if (variantSheetNames.length === 1) {
       indexRows[indexRow - 1][7] = {
-        t: 's',
-        v: 'Obre',
-        l: { Target: `#'${pivotSheetName.replace(/'/g, "''")}'!A1` }
+        t: 's', v: 'Obre',
+        l: { Target: `#'${variantSheetNames[0].replace(/'/g, "''")}'!A1` }
       };
     }
   });
