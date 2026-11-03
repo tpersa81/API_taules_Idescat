@@ -453,3 +453,6 @@
     text-align:right;
   }
 }
+
+/* Animació de la cistella: 1,5 s */
+.cart-flight{transition:transform 1.5s cubic-bezier(.2,.75,.25,1),opacity 1.5s ease}
