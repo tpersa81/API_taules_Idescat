@@ -487,7 +487,7 @@ async function setSelectionCount(n, singular, plural, oneEnding, manyEnding, err
   el.textContent = countMessage(n, singular, plural, oneEnding, manyEnding);
 }
 
-function updateCrossOptions() {
+async function updateCrossOptions() {
   const concept =
     $('concept').value;
 
