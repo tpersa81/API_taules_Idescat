@@ -13,6 +13,7 @@
 <main>
 <section class="card" id="step1"><h2>1. Selecciona l'estadística</h2><label>Estadística<select id="stat"></select></label></section>
 <section class="card" id="step2"><h2>2. Tria la taula</h2>
+  <div id="themeCount" class="selection-count" hidden></div>
   <div class="grid">
     <label>Tema<select id="concept" disabled></select></label>
     <label>Encreuament<select id="cross" disabled></select></label>
@@ -30,7 +31,10 @@
 <section class="card results">
   <div class="section-title">
     <h2>4. Resultats</h2>
+    <span id="resultCount" class="result-count"></span>
   </div>
+
+  <div class="actions export-actions"><button id="exportCsv" class="secondary" disabled>Exporta CSV</button><button id="exportXlsx" class="secondary" disabled>Exporta XLSX</button><button id="addToCart" class="secondary" disabled>Afegeix a la cistella</button></div>
 
   <div class="result-tabs">
     <button id="tabData" class="result-tab active">Dades</button>
@@ -42,7 +46,6 @@
   </div>
 
   <div id="pivotBuilder" hidden></div>
-  <div class="actions export-actions"><button id="exportCsv" class="secondary" disabled>Exporta CSV</button><button id="exportXlsx" class="secondary" disabled>Exporta XLSX</button><button id="addToCart" class="secondary" disabled>Afegeix a la cistella</button></div>
 </section>
 
 <section class="card cart-panel" id="cartPanel" hidden>
