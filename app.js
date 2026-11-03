@@ -4175,10 +4175,39 @@ function addToCart() {
   state.cart.push(item);
   renderCart();
 
-  status(
-    `S'ha afegit «${name}» a la cistella.`,
-    'ok'
-  );
+  status('');
+  animateCartAdd();
+}
+
+function animateCartAdd() {
+  const source = $('addToCart');
+  const target = $('cartToggle');
+
+  if (!source || !target) return;
+
+  const icon = document.createElement('img');
+  icon.src = 'https://cdn-icons-png.flaticon.com/128/7603/7603985.png';
+  icon.alt = '';
+  icon.className = 'cart-flight';
+
+  const sourceRect = source.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+
+  const startX = sourceRect.left + sourceRect.width / 2;
+  const startY = sourceRect.top + sourceRect.height / 2;
+  const endX = targetRect.left + targetRect.width / 2;
+  const endY = targetRect.top + targetRect.height / 2;
+
+  icon.style.left = `${startX}px`;
+  icon.style.top = `${startY}px`;
+  document.body.appendChild(icon);
+
+  requestAnimationFrame(() => {
+    icon.style.transform = `translate(${endX - startX}px, ${endY - startY}px) scale(.35)`;
+    icon.style.opacity = '0';
+  });
+
+  setTimeout(() => icon.remove(), 650);
 }
 
 function removeFromCart(id) {
