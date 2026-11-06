@@ -168,19 +168,19 @@ function temporalPeriodicity(categories){
  var codes=(categories||[]).map(function(c){return String(c.code||"").trim()}).filter(Boolean);
  for(var i=0;i<codes.length;i++){
   var code=codes[i];
-  if(/^\\d{4}$/.test(code))return"year";
-  if(/^\\d{4}M\\d{1,2}$/i.test(code)||/^\d{4}-\d{2}$/.test(code))return"month";
-  if(/^\\d{4}Q\\d$/i.test(code))return"quarter";
-  if(/^\\d{4}S\\d$/i.test(code))return"semester";
-  if(/^\\d{4}B\\d{1,2}$/i.test(code))return"bimonth";
-  if(/^\\d{4}W\\d{1,2}$/i.test(code))return"week";
-  if(/^\\d{4}D\\d{1,3}$/i.test(code)||/^\d{4}-\d{2}-\d{2}$/.test(code))return"day";
+  if(/^\d{4}$/.test(code))return"year";
+  if(/^\d{4}M\d{1,2}$/i.test(code)||/^\d{4}-\d{2}$/.test(code))return"month";
+  if(/^\d{4}Q\d$/i.test(code))return"quarter";
+  if(/^\d{4}S\d$/i.test(code))return"semester";
+  if(/^\d{4}B\d{1,2}$/i.test(code))return"bimonth";
+  if(/^\d{4}W\d{1,2}$/i.test(code))return"week";
+  if(/^\d{4}D\d{1,3}$/i.test(code)||/^\d{4}-\d{2}-\d{2}$/.test(code))return"day";
  }
  return null
 }
 function previousYearPeriodCode(code){
  var v=String(code||"").trim();
- if(/^\d{4}[MQSBDW]\d{1,3}$/i.test(v)||/^\\d{4}-\\d{2}(?:-\\d{2})?$/.test(v))return v.replace(/^(\d{4})/,function(_,y){return String(Number(y)-1)});
+ if(/^\d{4}[MQSBDW]\d{1,3}$/i.test(v)||/^\d{4}-\d{2}(?:-\d{2})?$/.test(v))return v.replace(/^(\d{4})/,function(_,y){return String(Number(y)-1)});
  return""
 }
 function setFilterSelection(dim,categories,codes,list){
