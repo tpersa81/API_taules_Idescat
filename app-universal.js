@@ -10,8 +10,8 @@ function fill(sel,items,ph){var old=sel.value;sel.innerHTML="";if(ph!==null)sel.
 function resetSelect(id){if($(id)){$(id).innerHTML='<option value="">— Selecciona —</option>';$(id).disabled=true}}
 function busy(v){document.body.classList.toggle("busy",v)}
 function status(s,t){$("status").textContent=s||"";$("status").className=t||""}
-function provider(){var p={idescat:{label:"Idescat",base:"https://api.idescat.cat/taules/v2",doc:"https://www.idescat.cat/dev/api/taules/"},pxweb:{label:"PXWeb",base:"",doc:"https://pxdata.stat.fi/api1.html"},ine:{label:"INE",base:"https://servicios.ine.es/wstempus/jsstat",doc:"https://www.ine.es/OpenAPI/"},eurostat:{label:"Eurostat",base:"https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0",doc:"https://ec.europa.eu/eurostat/web/user-guides/data-browser/api-data-access/"}};if(state.provider==="pxweb"){var x={finland:"https://pxdata.stat.fi/PxWeb/api/v1/en/StatFin",sweden:"https://api.scb.se/OV0104/v1/doris/en/ssd",unece:"https://w3.unece.org/PXWeb2015/api/v1/en/STAT",iceland:"https://px.hagstofa.is/pxen/api/v1/en"};p.pxweb.base=x[state.pxPreset]||x.finland}return p[state.provider]}
-function pxUrl(path){return [provider().base].concat(path).join("/")}
+function provider(){var p={idescat:{label:"Idescat",base:"https://api.idescat.cat/taules/v2",doc:"https://www.idescat.cat/dev/api/taules/"},pxweb:{label:"PXWeb",base:"",doc:"https://pxdata.stat.fi/api1.html"},ine:{label:"INE",base:"https://servicios.ine.es/wstempus/js",doc:"https://www.ine.es/OpenAPI/"},eurostat:{label:"Eurostat",base:"https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0",doc:"https://ec.europa.eu/eurostat/web/user-guides/data-browser/api-data-access/"}};if(state.provider==="pxweb"){var x={finland:"https://pxdata.stat.fi/PxWeb/api/v1/en/StatFin/",sweden:"https://api.scb.se/OV0104/v1/doris/en/ssd",unece:"https://w3.unece.org/PXWeb2015/api/v1/en/STAT",iceland:"https://px.hagstofa.is/pxen/api/v1/en"};p.pxweb.base=x[state.pxPreset]||x.finland}return p[state.provider]}
+function pxUrl(path){return [provider().base.replace(/\/+$/,"")].concat(path).join("/")}
 function jsonstatCats(ds,id){var c=ds.dimension&&ds.dimension[id]&&ds.dimension[id].category||{},lab=c.label&&typeof c.label==="object"?c.label:{};if(Array.isArray(c.index))return c.index.map(function(code,i){return{code:String(code),label:String(lab[code]==null?code:lab[code]),index:i}});if(c.index&&typeof c.index==="object")return Object.keys(c.index).map(function(code){return{code:String(code),label:String(lab[code]==null?code:lab[code]),index:Number(c.index[code])}}).sort(function(x,y){return x.index-y.index});return Object.keys(lab).map(function(code,i){return{code:String(code),label:String(lab[code]),index:i}})}
 function dims(ds){return(ds.id||[]).map(function(id){var d=ds.dimension&&ds.dimension[id]||{};return{id:id,label:d.label||id,role:d.extension&&d.extension.role||d.role||"",categories:jsonstatCats(ds,id)}})}
 function temporal(d){var id=String(d.id||"").toUpperCase(),r=String(d.role||"").toUpperCase();return["YEAR","MONTH","QUARTER","SEMESTER","BIMONTH","WEEK","DAY","DATE","TIME","TIME_PERIOD","PERIOD"].indexOf(id)>=0||id.indexOf("TIME")===0||r.indexOf("TIME")>=0||r.indexOf("TEMPOR")>=0}
@@ -46,7 +46,25 @@ async function loadStats(){
  setProviderUI();var c=provider(),out=[];
  if(state.provider==="idescat"){out=collection(await fetchJson(c.base+"?lang=ca")).map(function(x){return{value:x.id,label:x.id+" · "+x.label}})}
  else if(state.provider==="ine"){var d=await fetchJson(c.base+"/ES/OPERACIONES_DISPONIBLES?det=1");out=a(d).map(function(x){var id=String(f(x,"Id","id","Codigo","Code"));return{value:id,label:id+" · "+String(f(x,"Nombre","nombre","Name","Descripcion","Description")||id)}}).filter(function(x){return x.value})}
- else if(state.provider==="eurostat"){var r=await fetch("https://ec.europa.eu/eurostat/api/dissemination/catalogue/toc/txt?lang=en");if(!r.ok)throw new Error("No s'ha pogut carregar el catàleg d'Eurostat.");var txt=await r.text();txt.split(/\r?\n/).forEach(function(line){var m=line.match(/^"([^"]*)"\t"([^"]*)"\t"(table|dataset)"/);if(m)out.push({value:m[2],label:m[2]+" · "+m[1]})})}
+ else if(state.provider==="eurostat"){
+  try{
+   var r=await fetch("https://ec.europa.eu/eurostat/api/dissemination/catalogue/toc/txt?lang=en");
+   if(!r.ok)throw new Error("HTTP "+r.status);
+   var txt=await r.text();
+   txt.split(/\r?\n/).forEach(function(line){
+    var m=line.match(/^"([^"]*)"\t"([^"]*)"\t"(table|dataset)"/);
+    if(m)out.push({value:m[2],label:m[2]+" · "+m[1]});
+   });
+  }catch(e){
+   var r2=await fetch("https://ec.europa.eu/eurostat/api/dissemination/sdmx/3.0/structure/dataflow/ESTAT/*");
+   if(!r2.ok)throw new Error("No s'ha pogut carregar el catàleg d'Eurostat.");
+   var xml=await r2.text(),doc=new DOMParser().parseFromString(xml,"application/xml"),flows=doc.getElementsByTagNameNS("*","Dataflow");
+   for(var i=0;i<flows.length;i++){
+    var id=flows[i].getAttribute("id")||"",names=flows[i].getElementsByTagNameNS("*","Name"),name="";
+    for(var j=0;j<names.length;j++){if((names[j].getAttribute("lang")||"").toLowerCase()==="en"||!name)name=names[j].textContent.trim()}
+    if(id)out.push({value:id,label:id+" · "+(name||id)});
+   }
+  }}
  else {out=a(await fetchJson(c.base)).map(function(x){var id=String(f(x,"id","dbid","code","path"));return{value:id,label:String(f(x,"text","label","name","title")||id)}}).filter(function(x){return x.value})}
  out.sort(function(x,y){return x.value.localeCompare(y.value,"ca",{numeric:true})});state.stats=out;fill($("stat"),out);
  var initial=new URLSearchParams(location.search).get("stat")||"";if(initial&&[].slice.call($("stat").options).some(function(o){return o.value===initial})){$("stat").value=initial;await onStatChange()}
@@ -71,17 +89,22 @@ async function pxSelect(target){
  var val=$(target).value;if(!val)return;var item=state.pxItems.get(target).find(function(x){return x.id===val}),order=["concept","cross","node","table"],i=order.indexOf(target);state.pxPath=state.pxPath.slice(0,i);state.pxPath.push(val);if(pxTable(item)){state.selected.node=val;state.selected.table=val;await pxMetadata();return}var next=order[i+1];if(next){["cross","node","table"].forEach(function(id,j){if(j>=i)resetSelect(id)});await pxChildren(state.pxPath,next)}}
 function pxToJsonStat(m){var ds={version:"2.0",class:"dataset",label:m.title||m.label||state.selected.table,id:[],size:[],dimension:{}};(m.variables||[]).forEach(function(v){var id=String(v.code||v.id||"");var vals=v.values||[];var labs=v.valueTexts||v.labels||vals;var index={},label={};vals.forEach(function(x,i){index[String(x)]=i;label[String(x)]=String(labs[i]==null?x:labs[i])});ds.id.push(id);ds.size.push(vals.length);ds.dimension[id]={label:String(v.text||v.label||id),category:{index:index,label:label}}});return ds}
 async function swedenV2Query(query){
- if(!state.swedenV2Tables){
-  var list=await fetchJson("https://api.scb.se/OV0104/v2beta/api/v2/tables?lang=en");
-  state.swedenV2Tables=a(list);
+ var tableId=String(state.selected.table||"");
+ if(!/^TAB/i.test(tableId)){
+  var last=state.pxPath.length?String(state.pxPath[state.pxPath.length-1]):"";
+  if(/^TAB/i.test(last))tableId=last;
  }
- var title=String(state.metadata&&state.metadata.label||"").trim(),path=state.pxPath.join("/");
- var rows=state.swedenV2Tables.map(function(x){return{id:String(f(x,"id","tableId","code","tableCode")),title:String(f(x,"title","text","name","label")),path:String(f(x,"path","url")||"")}}).filter(function(x){return x.id});
- var hit=rows.find(function(x){return x.title===title})||rows.find(function(x){return x.path&&x.path.indexOf(path)>=0});
- if(!hit)throw new Error("No s'ha trobat la taula de Statistics Sweden a PxWebApi v2.");
+ if(!/^TAB/i.test(tableId)){
+  var title=String(state.metadata&&state.metadata.label||"").trim(),qs=new URLSearchParams();
+  qs.set("lang","en");qs.set("query",title);qs.set("pageSize","100");
+  var list=await fetchJson("https://api.scb.se/OV0104/v2beta/api/v2/tables?"+qs.toString());
+  var rows=a(list&&list.tables?list.tables:list),hit=rows.find(function(x){return String(f(x,"label","title","text","name"))===title})||rows[0];
+  tableId=hit?String(f(hit,"id","tableId","code","tableCode")):"";
+ }
+ if(!tableId)throw new Error("No s'ha pogut identificar la taula de Statistics Sweden a PxWebApi v2.");
  var p=new URLSearchParams();p.set("lang","en");p.set("outputFormat","json-stat2");
  query.query.forEach(function(q){var vals=q.selection&&q.selection.values||[];p.set("valueCodes["+q.code+"]",vals.length?vals.join(","):"*")});
- var u="https://api.scb.se/OV0104/v2beta/api/v2/tables/"+encodeURIComponent(hit.id)+"/data?"+p.toString();
+ var u="https://api.scb.se/OV0104/v2beta/api/v2/tables/"+encodeURIComponent(tableId)+"/data?"+p.toString();
  return await fetchJson(u)
 }
 async function pxMetadata(){var raw=await fetchJson(pxUrl(state.pxPath)),ds=pxToJsonStat(raw);state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||raw.label||state.selected.table)+"<span class=\"path\">"+esc(pxUrl(state.pxPath))+"</span>";$("query").disabled=false}
