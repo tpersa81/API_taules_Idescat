@@ -1,6 +1,6 @@
 
 const MAX_CELLS=20000;
-const state={provider:"idescat",pxPreset:"finland",stats:[],metadata:null,lastData:null,lastQueryUrl:"",filters:new Map(),page:1,pageSize:100,requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[]};
+const state={provider:"idescat",pxPreset:"finland",stats:[],metadata:null,lastData:null,lastQueryUrl:"",filters:new Map(),page:1,pageSize:100,requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],swedenV2Tables:null};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]});
 async function fetchJson(url,opt){opt=opt||{};const r=await fetch(url,opt);var text="";try{text=await r.text()}catch(e){throw new Error("No s'ha pogut llegir la resposta de l'API (HTTP "+r.status+").")}var d=null;try{d=text?JSON.parse(text):null}catch(e){if(!r.ok)throw new Error("Error HTTP "+r.status+": "+text.slice(0,300));throw new Error("Resposta no vàlida de l'API (HTTP "+r.status+").")}if(!r.ok||d&&d.class==="error")throw new Error(d&&(d.label||d.message||d.error)||"Error HTTP "+r.status+".");return d}
@@ -39,7 +39,7 @@ function collection(d){
   return jsonstatCats(d,d.id[0]).map(function(x){return{id:x.code,label:x.label}});
  return[];
 }
-function clearBelow(){state.pivot={rows:[],columns:[]};["concept","cross","node","table","geo"].forEach(resetSelect);state.metadata=null;state.lastData=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;$("resultCount").textContent=""}
+function clearBelow(){state.pivot={rows:[],columns:[]};fill($("stat"),[]);["concept","cross","node","table","geo"].forEach(resetSelect);state.metadata=null;state.lastData=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;$("resultCount").textContent=""}
 function setLabels(){var p=state.provider,ls=p==="idescat"?["Organisme","Tema","Encreuament","Entrada","Taula","Geografia"]:p==="pxweb"?["Base PXWeb","Nivell 1","Nivell 2","Nivell 3","Taula","Geografia"]:p==="ine"?["Organisme","—","—","Taula","—","—"]:["Organisme","—","—","—","—","—"];var l=document.querySelectorAll("#step2 label");document.querySelector("#step1 label:nth-child(1)").firstChild.textContent=ls[0]+" ";l.forEach(function(x,i){x.firstChild.textContent=ls[i+1]+" "})}
 function setProviderUI(){setLabels();var showPx=state.provider==="pxweb";$("pxPresetWrap").hidden=!showPx;$("pxPresetWrap").style.display=showPx?"":"none";$("docLink").href=provider().doc}
 async function loadStats(){
@@ -70,6 +70,20 @@ function pxTable(x){return/^(t|table)$/i.test(x&&x.type)||/\.px$/i.test(x&&x.id|
 async function pxSelect(target){
  var val=$(target).value;if(!val)return;var item=state.pxItems.get(target).find(function(x){return x.id===val}),order=["concept","cross","node","table"],i=order.indexOf(target);state.pxPath=state.pxPath.slice(0,i);state.pxPath.push(val);if(pxTable(item)){state.selected.node=val;state.selected.table=val;await pxMetadata();return}var next=order[i+1];if(next){["cross","node","table"].forEach(function(id,j){if(j>=i)resetSelect(id)});await pxChildren(state.pxPath,next)}}
 function pxToJsonStat(m){var ds={version:"2.0",class:"dataset",label:m.title||m.label||state.selected.table,id:[],size:[],dimension:{}};(m.variables||[]).forEach(function(v){var id=String(v.code||v.id||"");var vals=v.values||[];var labs=v.valueTexts||v.labels||vals;var index={},label={};vals.forEach(function(x,i){index[String(x)]=i;label[String(x)]=String(labs[i]==null?x:labs[i])});ds.id.push(id);ds.size.push(vals.length);ds.dimension[id]={label:String(v.text||v.label||id),category:{index:index,label:label}}});return ds}
+async function swedenV2Query(query){
+ if(!state.swedenV2Tables){
+  var list=await fetchJson("https://api.scb.se/OV0104/v2beta/api/v2/tables?lang=en");
+  state.swedenV2Tables=a(list);
+ }
+ var title=String(state.metadata&&state.metadata.label||"").trim(),path=state.pxPath.join("/");
+ var rows=state.swedenV2Tables.map(function(x){return{id:String(f(x,"id","tableId","code","tableCode")),title:String(f(x,"title","text","name","label")),path:String(f(x,"path","url")||"")}}).filter(function(x){return x.id});
+ var hit=rows.find(function(x){return x.title===title})||rows.find(function(x){return x.path&&x.path.indexOf(path)>=0});
+ if(!hit)throw new Error("No s'ha trobat la taula de Statistics Sweden a PxWebApi v2.");
+ var p=new URLSearchParams();p.set("lang","en");p.set("outputFormat","json-stat2");
+ query.query.forEach(function(q){var vals=q.selection&&q.selection.values||[];p.set("valueCodes["+q.code+"]",vals.length?vals.join(","):"*")});
+ var u="https://api.scb.se/OV0104/v2beta/api/v2/tables/"+encodeURIComponent(hit.id)+"/data?"+p.toString();
+ return await fetchJson(u)
+}
 async function pxMetadata(){var raw=await fetchJson(pxUrl(state.pxPath)),ds=pxToJsonStat(raw);state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||raw.label||state.selected.table)+"<span class=\"path\">"+esc(pxUrl(state.pxPath))+"</span>";$("query").disabled=false}
 function idesPath(){
  var parts=[state.selected.stat,state.selected.node,state.selected.table,state.selected.geo].filter(function(x){return x!==""&&x!=null});
@@ -136,7 +150,7 @@ async function runQuery(){
  try{var ds;
   if(state.provider==="idescat"){var base=provider().base+"/"+state.selected.stat+"/"+state.selected.node+"/"+state.selected.table+"/"+state.selected.geo+"/data",q=new URLSearchParams();Object.keys(selectedFilters()).forEach(function(k){q.set(k,selectedFilters()[k].join(","))});q.set("lang","ca");var u=base+"?"+q.toString();ds=await fetchJson(u);state.lastQueryUrl=u}
   else if(state.provider==="eurostat"){var u2=provider().base+"/data/"+state.selected.stat+"?"+buildEurostatParams().toString();ds=await fetchJson(u2);state.lastQueryUrl=u2}
-  else if(state.provider==="pxweb"){var query={query:[],response:{format:"json-stat2"}};dims(state.metadata).forEach(function(d){query.query.push({code:d.id,selection:{filter:"item",values:Array.from(state.filters.get(d.id)||[])}})});var up=pxUrl(state.pxPath);ds=await fetchJson(up,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(query)});state.lastQueryUrl=up}
+  else if(state.provider==="pxweb"){var query={query:[],response:{format:"json-stat2"}};dims(state.metadata).forEach(function(d){query.query.push({code:d.id,selection:{filter:"item",values:Array.from(state.filters.get(d.id)||[])}})});var up=pxUrl(state.pxPath);if(state.pxPreset==="sweden"){ds=await swedenV2Query(query)}else{ds=await fetchJson(up,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(query)})}state.lastQueryUrl=up}
   else {var qi=new URLSearchParams();qi.set("nult","3");Object.keys(selectedFilters()).forEach(function(k){selectedFilters()[k].forEach(function(v){qi.append("tv",k+":"+v)})});var ui=provider().base+"/ES/DATASET/"+state.selected.table+"?"+qi.toString();ds=await fetchJson(ui);state.lastQueryUrl=ui}
   if(token!==state.requestToken)return;state.lastData=ds;state.page=1;renderResults(ds);var n=Array.isArray(ds.value)?ds.value.length:Object.keys(ds.value||{}).length;$("resultCount").textContent=n.toLocaleString("ca-ES")+" valors retornats";$("exportCsv").disabled=false;$("exportXlsx").disabled=false;$("addToCart").disabled=false;status("")
  }catch(e){if(token===state.requestToken){$("results").innerHTML="<div class=\"error\">"+esc(e.message)+"</div>";status("Error","error")}}finally{busy(false);updateCells()}
@@ -223,7 +237,7 @@ async function exportCart(){
  status("S'ha generat l'Excel amb "+state.cart.length+" consultes i "+wb.SheetNames.length+" fulls.","ok");
 }
 function bind(){
- $("provider").onchange=async function(){state.provider=$("provider").value;clearBelow();setProviderUI();await loadStats();updateUrl()};
+ $("provider").onchange=async function(){state.provider=$("provider").value;clearBelow();setProviderUI();try{await loadStats()}catch(e){status(e.message,"error")}updateUrl()};
  $("pxPreset").onchange=async function(){state.pxPreset=$("pxPreset").value;if(state.provider==="pxweb"){clearBelow();await loadStats()}};
   $("stat").onchange=async function(){await onStatChange();updateUrl()};
  $("concept").onchange=async function(){if(state.provider==="pxweb")await pxSelect("concept");else{state.selected.concept=$("concept").value;state.selected.cross="";state.selected.node="";state.selected.table="";state.selected.geo="";["cross","node","table","geo"].forEach(resetSelect);state.metadata=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;var c=state.selected.concept,rows=(state.catalog||[]).filter(function(r){return r.concept===c}),x=[...new Set(rows.map(function(r){return r.cross}).filter(Boolean))];fill($("cross"),x.map(function(v){return{value:v,label:v}}));$("cross").disabled=!x.length;if(x.length===1){$("cross").value=x[0];await $("cross").onchange()}else if(x.length===0){var ids=[...new Set(rows.map(function(r){return String(r.node)}).filter(Boolean))];fill($("node"),ids.map(function(id){var q=rows.find(function(r){return String(r.node)===id});return{value:id,label:id+" · "+q.name}}));$("node").disabled=!ids.length;if(ids.length===1){$("node").value=ids[0];await onNodeChange()}}}};
