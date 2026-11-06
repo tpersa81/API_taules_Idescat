@@ -90,27 +90,31 @@ async function pxSelect(target){
 function pxToJsonStat(m){var ds={version:"2.0",class:"dataset",label:m.title||m.label||state.selected.table,id:[],size:[],dimension:{}};(m.variables||[]).forEach(function(v){var id=String(v.code||v.id||"");var vals=v.values||[];var labs=v.valueTexts||v.labels||vals;var index={},label={};vals.forEach(function(x,i){index[String(x)]=i;label[String(x)]=String(labs[i]==null?x:labs[i])});ds.id.push(id);ds.size.push(vals.length);ds.dimension[id]={label:String(v.text||v.label||id),category:{index:index,label:label}}});return ds}
 async function swedenV2Query(query){
  var tableId=String(state.selected.table||"");
- if(!/^TAB/i.test(tableId)){
-  var last=state.pxPath.length?String(state.pxPath[state.pxPath.length-1]):"";
-  if(/^TAB/i.test(last))tableId=last;
- }
+ var last=state.pxPath.length?String(state.pxPath[state.pxPath.length-1]):"";
+ if(!/^TAB/i.test(tableId)&&/^TAB/i.test(last))tableId=last;
  if(!/^TAB/i.test(tableId)){
   var title=String(state.metadata&&state.metadata.label||"").trim();
-  if(!title)throw new Error("No s'ha pogut identificar el títol de la taula de Statistics Sweden.");
-  var qs=new URLSearchParams();
-  qs.set("lang","en");qs.set("query",title);qs.set("pageSize","100");
-  var list=await fetchJson("https://statistikdatabasen.scb.se/api/v2/tables?"+qs.toString());
-  var rows=a(list&&list.tables?list.tables:list);
-  var hit=rows.find(function(x){return String(f(x,"label","title","text","name"))===title})||rows.find(function(x){return String(f(x,"label","title","text","name")).toLowerCase().indexOf(title.toLowerCase())>=0})||rows[0];
-  tableId=hit?String(f(hit,"id","tableId","code","tableCode")):"";
+  var candidates=[last,title].filter(function(v,i,self){return v&&self.indexOf(v)===i});
+  for(var ci=0;ci<candidates.length&&!/^TAB/i.test(tableId);ci++){
+   var qs=new URLSearchParams();qs.set("lang","en");qs.set("query",candidates[ci]);qs.set("pageNumber","1");qs.set("pageSize","100");
+   var list=await fetchJson("https://statistikdatabasen.scb.se/api/v2/tables?"+qs.toString());
+   var rows=Array.isArray(list&&list.tables)?list.tables:a(list);
+   var hit=rows.find(function(x){return String(f(x,"id","tableId","code","tableCode")).trim()&&String(f(x,"label","title","text","name")).trim()===candidates[ci]})||rows.find(function(x){return String(f(x,"id","tableId","code","tableCode")).trim()});
+   if(hit)tableId=String(f(hit,"id","tableId","code","tableCode")).trim();
+  }
  }
- if(!tableId)throw new Error("No s'ha pogut identificar la taula de Statistics Sweden a PxWebApi v2.");
+ if(!/^TAB/i.test(tableId))throw new Error("No s'ha pogut identificar la taula de Statistics Sweden a PxWebApi v2.");
  var p=new URLSearchParams();p.set("lang","en");p.set("outputFormat","json-stat2");
- query.query.forEach(function(q){var vals=q.selection&&q.selection.values||[];p.set("valueCodes["+q.code+"]",vals.length?vals.join(","):"*")});
+ query.query.forEach(function(q){var vals=q.selection&&q.selection.values||[];p.set("valuecodes["+q.code+"]",vals.length?vals.join(","):"*")});
  var u="https://statistikdatabasen.scb.se/api/v2/tables/"+encodeURIComponent(tableId)+"/data?"+p.toString();
  return await fetchJson(u)
 }
 async function pxMetadata(){var raw=await fetchJson(pxUrl(state.pxPath)),ds=pxToJsonStat(raw);state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||raw.label||state.selected.table)+"<span class=\"path\">"+esc(pxUrl(state.pxPath))+"</span>";$("query").disabled=false}
+function ineJsonStatUrl(tableId){return "https://servicios.ine.es/wstempus/jsstat/ES/DATASET/"+encodeURIComponent(String(tableId))}
+async function ineMetadata(tableId){
+ var u=ineJsonStatUrl(tableId)+"?nult=1";
+ var ds=await fetchJson(u);state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(ds.label||tableId)+"<span class=\"path\">"+esc(u)+"</span>";$("query").disabled=false
+}
 function idesPath(){
  var parts=[state.selected.stat,state.selected.node,state.selected.table,state.selected.geo].filter(function(x){return x!==""&&x!=null});
  return provider().base+"/"+parts.map(function(x){return encodeURIComponent(String(x))}).join("/");
@@ -165,18 +169,18 @@ function temporalPeriodicity(categories){
  for(var i=0;i<codes.length;i++){
   var code=codes[i];
   if(/^\\d{4}$/.test(code))return"year";
-  if(/^\\d{4}M\\d{1,2}$/i.test(code)||/^\\d{4}-\\d{2}$/.test(code))return"month";
+  if(/^\\d{4}M\\d{1,2}$/i.test(code)||/^\d{4}-\d{2}$/.test(code))return"month";
   if(/^\\d{4}Q\\d$/i.test(code))return"quarter";
   if(/^\\d{4}S\\d$/i.test(code))return"semester";
   if(/^\\d{4}B\\d{1,2}$/i.test(code))return"bimonth";
   if(/^\\d{4}W\\d{1,2}$/i.test(code))return"week";
-  if(/^\\d{4}D\\d{1,3}$/i.test(code)||/^\\d{4}-\\d{2}-\\d{2}$/.test(code))return"day";
+  if(/^\\d{4}D\\d{1,3}$/i.test(code)||/^\d{4}-\d{2}-\d{2}$/.test(code))return"day";
  }
  return null
 }
 function previousYearPeriodCode(code){
  var v=String(code||"").trim();
- if(/^\\d{4}[MQSBDW]\\d{1,3}$/i.test(v)||/^\\d{4}-\\d{2}(?:-\\d{2})?$/.test(v))return v.replace(/^(\\d{4})/,function(_,y){return String(Number(y)-1)});
+ if(/^\d{4}[MQSBDW]\d{1,3}$/i.test(v)||/^\\d{4}-\\d{2}(?:-\\d{2})?$/.test(v))return v.replace(/^(\d{4})/,function(_,y){return String(Number(y)-1)});
  return""
 }
 function setFilterSelection(dim,categories,codes,list){
@@ -220,7 +224,7 @@ async function runQuery(){
   if(state.provider==="idescat"){var base=provider().base+"/"+state.selected.stat+"/"+state.selected.node+"/"+state.selected.table+"/"+state.selected.geo+"/data",q=new URLSearchParams();Object.keys(selectedFilters()).forEach(function(k){q.set(k,selectedFilters()[k].join(","))});q.set("lang","ca");var u=base+"?"+q.toString();ds=await fetchJson(u);state.lastQueryUrl=u}
   else if(state.provider==="eurostat"){var u2=provider().base+"/data/"+state.selected.stat+"?"+buildEurostatParams().toString();ds=await fetchJson(u2);state.lastQueryUrl=u2}
   else if(state.provider==="pxweb"){var query={query:[],response:{format:"json-stat2"}};dims(state.metadata).forEach(function(d){query.query.push({code:d.id,selection:{filter:"item",values:Array.from(state.filters.get(d.id)||[])}})});var up=pxUrl(state.pxPath);if(state.pxPreset==="sweden"){ds=await swedenV2Query(query)}else{ds=await fetchJson(up,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(query)})}state.lastQueryUrl=up}
-  else {var qi=new URLSearchParams();qi.set("nult","3");Object.keys(selectedFilters()).forEach(function(k){selectedFilters()[k].forEach(function(v){qi.append("tv",k+":"+v)})});var ui=provider().base+"/ES/DATASET/"+state.selected.table+"?"+qi.toString();ds=await fetchJson(ui);state.lastQueryUrl=ui}
+  else {var qi=new URLSearchParams();qi.set("nult","3");Object.keys(selectedFilters()).forEach(function(k){selectedFilters()[k].forEach(function(v){qi.append("tv",k+":"+v)})});var ui=ineJsonStatUrl(state.selected.table)+"?"+qi.toString();ds=await fetchJson(ui);state.lastQueryUrl=ui}
   if(token!==state.requestToken)return;state.lastData=ds;state.page=1;renderResults(ds);var n=Array.isArray(ds.value)?ds.value.length:Object.keys(ds.value||{}).length;$("resultCount").textContent=n.toLocaleString("ca-ES")+" valors retornats";$("exportCsv").disabled=false;$("exportXlsx").disabled=false;$("addToCart").disabled=false;status("")
  }catch(e){if(token===state.requestToken){$("results").innerHTML="<div class=\"error\">"+esc(e.message)+"</div>";status("Error","error")}}finally{busy(false);updateCells()}
 }
