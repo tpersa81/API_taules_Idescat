@@ -459,3 +459,9 @@
 
 /* Respect the native hidden attribute even when component rules set display. */
 [hidden]{display:none!important}
+
+
+/* Desplegables: text alignment and long statistical titles */
+select{text-align:left;text-align-last:left}
+select option{text-align:left}
+#stat{min-width:0}
