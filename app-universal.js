@@ -53,7 +53,7 @@ async function loadStats(){
    var txt=await r.text();
    txt.split(/\r?\n/).forEach(function(line){
     var m=line.match(/^"([^"]*)"\t"([^"]*)"\t"(table|dataset)"/);
-    if(m)out.push({value:m[2],label:m[2]+" · "+m[1]});
+    if(m)out.push({value:m[2],label:m[1]});
    });
   }catch(e){
    var r2=await fetch("https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/dataflow/ESTAT/all/latest");
@@ -62,7 +62,7 @@ async function loadStats(){
    for(var i=0;i<flows.length;i++){
     var id=flows[i].getAttribute("id")||"",names=flows[i].getElementsByTagNameNS("*","Name"),name="";
     for(var j=0;j<names.length;j++){if((names[j].getAttribute("lang")||"").toLowerCase()==="en"||!name)name=names[j].textContent.trim()}
-    if(id)out.push({value:id,label:id+" · "+(name||id)});
+    if(id)out.push({value:id,label:name||id});
    }
   }}
  else {out=a(await fetchJson(c.base)).map(function(x){var id=String(f(x,"id","dbid","code","path"));return{value:id,label:String(f(x,"text","label","name","title")||id)}}).filter(function(x){return x.value})}
