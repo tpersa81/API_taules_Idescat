@@ -52,8 +52,11 @@ async function loadStats(){
    if(!r.ok)throw new Error("HTTP "+r.status);
    var txt=await r.text();
    txt.split(/\r?\n/).forEach(function(line){
-    var m=line.match(/^"([^"]*)"\t"([^"]*)"\t"(table|dataset)"/);
-    if(m)out.push({value:m[2],label:m[1]});
+    var parts=line.split("\t").map(function(x){return String(x||"").replace(/^"+|"+$/g,"").trim()});
+    if(parts.length>=3){
+     var title=parts[0],code=parts[1],type=parts[2].toLowerCase();
+     if(code&&(/^(dataset|table)$/).test(type))out.push({value:code,label:title.replace(/^\\s+/,"")});
+    }
    });
   }catch(e){
    var r2=await fetch("https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/dataflow/ESTAT/all/latest");
@@ -134,7 +137,7 @@ async function onNodeChange(){
    }
   }catch(e){status(e.message,"error")}
  }else if(state.provider==="pxweb")await pxSelect("node");
- else if(state.provider==="ine"){state.selected.node=$("node").value;state.selected.table=state.selected.node;await ineMetadata(state.selected.node)}
+ else if(state.provider==="ine"){state.selected.node=$("node").value;state.selected.table=state.selected.node;if(!state.selected.table)return;try{await ineMetadata(state.selected.table)}catch(e){status("INE: "+e.message,"error")}}
 }
 async function onTableChange(){
  if(state.provider==="idescat"){
@@ -223,7 +226,7 @@ async function runQuery(){
  try{var ds;
   if(state.provider==="idescat"){var base=provider().base+"/"+state.selected.stat+"/"+state.selected.node+"/"+state.selected.table+"/"+state.selected.geo+"/data",q=new URLSearchParams();Object.keys(selectedFilters()).forEach(function(k){q.set(k,selectedFilters()[k].join(","))});q.set("lang","ca");var u=base+"?"+q.toString();ds=await fetchJson(u);state.lastQueryUrl=u}
   else if(state.provider==="eurostat"){var u2=provider().base+"/data/"+state.selected.stat+"?"+buildEurostatParams().toString();ds=await fetchJson(u2);state.lastQueryUrl=u2}
-  else if(state.provider==="pxweb"){var query={query:[],response:{format:"json-stat2"}};dims(state.metadata).forEach(function(d){query.query.push({code:d.id,selection:{filter:"item",values:Array.from(state.filters.get(d.id)||[])}})});var up=pxUrl(state.pxPath);if(state.pxPreset==="sweden"){ds=await swedenV2Query(query)}else{ds=await fetchJson(up,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(query)})}state.lastQueryUrl=up}
+  else if(state.provider==="pxweb"){var query={query:[],response:{format:"json-stat2"}};dims(state.metadata).forEach(function(d){query.query.push({code:d.id,selection:{filter:"item",values:Array.from(state.filters.get(d.id)||[])}})});var up=pxUrl(state.pxPath);if(state.pxPreset==="sweden"){try{ds=await swedenV2Query(query)}catch(swErr){ds=await fetchJson(up,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(query)});status("Statistics Sweden: s'ha utilitzat PxWebApi v1 com a alternativa mentre es resol la identificació v2.","")} }else{ds=await fetchJson(up,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(query)})}state.lastQueryUrl=up}
   else {var qi=new URLSearchParams();qi.set("nult","3");Object.keys(selectedFilters()).forEach(function(k){selectedFilters()[k].forEach(function(v){qi.append("tv",k+":"+v)})});var ui=ineJsonStatUrl(state.selected.table)+"?"+qi.toString();ds=await fetchJson(ui);state.lastQueryUrl=ui}
   if(token!==state.requestToken)return;state.lastData=ds;state.page=1;renderResults(ds);var n=Array.isArray(ds.value)?ds.value.length:Object.keys(ds.value||{}).length;$("resultCount").textContent=n.toLocaleString("ca-ES")+" valors retornats";$("exportCsv").disabled=false;$("exportXlsx").disabled=false;$("addToCart").disabled=false;status("")
  }catch(e){if(token===state.requestToken){$("results").innerHTML="<div class=\"error\">"+esc(e.message)+"</div>";status("Error","error")}}finally{busy(false);updateCells()}
