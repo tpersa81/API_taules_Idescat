@@ -16,7 +16,29 @@ function jsonstatCats(ds,id){var c=ds.dimension&&ds.dimension[id]&&ds.dimension[
 function dims(ds){return(ds.id||[]).map(function(id){var d=ds.dimension&&ds.dimension[id]||{};return{id:id,label:d.label||id,role:d.extension&&d.extension.role||d.role||"",categories:jsonstatCats(ds,id)}})}
 function temporal(d){var id=String(d.id||"").toUpperCase(),r=String(d.role||"").toUpperCase();return["YEAR","MONTH","QUARTER","SEMESTER","BIMONTH","WEEK","DAY","DATE","TIME","TIME_PERIOD","PERIOD"].indexOf(id)>=0||id.indexOf("TIME")===0||r.indexOf("TIME")>=0||r.indexOf("TEMPOR")>=0}
 function sortedCats(c,d){var x=c.slice().sort(function(a,b){return a.index-b.index});return temporal(d)?x.reverse():x}
-function collection(d){if(d&&d.class==="collection")return(d.link&&d.link.item||[]).map(function(x){var id=x&&x.id;if(!id&&x&&x.extension&&typeof x.extension==="object")id=x.extension.id;if(!id&&x&&x.href){try{var u=new URL(x.href,location.href);var parts=u.pathname.split("/").filter(Boolean);id=parts.length?parts[parts.length-1]:""}catch(e){var h=String(x.href).split("?")[0].split("#")[0];id=h.split("/").filter(Boolean).pop()||""}}return{id:String(id||""),label:String(f(x,"label","text")||id||"")}}).filter(function(x){return x.id});if(d&&d.class==="dataset"&&d.id&&d.id.length)return jsonstatCats(d,d.id[0]).map(function(x){return{id:x.code,label:x.label}});return[]}
+function collection(d){
+ if(d&&d.class==="collection"){
+  var items=Array.isArray(d.link&&d.link.item)?d.link.item:[];
+  return items.map(function(item){
+   var id=item&&item.id;
+   if(!id&&item&&item.extension&&typeof item.extension==="object")id=item.extension.id;
+   if(!id&&item&&item.href){
+    try{
+     var u=new URL(item.href,provider().base+"/");
+     var parts=u.pathname.split("/").filter(Boolean);
+     id=parts.length?parts[parts.length-1]:"";
+    }catch(e){
+     var h=String(item.href).split("?")[0].split("#")[0];
+     id=h.split("/").filter(Boolean).pop()||"";
+    }
+   }
+   return{id:String(id||""),label:String(item&&item.label!=null?item.label:(id||""))};
+  }).filter(function(x){return x.id});
+ }
+ if(d&&d.class==="dataset"&&Array.isArray(d.id)&&d.id.length)
+  return jsonstatCats(d,d.id[0]).map(function(x){return{id:x.code,label:x.label}});
+ return[];
+}
 function clearBelow(){["concept","cross","node","table","geo"].forEach(resetSelect);state.metadata=null;state.lastData=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;$("resultCount").textContent=""}
 function setLabels(){var p=state.provider,ls=p==="idescat"?["Estadística","Tema","Encreuament","Entrada","Taula","Geografia"]:p==="pxweb"?["Base PXWeb","Nivell 1","Nivell 2","Nivell 3","Taula","Geografia"]:p==="ine"?["Operació estadística","—","—","Taula","—","—"]:["Conjunt de dades Eurostat","—","—","—","—","—"];var l=document.querySelectorAll("#step2 label");document.querySelector("#step1 label:nth-child(1)").firstChild.textContent=ls[0]+" ";l.forEach(function(x,i){x.firstChild.textContent=ls[i+1]+" "})}
 function setProviderUI(){setLabels();var showPx=state.provider==="pxweb";$("pxPresetWrap").hidden=!showPx;$("pxPresetWrap").style.display=showPx?"":"none";$("docLink").href=provider().doc}
@@ -49,17 +71,55 @@ async function pxSelect(target){
  var val=$(target).value;if(!val)return;var item=state.pxItems.get(target).find(function(x){return x.id===val}),order=["concept","cross","node","table"],i=order.indexOf(target);state.pxPath=state.pxPath.slice(0,i);state.pxPath.push(val);if(pxTable(item)){state.selected.node=val;state.selected.table=val;await pxMetadata();return}var next=order[i+1];if(next){["cross","node","table"].forEach(function(id,j){if(j>=i)resetSelect(id)});await pxChildren(state.pxPath,next)}}
 function pxToJsonStat(m){var ds={version:"2.0",class:"dataset",label:m.title||m.label||state.selected.table,id:[],size:[],dimension:{}};(m.variables||[]).forEach(function(v){var id=String(v.code||v.id||"");var vals=v.values||[];var labs=v.valueTexts||v.labels||vals;var index={},label={};vals.forEach(function(x,i){index[String(x)]=i;label[String(x)]=String(labs[i]==null?x:labs[i])});ds.id.push(id);ds.size.push(vals.length);ds.dimension[id]={label:String(v.text||v.label||id),category:{index:index,label:label}}});return ds}
 async function pxMetadata(){var raw=await fetchJson(pxUrl(state.pxPath)),ds=pxToJsonStat(raw);state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||raw.label||state.selected.table)+"<span class=\"path\">"+esc(pxUrl(state.pxPath))+"</span>";$("query").disabled=false}
+function idesPath(){
+ var parts=[state.selected.stat,state.selected.node,state.selected.table,state.selected.geo].filter(function(x){return x!==""&&x!=null});
+ return provider().base+"/"+parts.map(function(x){return encodeURIComponent(String(x))}).join("/");
+}
 async function onNodeChange(){
- if(state.provider==="idescat"){state.selected.node=$("node").value;resetSelect("table");resetSelect("geo");if(!state.selected.node)return;var d=await fetchJson(provider().base+"/"+state.selected.stat+"/"+state.selected.node+"?lang=ca"),t=collection(d);fill($("table"),t);$("table").disabled=!t.length;if(t.length===1){ $("table").value=t[0].id;await onTableChange()}}
- else if(state.provider==="pxweb")await pxSelect("node");
+ if(state.provider==="idescat"){
+  state.selected.node=$("node").value;
+  resetSelect("table");resetSelect("geo");
+  if(!state.selected.node)return;
+  try{
+   var d=await fetchJson(idesPath()+"?lang=ca"),t=collection(d);
+   fill($("table"),t.map(function(x){return{value:x.id,label:x.id+" · "+x.label}}));
+   $("table").disabled=!t.length;
+   if(t.length===1){
+    $("table").value=t[0].id;
+    await onTableChange();
+   }
+  }catch(e){status(e.message,"error")}
+ }else if(state.provider==="pxweb")await pxSelect("node");
  else if(state.provider==="ine"){state.selected.node=$("node").value;state.selected.table=state.selected.node;await ineMetadata(state.selected.node)}
 }
 async function onTableChange(){
- if(state.provider==="idescat"){state.selected.table=$("table").value;resetSelect("geo");if(!state.selected.table)return;var d=await fetchJson(provider().base+"/"+state.selected.stat+"/"+state.selected.node+"/"+state.selected.table+"?lang=ca"),g=collection(d);fill($("geo"),g.map(function(x){return{value:x.id,label:x.id+" · "+x.label}}));$("geo").disabled=!g.length;if(g.length===1){$("geo").value=g[0].value;await onGeoChange()}}
- else if(state.provider==="pxweb")await pxSelect("table")
+ if(state.provider==="idescat"){
+  state.selected.table=$("table").value;
+  resetSelect("geo");
+  if(!state.selected.table)return;
+  try{
+   var d=await fetchJson(idesPath()+"?lang=ca"),g=collection(d);
+   fill($("geo"),g.map(function(x){return{value:x.id,label:x.id+" · "+x.label}}));
+   $("geo").disabled=!g.length;
+   if(g.length===1){
+    $("geo").value=g[0].id;
+    await onGeoChange();
+   }
+  }catch(e){status(e.message,"error")}
+ }else if(state.provider==="pxweb")await pxSelect("table")
 }
-async function onGeoChange(){if(state.provider!=="idescat")return;state.selected.geo=$("geo").value;if(!state.selected.geo)return;var ds=await fetchJson(provider().base+"/"+state.selected.stat+"/"+state.selected.node+"/"+state.selected.table+"/"+state.selected.geo+"?lang=ca");state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula triada:</strong> "+esc(ds.label||"")+"<span class=\"path\">"+esc(provider().base+"/"+state.selected.stat+"/"+state.selected.node+"/"+state.selected.table+"/"+state.selected.geo)+"</span>";$("query").disabled=false}
-async function ineMetadata(id){var ds=await fetchJson(provider().base+"/ES/DATASET/"+encodeURIComponent(id)+"?nult=3");state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula INE:</strong> "+esc(ds.label||id)+"<span class=\"path\">"+esc(provider().base+"/ES/DATASET/"+id)+"</span>";$("query").disabled=false}
+async function onGeoChange(){
+ if(state.provider!=="idescat")return;
+ state.selected.geo=$("geo").value;
+ if(!state.selected.geo)return;
+ try{
+  var ds=await fetchJson(idesPath()+"?lang=ca");
+  state.metadata=ds;renderMetadata(ds);
+  $("tableInfo").hidden=false;
+  $("tableInfo").innerHTML="<strong>Taula triada:</strong> "+esc(ds.label||"")+"<span class=\"path\">"+esc(idesPath())+"</span>";
+  $("query").disabled=false;
+ }catch(e){status(e.message,"error")}
+}
 function renderMetadata(ds){
  state.filters.clear();$("filters").innerHTML="";
  dims(ds).forEach(function(d){var cats=sortedCats(d.categories,d),set=new Set(cats.map(function(x){return x.code}));state.filters.set(d.id,set);var sec=document.createElement("section");sec.className="filter";sec.dataset.dim=d.id;sec.innerHTML="<div class=\"filter-head\"><div><h3>"+esc(d.label)+"</h3><span class=\"role\">"+esc(d.role||"")+"</span></div><span class=\"selected-count\"></span></div>";var tools=document.createElement("div");tools.className="filter-tools";var buttons=document.createElement("div");buttons.className="filter-buttons";var all=document.createElement("button");all.className="secondary";all.textContent="Tots";var none=document.createElement("button");none.className="secondary";none.textContent="Cap";var list=document.createElement("div");list.className="options";if(cats.length>1){buttons.append(all,none);tools.append(buttons)}
