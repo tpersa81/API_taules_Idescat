@@ -56,7 +56,7 @@ async function loadStats(){
     if(m)out.push({value:m[2],label:m[2]+" · "+m[1]});
    });
   }catch(e){
-   var r2=await fetch("https://ec.europa.eu/eurostat/api/dissemination/sdmx/3.0/structure/dataflow/ESTAT/*");
+   var r2=await fetch("https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/dataflow/ESTAT/all/latest");
    if(!r2.ok)throw new Error("No s'ha pogut carregar el catàleg d'Eurostat.");
    var xml=await r2.text(),doc=new DOMParser().parseFromString(xml,"application/xml"),flows=doc.getElementsByTagNameNS("*","Dataflow");
    for(var i=0;i<flows.length;i++){
@@ -84,7 +84,7 @@ async function eurostatSelect(code){state.selected.node=code;state.selected.tabl
 async function pxChildren(path,target){
  var d=await fetchJson(pxUrl(path)),items=a(d).map(function(x){return{id:String(f(x,"id","code","dbid","path")),label:String(f(x,"text","label","name","title")||f(x,"id","code","path")),type:String(f(x,"type","class"))}}).filter(function(x){return x.id});state.pxItems.set(target,items);fill($(target),items.map(function(x){return{value:x.id,label:x.id+" · "+x.label}}));$(target).disabled=!items.length
 }
-function pxTable(x){return/^(t|table)$/i.test(x&&x.type)||/\.px$/i.test(x&&x.id||"")}
+function pxTable(x){return/^(t|table)$/i.test(x&&x.type)||/\.px$/i.test(x&&x.id||"")||/_pxt_/i.test(x&&x.id||"")}
 async function pxSelect(target){
  var val=$(target).value;if(!val)return;var item=state.pxItems.get(target).find(function(x){return x.id===val}),order=["concept","cross","node","table"],i=order.indexOf(target);state.pxPath=state.pxPath.slice(0,i);state.pxPath.push(val);if(pxTable(item)){state.selected.node=val;state.selected.table=val;await pxMetadata();return}var next=order[i+1];if(next){["cross","node","table"].forEach(function(id,j){if(j>=i)resetSelect(id)});await pxChildren(state.pxPath,next)}}
 function pxToJsonStat(m){var ds={version:"2.0",class:"dataset",label:m.title||m.label||state.selected.table,id:[],size:[],dimension:{}};(m.variables||[]).forEach(function(v){var id=String(v.code||v.id||"");var vals=v.values||[];var labs=v.valueTexts||v.labels||vals;var index={},label={};vals.forEach(function(x,i){index[String(x)]=i;label[String(x)]=String(labs[i]==null?x:labs[i])});ds.id.push(id);ds.size.push(vals.length);ds.dimension[id]={label:String(v.text||v.label||id),category:{index:index,label:label}}});return ds}
@@ -95,16 +95,19 @@ async function swedenV2Query(query){
   if(/^TAB/i.test(last))tableId=last;
  }
  if(!/^TAB/i.test(tableId)){
-  var title=String(state.metadata&&state.metadata.label||"").trim(),qs=new URLSearchParams();
+  var title=String(state.metadata&&state.metadata.label||"").trim();
+  if(!title)throw new Error("No s'ha pogut identificar el títol de la taula de Statistics Sweden.");
+  var qs=new URLSearchParams();
   qs.set("lang","en");qs.set("query",title);qs.set("pageSize","100");
-  var list=await fetchJson("https://api.scb.se/OV0104/v2beta/api/v2/tables?"+qs.toString());
-  var rows=a(list&&list.tables?list.tables:list),hit=rows.find(function(x){return String(f(x,"label","title","text","name"))===title})||rows[0];
+  var list=await fetchJson("https://statistikdatabasen.scb.se/api/v2/tables?"+qs.toString());
+  var rows=a(list&&list.tables?list.tables:list);
+  var hit=rows.find(function(x){return String(f(x,"label","title","text","name"))===title})||rows.find(function(x){return String(f(x,"label","title","text","name")).toLowerCase().indexOf(title.toLowerCase())>=0})||rows[0];
   tableId=hit?String(f(hit,"id","tableId","code","tableCode")):"";
  }
  if(!tableId)throw new Error("No s'ha pogut identificar la taula de Statistics Sweden a PxWebApi v2.");
  var p=new URLSearchParams();p.set("lang","en");p.set("outputFormat","json-stat2");
  query.query.forEach(function(q){var vals=q.selection&&q.selection.values||[];p.set("valueCodes["+q.code+"]",vals.length?vals.join(","):"*")});
- var u="https://api.scb.se/OV0104/v2beta/api/v2/tables/"+encodeURIComponent(tableId)+"/data?"+p.toString();
+ var u="https://statistikdatabasen.scb.se/api/v2/tables/"+encodeURIComponent(tableId)+"/data?"+p.toString();
  return await fetchJson(u)
 }
 async function pxMetadata(){var raw=await fetchJson(pxUrl(state.pxPath)),ds=pxToJsonStat(raw);state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||raw.label||state.selected.table)+"<span class=\"path\">"+esc(pxUrl(state.pxPath))+"</span>";$("query").disabled=false}
