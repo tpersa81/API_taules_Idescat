@@ -14,8 +14,7 @@
 <section class="card" id="step1">
 <h2>1. Selecciona l'organisme i la font</h2>
 <div class="grid">
-<label>Organisme<select id="provider"><option value="idescat">Idescat</option><option value="pxweb">PXWeb</option><option value="ine">INE</option><option value="eurostat">Eurostat</option></select></label>
-<label id="pxPresetWrap" hidden>Servidor PXWeb<select id="pxPreset"><option value="finland">Statistics Finland</option><option value="sweden">Statistics Sweden</option><option value="unece">UNECE Statistical Database</option><option value="iceland">Statistics Iceland</option></select></label>
+<label>Organisme<select id="provider"><option value="idescat">Idescat</option><option value="ine">INE</option><option value="eurostat">Eurostat</option><option value="pxweb:finland">Statistics Finland</option><option value="pxweb:sweden">Statistics Sweden</option><option value="pxweb:unece">UNECE Statistical Database</option><option value="pxweb:iceland">Statistics Iceland</option></select></label>
 <label>Estadística<select id="stat"></select></label>
 </div></section>
 <section class="card" id="step2"><h2>2. Tria la taula</h2><div id="themeCount" class="selection-count" hidden></div><div class="grid">
@@ -27,5 +26,5 @@
 <section class="card cart-panel" id="cartPanel" hidden><div class="section-title"><h2>Cistella de consultes</h2><div class="cart-actions"><button id="cartExport" class="primary" disabled>Exporta Excel (0)</button><button id="cartClear" class="secondary" disabled>Buidar cistella</button></div></div><div id="cartItems"><div class="cart-empty">La cistella és buida.</div></div></section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
-<script src="app-universal.js?v=20261106-10"></script>
+<script src="app-universal.js?v=20261106-11"></script>
 </body></html>
