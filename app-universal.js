@@ -160,9 +160,52 @@ async function onGeoChange(){
   $("query").disabled=false;
  }catch(e){status(e.message,"error")}
 }
+function temporalPeriodicity(categories){
+ var codes=(categories||[]).map(function(c){return String(c.code||"").trim()}).filter(Boolean);
+ for(var i=0;i<codes.length;i++){
+  var code=codes[i];
+  if(/^\\d{4}$/.test(code))return"year";
+  if(/^\\d{4}M\\d{1,2}$/i.test(code)||/^\\d{4}-\\d{2}$/.test(code))return"month";
+  if(/^\\d{4}Q\\d$/i.test(code))return"quarter";
+  if(/^\\d{4}S\\d$/i.test(code))return"semester";
+  if(/^\\d{4}B\\d{1,2}$/i.test(code))return"bimonth";
+  if(/^\\d{4}W\\d{1,2}$/i.test(code))return"week";
+  if(/^\\d{4}D\\d{1,3}$/i.test(code)||/^\\d{4}-\\d{2}-\\d{2}$/.test(code))return"day";
+ }
+ return null
+}
+function previousYearPeriodCode(code){
+ var v=String(code||"").trim();
+ if(/^\\d{4}[MQSBDW]\\d{1,3}$/i.test(v)||/^\\d{4}-\\d{2}(?:-\\d{2})?$/.test(v))return v.replace(/^(\\d{4})/,function(_,y){return String(Number(y)-1)});
+ return""
+}
+function setFilterSelection(dim,categories,codes,list){
+ var selected=new Set((codes||[]).map(String));state.filters.set(dim.id,selected);
+ list.querySelectorAll(".option").forEach(function(b){var on=selected.has(String(b.dataset.code));b.classList.toggle("selected",on);b.setAttribute("aria-pressed",on?"true":"false")});updateCells()
+}
+function addTemporalQuickControls(toolbar,dim,categories,list){
+ if(!temporal(dim))return;
+ var periodicity=temporalPeriodicity(categories);if(!periodicity)return;
+ var row=document.createElement("div");row.className="temporal-row";
+ var text1=document.createElement("span");text1.textContent="Tria els últims ";
+ var input=document.createElement("input");input.type="number";input.min="1";input.max=String(categories.length);input.value=String(Math.min(3,categories.length));input.inputMode="numeric";input.setAttribute("aria-label","Nombre d'últims períodes");
+ var text2=document.createElement("span");text2.textContent=" períodes";
+ var btn=document.createElement("button");btn.type="button";btn.className="secondary";btn.textContent="Selecciona";
+ var choose=function(){var n=Number(input.value);if(!Number.isFinite(n))n=1;n=Math.max(1,Math.min(categories.length,Math.trunc(n)));input.value=String(n);setFilterSelection(dim,categories,categories.slice(0,n).map(function(c){return c.code}),list)};
+ btn.onclick=choose;input.onkeydown=function(e){if(e.key==="Enter"){e.preventDefault();choose()}};
+ row.append(text1,input,text2,btn);toolbar.append(row);
+ if(periodicity!=="year"&&categories.length>1){
+  var target=previousYearPeriodCode(categories[0].code),prev=categories[1].code,latest=categories[0].code,found=categories.some(function(c){return String(c.code)===target});
+  if(found){
+   var rr=document.createElement("div");rr.className="temporal-row";
+   var rb=document.createElement("button");rb.type="button";rb.className="secondary";rb.textContent="Últim període, període anterior i mateix període de l'any anterior";
+   rb.onclick=function(){setFilterSelection(dim,categories,[latest,prev,target],list)};rr.append(rb);toolbar.append(rr)
+  }
+ }
+}
 function renderMetadata(ds){
  state.filters.clear();$("filters").innerHTML="";
- dims(ds).forEach(function(d){var cats=sortedCats(d.categories,d),set=new Set(cats.map(function(x){return x.code}));state.filters.set(d.id,set);var sec=document.createElement("section");sec.className="filter";sec.dataset.dim=d.id;sec.innerHTML="<div class=\"filter-head\"><div><h3>"+esc(d.label)+"</h3><span class=\"role\">"+esc(d.role||"")+"</span></div><span class=\"selected-count\"></span></div>";var tools=document.createElement("div");tools.className="filter-tools";var buttons=document.createElement("div");buttons.className="filter-buttons";var all=document.createElement("button");all.className="secondary";all.textContent="Tots";var none=document.createElement("button");none.className="secondary";none.textContent="Cap";var list=document.createElement("div");list.className="options";if(cats.length>1){buttons.append(all,none);tools.append(buttons)}
+ dims(ds).forEach(function(d){var cats=sortedCats(d.categories,d),set=new Set(cats.map(function(x){return x.code}));state.filters.set(d.id,set);var sec=document.createElement("section");sec.className="filter";sec.dataset.dim=d.id;sec.innerHTML="<div class=\"filter-head\"><div><h3>"+esc(d.label)+"</h3><span class=\"role\">"+esc(d.role||"")+"</span></div><span class=\"selected-count\"></span></div>";var tools=document.createElement("div");tools.className="filter-tools";var buttons=document.createElement("div");buttons.className="filter-buttons";var all=document.createElement("button");all.className="secondary";all.textContent="Tots";var none=document.createElement("button");none.className="secondary";none.textContent="Cap";var list=document.createElement("div");list.className="options";if(cats.length>1){buttons.append(all,none);tools.append(buttons);addTemporalQuickControls(tools,d,cats,list)}
  cats.forEach(function(c){var b=document.createElement("button");b.type="button";b.className="option selected";b.dataset.code=c.code;b.innerHTML="<span class=\"option-label\">"+esc(c.label)+"</span><small>"+esc(c.code)+"</small>";b.onclick=function(){if(cats.length===1)return;var s=state.filters.get(d.id);if(s.has(c.code))s.delete(c.code);else s.add(c.code);b.classList.toggle("selected",s.has(c.code));updateCells()};list.append(b)});
  sec.append(tools,list);$("filters").append(sec);
  all.onclick=function(){state.filters.set(d.id,new Set(cats.map(function(c){return c.code})));list.querySelectorAll(".option").forEach(function(b){b.classList.add("selected")});updateCells()};none.onclick=function(){state.filters.set(d.id,new Set());list.querySelectorAll(".option").forEach(function(b){b.classList.remove("selected")});updateCells()}
