@@ -40,9 +40,10 @@ function collection(d){
  return[];
 }
 function clearBelow(keepStat){state.pivot={rows:[],columns:[]};if(!keepStat)fill($("stat"),[]);["concept","cross","node","table","geo"].forEach(resetSelect);state.metadata=null;state.lastData=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;$("resultCount").textContent=""}
-function setLabels(){var p=state.provider,ls=p==="idescat"?["Organisme","Tema","Encreuament","Entrada","Taula","Geografia"]:p==="pxweb"?["Base PXWeb","Nivell 1","Nivell 2","Nivell 3","Taula","Geografia"]:p==="ine"?["Organisme","—","—","Taula","—","—"]:["Organisme","—","—","—","—","—"];var l=document.querySelectorAll("#step2 label");document.querySelector("#step1 label:nth-child(1)").firstChild.textContent=ls[0]+" ";l.forEach(function(x,i){x.firstChild.textContent=ls[i+1]+" "})}
+function setLabels(){var p=state.provider,ls=p==="idescat"?["Organisme","Tema","Encreuament","Entrada","Taula","Geografia"]:p==="pxweb"?["Organisme","Nivell 1","Nivell 2","Nivell 3","Taula","Geografia"]:p==="ine"?["Organisme","—","—","Taula","—","—"]:["Organisme","—","—","—","—","—"];var l=document.querySelectorAll("#step2 label");document.querySelector("#step1 label:nth-child(1)").firstChild.textContent=ls[0]+" ";l.forEach(function(x,i){x.firstChild.textContent=ls[i+1]+" "})}
 function setProviderUI(){setLabels();$("docLink").href=provider().doc;var sel=state.provider==="pxweb"?"pxweb:"+state.pxPreset:state.provider;if($("provider")&&[].slice.call($("provider").options).some(function(o){return o.value===sel}))$("provider").value=sel}
 async function loadStats(){
+ var loadToken=state.requestToken,loadProvider=state.provider,loadPreset=state.pxPreset;
  setProviderUI();state.stats=[];state.selected.stat="";fill($("stat"),[]);$("stat").disabled=true;var c=provider(),out=[];
  if(state.provider==="idescat"){out=collection(await fetchJson(c.base+"?lang=ca")).map(function(x){return{value:x.id,label:x.id+" · "+x.label}})}
  else if(state.provider==="ine"){var d=await fetchJson(c.base+"/ES/OPERACIONES_DISPONIBLES?det=1");out=a(d).map(function(x){var id=String(f(x,"Id","id","Codigo","Code"));return{value:id,label:id+" · "+String(f(x,"Nombre","nombre","Name","Descripcion","Description")||id)}}).filter(function(x){return x.value})}
@@ -69,6 +70,7 @@ async function loadStats(){
    }
   }}
  else {out=a(await fetchJson(c.base)).map(function(x){var id=String(f(x,"id","dbid","code","path"));return{value:id,label:String(f(x,"text","label","name","title")||id)}}).filter(function(x){return x.value})}
+ if(loadToken!==state.requestToken||loadProvider!==state.provider||(loadProvider==="pxweb"&&loadPreset!==state.pxPreset))return;
  out.sort(function(x,y){return x.value.localeCompare(y.value,"ca",{numeric:true})});state.stats=out;fill($("stat"),out);$("stat").disabled=!out.length;
  var initial=new URLSearchParams(location.search).get("stat")||"";if(initial&&[].slice.call($("stat").options).some(function(o){return o.value===initial})){$("stat").value=initial;await onStatChange()}
 }
