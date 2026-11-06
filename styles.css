@@ -456,3 +456,6 @@
 
 /* Animació de la cistella: 1,5 s */
 .cart-flight{transition:transform 1.5s cubic-bezier(.2,.75,.25,1),opacity 1.5s ease}
+
+/* Respect the native hidden attribute even when component rules set display. */
+[hidden]{display:none!important}
