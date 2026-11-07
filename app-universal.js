@@ -149,7 +149,7 @@ async function swedenTryTableMetadata(tableId){
  state.metadata=ds;
  renderMetadata(ds);
  $("tableInfo").hidden=false;
- $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.label||tableId)+"<span class="path">"+esc(u)+"</span>";
+ $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.label||tableId)+"<span class=\"path\">"+esc(u)+"</span>";
  $("query").disabled=false;
  return true
 }
