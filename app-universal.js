@@ -199,7 +199,7 @@ async function pxSelect(target){
    state.metadata=pxToJsonStat(finRaw);
    renderMetadata(state.metadata);
    $("tableInfo").hidden=false;
-   $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(finRaw.title||finRaw.label||val)+"<span class="path">"+esc(finTableUrl)+"</span>";
+   $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(finRaw.title||finRaw.label||val)+"<span class=\"path\">"+esc(finTableUrl)+"</span>";
    $("query").disabled=false;
    return;
   }
