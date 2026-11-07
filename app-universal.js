@@ -131,7 +131,7 @@ async function swedenAutoSelect(target){
  if(options.length===1){sel.value=options[0].value;await pxSelect(target)}
 }
 
-async function pxSelect(target){
+async async function pxSelect(target){
  var order=["concept","cross","node","table"],idx=order.indexOf(target);
  if(idx<0)return;
  var val=$(target).value;
@@ -223,10 +223,12 @@ async function swedenV2Children(path,target){
    var key=p.id;
    if(!seen.has(key)){
     seen.add(key);
+    var isTableId=String(t.id)===String(p.id);
     items.push({
      id:p.id,
-     label:p.label,
-     type:"folder",
+     label:isTableId?t.label:p.label,
+     type:isTableId?"table":"folder",
+     tableId:isTableId?t.id:"",
      path:parts.slice(0,wanted.length+1).map(function(x){return x.id})
     });
    }
