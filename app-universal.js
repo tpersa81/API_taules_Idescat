@@ -1,6 +1,6 @@
 
 const MAX_CELLS=20000;
-const state={provider:"idescat",pxPreset:"finland",stats:[],metadata:null,lastData:null,lastQueryUrl:"",filters:new Map(),page:1,pageSize:100,requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],swedenV2Tables:null,eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[]};
+const state={provider:"idescat",pxPreset:"finland",stats:[],metadata:null,lastData:null,lastQueryUrl:"",filters:new Map(),page:1,pageSize:100,requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],swedenV2Tables:null,swedenV2Table:false,eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[]};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]});
 async function fetchJson(url,opt){opt=opt||{};const r=await fetch(url,opt);var text="";try{text=await r.text()}catch(e){throw new Error("No s'ha pogut llegir la resposta de l'API (HTTP "+r.status+").")}var d=null;try{d=text?JSON.parse(text):null}catch(e){if(!r.ok)throw new Error("Error HTTP "+r.status+": "+text.slice(0,300));throw new Error("Resposta no vàlida de l'API (HTTP "+r.status+").")}if(!r.ok||d&&d.class==="error")throw new Error(d&&(d.detail||d.label||d.message||d.error||d.title)||"Error HTTP "+r.status+".");return d}
@@ -143,6 +143,7 @@ async function swedenTryTableMetadata(path,tableId,v2TableId){
   if(ds2&&Array.isArray(ds2.id)&&ds2.id.length){
    state.selected.node=v2TableId;
    state.selected.table=v2TableId;
+   state.swedenV2Table=true;
    state.pxPath=path;
    state.metadata=ds2;
    renderMetadata(ds2);
@@ -158,6 +159,7 @@ async function swedenTryTableMetadata(path,tableId,v2TableId){
    var ds=pxToJsonStat(raw);
    state.selected.node=v2TableId;
    state.selected.table=v2TableId;
+   state.swedenV2Table=false;
    state.pxPath=path;
    state.metadata=ds;
    renderMetadata(ds);
@@ -264,6 +266,14 @@ async function swedenV2Query(query){
    valueCodes:Array.from(q.selection&&q.selection.values||[])
   }
  });
+ if(!state.swedenV2Table){
+  var v1=pxUrl(state.pxPath);
+  return await fetchJson(v1,{
+   method:"POST",
+   headers:{"Content-Type":"application/json"},
+   body:JSON.stringify(query)
+  });
+ }
  var u="https://statistikdatabasen.scb.se/api/v2/tables/"+encodeURIComponent(tableId)+"/data?lang=en&outputFormat=json-stat2";
  return await fetchJson(u,{
   method:"POST",
