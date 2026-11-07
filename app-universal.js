@@ -3,7 +3,7 @@ const MAX_CELLS=20000;
 const state={provider:"idescat",pxPreset:"finland",stats:[],metadata:null,lastData:null,lastQueryUrl:"",filters:new Map(),page:1,pageSize:100,requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],swedenV2Tables:null,eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[]};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]});
-async function fetchJson(url,opt){opt=opt||{};const r=await fetch(url,opt);var text="";try{text=await r.text()}catch(e){throw new Error("No s'ha pogut llegir la resposta de l'API (HTTP "+r.status+").")}var d=null;try{d=text?JSON.parse(text):null}catch(e){if(!r.ok)throw new Error("Error HTTP "+r.status+": "+text.slice(0,300));throw new Error("Resposta no vàlida de l'API (HTTP "+r.status+").")}if(!r.ok||d&&d.class==="error")throw new Error(d&&(d.label||d.message||d.error)||"Error HTTP "+r.status+".");return d}
+async function fetchJson(url,opt){opt=opt||{};const r=await fetch(url,opt);var text="";try{text=await r.text()}catch(e){throw new Error("No s'ha pogut llegir la resposta de l'API (HTTP "+r.status+").")}var d=null;try{d=text?JSON.parse(text):null}catch(e){if(!r.ok)throw new Error("Error HTTP "+r.status+": "+text.slice(0,300));throw new Error("Resposta no vàlida de l'API (HTTP "+r.status+").")}if(!r.ok||d&&d.class==="error")throw new Error(d&&(d.detail||d.label||d.message||d.error||d.title)||"Error HTTP "+r.status+".");return d}
 function a(d){if(Array.isArray(d))return d;if(d&&Array.isArray(d.data))return d.data;if(d&&Array.isArray(d.items))return d.items;if(d&&Array.isArray(d.result))return d.result;return[]}
 function f(o){for(var i=1;i<arguments.length;i++){var k=arguments[i];if(o&&o[k]!=null)return o[k]}return""}
 function fill(sel,items,ph){var old=sel.value;sel.innerHTML="";if(ph!==null)sel.append(new Option(ph||"— Selecciona —",""));items.forEach(function(x){sel.append(new Option(x.label||x.value,x.value))});if([].slice.call(sel.options).some(function(o){return o.value===old}))sel.value=old}
@@ -141,6 +141,11 @@ async function swedenTryTableMetadata(path,tableId){
   var raw=await fetchJson(v1);
   if(raw&&Array.isArray(raw.variables)&&raw.variables.length){
    var ds=pxToJsonStat(raw);
+   try{
+    var v2meta=await fetchJson("https://statistikdatabasen.scb.se/api/v2/tables/"+encodeURIComponent(tableId)+"/metadata?lang=en");
+    if(v2meta&&Array.isArray(v2meta.id)&&v2meta.id.length)ds=v2meta;
+    else if(v2meta&&Array.isArray(v2meta.variables)&&v2meta.variables.length)ds=swedenV2MetadataToJsonStat(v2meta);
+   }catch(e){}
    state.selected.node=tableId;
    state.selected.table=tableId;
    state.pxPath=path;
