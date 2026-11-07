@@ -152,6 +152,16 @@ async function pxSelect(target){
  state.filters.clear();
 
  if(state.pxPreset==="sweden"){
+  // The last selector is always a table in the universal PXWeb flow.
+  // Do not depend on the catalogue item's type flag.
+  if(target==="table"){
+   var tableItem=(state.pxItems.get("table")||[]).find(function(x){return String(x.id)===String(val)});
+   var swTableId=tableItem&&tableItem.tableId?tableItem.tableId:val;
+   var swTablePath=tableItem&&tableItem.path?tableItem.path:path;
+   var swOk=await swedenTryTableMetadata(swTablePath,swTableId,swTableId);
+   if(!swOk)throw new Error("No s'ha pogut carregar la taula de Statistics Sweden.");
+   return;
+  }
   var current=state.pxItems.get(target)||[];
   var item=current.find(function(x){return String(x.id)===String(val)});
   if(target==="table"||item&&item.type==="table"){
@@ -174,6 +184,27 @@ async function pxSelect(target){
 
  var current=state.pxItems.get(target)||[];
  var selectedItem=current.find(function(x){return String(x.id)===String(val)});
+
+ // In Finland the final table URL must end in .px even when the
+ // navigation catalogue did not mark the node as type "t".
+ if(state.pxPreset==="finland"&&target==="table"){
+  state.selected.table=val;
+  state.pxPath=path.slice();
+  if(!/\.px$/i.test(state.pxPath[state.pxPath.length-1]))
+    state.pxPath[state.pxPath.length-1]+=".px";
+  var finTableUrl=pxUrl(state.pxPath);
+  var finRaw=await fetchJson(finTableUrl);
+  if(finRaw&&Array.isArray(finRaw.variables)&&finRaw.variables.length){
+   state.swedenV2Table=false;
+   state.metadata=pxToJsonStat(finRaw);
+   renderMetadata(state.metadata);
+   $("tableInfo").hidden=false;
+   $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(finRaw.title||finRaw.label||val)+"<span class="path">"+esc(finTableUrl)+"</span>";
+   $("query").disabled=false;
+   return;
+  }
+  throw new Error("La taula de Statistics Finland no ha retornat metadades.");
+ }
  var directTable=selectedItem&&pxTable(selectedItem);
  if(directTable){
   state.selected.table=val;
