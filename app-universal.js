@@ -134,9 +134,34 @@ async function swedenAutoSelect(target){
 function pxTable(x){return/^(t|table)$/i.test(x&&x.type)||/\.px$/i.test(x&&x.id||"")||/_pxt_/i.test(x&&x.id||"")}
 async function pxSelect(target){
  var val=$(target).value;if(!val)return;
- var item=state.pxItems.get(target).find(function(x){return x.id===val}),order=["concept","cross","node","table"],i=order.indexOf(target);state.pxPath=state.pxPath.slice(0,i);state.pxPath.push(val);
- if(pxTable(item)){state.selected.node=val;state.selected.table=val;await pxMetadata();return}
- var next=order[i+1];if(next){["cross","node","table"].forEach(function(id,j){if(j>=i)resetSelect(id)});await pxChildren(state.pxPath,next);if(state.pxPreset==="sweden")await swedenAutoSelect(next)}
+ var item=state.pxItems.get(target).find(function(x){return x.id===val}),
+     order=["concept","cross","node","table"],
+     i=order.indexOf(target);
+ state.pxPath=state.pxPath.slice(0,i);
+ state.pxPath.push(val);
+ if(state.pxPreset==="sweden"){
+  if(target==="table"){
+   state.selected.node=val;
+   state.selected.table=val;
+   await pxMetadata();
+   return
+  }
+  var next=order[i+1];
+  if(next){
+   ["cross","node","table"].forEach(function(id,j){if(j>=i)resetSelect(id)});
+   await pxChildren(state.pxPath,next);
+   await swedenAutoSelect(next)
+  }
+  return
+ }
+ if(pxTable(item)){
+  state.selected.node=val;state.selected.table=val;await pxMetadata();return
+ }
+ var next=order[i+1];
+ if(next){
+  ["cross","node","table"].forEach(function(id,j){if(j>=i)resetSelect(id)});
+  await pxChildren(state.pxPath,next)
+ }
 }
 function pxToJsonStat(m){var ds={version:"2.0",class:"dataset",label:m.title||m.label||state.selected.table,id:[],size:[],dimension:{}};(m.variables||[]).forEach(function(v){var id=String(v.code||v.id||"");var vals=v.values||[];var labs=v.valueTexts||v.labels||vals;var index={},label={};vals.forEach(function(x,i){index[String(x)]=i;label[String(x)]=String(labs[i]==null?x:labs[i])});ds.id.push(id);ds.size.push(vals.length);ds.dimension[id]={label:String(v.text||v.label||id),category:{index:index,label:label}}});return ds}
 async function loadSwedenV2Tables(){
