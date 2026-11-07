@@ -184,7 +184,7 @@ async function pxSelect(target){
    state.metadata=pxToJsonStat(td);
    renderMetadata(state.metadata);
    $("tableInfo").hidden=false;
-   $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(td.title||td.label||val)+"<span class="path">"+esc(tableUrl)+"</span>";
+   $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(td.title||td.label||val)+"<span class=\"path\">"+esc(tableUrl)+"</span>";
    $("query").disabled=false;
    return;
   }
