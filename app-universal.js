@@ -132,26 +132,42 @@ async function swedenAutoSelect(target){
 }
 
 function pxTable(x){return/^(t|table)$/i.test(x&&x.type)||/\.px$/i.test(x&&x.id||"")||/_pxt_/i.test(x&&x.id||"")}
-async function swedenTryTableMetadata(tableId){
+async function swedenTryTableMetadata(path,tableId){
+ path=Array.isArray(path)?path.slice():[];
  tableId=String(tableId||"").trim();
  if(!tableId)return false;
+ var v1=pxUrl(path);
+ try{
+  var raw=await fetchJson(v1);
+  if(raw&&Array.isArray(raw.variables)&&raw.variables.length){
+   var ds=pxToJsonStat(raw);
+   state.selected.node=tableId;
+   state.selected.table=tableId;
+   state.pxPath=path;
+   state.metadata=ds;
+   renderMetadata(ds);
+   $("tableInfo").hidden=false;
+   $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||tableId)+"<span class=\"path\">"+esc(v1)+"</span>";
+   $("query").disabled=false;
+   return true;
+  }
+ }catch(e){}
  var u="https://statistikdatabasen.scb.se/api/v2/tables/"+encodeURIComponent(tableId)+"/metadata?lang=en";
  try{
-  var raw=await fetchJson(u),ds=swedenV2MetadataToJsonStat(raw);
-  if(!ds||!Array.isArray(ds.id)||!ds.id.length)return false;
-  state.selected.node=tableId;
-  state.selected.table=tableId;
-  state.pxPath=[tableId];
-  state.metadata=ds;
-  renderMetadata(ds);
-  $("tableInfo").hidden=false;
-  $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.label||tableId)+"<span class=\"path\">"+esc(u)+"</span>";
-  $("query").disabled=false;
-  return true;
- }catch(e){
-  if(/HTTP 404/i.test(String(e&&e.message||e)))return false;
-  return false;
- }
+  var raw2=await fetchJson(u),ds2=swedenV2MetadataToJsonStat(raw2);
+  if(ds2&&Array.isArray(ds2.id)&&ds2.id.length){
+   state.selected.node=tableId;
+   state.selected.table=tableId;
+   state.pxPath=path;
+   state.metadata=ds2;
+   renderMetadata(ds2);
+   $("tableInfo").hidden=false;
+   $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw2.label||tableId)+"<span class=\"path\">"+esc(u)+"</span>";
+   $("query").disabled=false;
+   return true;
+  }
+ }catch(e){}
+ return false;
 }
 async function pxSelect(target){
  var val=$(target).value;if(!val)return;
@@ -163,7 +179,7 @@ async function pxSelect(target){
  if(state.pxPreset==="sweden"){
   // A Statistics Sweden, un element pot ser ja una taula abans d'arribar
   // al selector visual "Taula". Ho comprovem directament amb l'API v2.
-  if(await swedenTryTableMetadata(val))return;
+  if(await swedenTryTableMetadata(state.pxPath,val))return;
   var next=order[i+1];
   if(next){
    ["cross","node","table"].forEach(function(id,j){if(j>=i)resetSelect(id)});
