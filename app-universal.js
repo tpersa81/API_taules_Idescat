@@ -177,9 +177,10 @@ async function pxSelect(target){
  state.pxPath=state.pxPath.slice(0,i+1);
  state.pxPath.push(val);
  if(state.pxPreset==="sweden"){
-  if(item&&item.type==="table"){
-   if(await swedenTryTableMetadata(state.pxPath,val,item.tableId||val))return;
-  }
+  /* A SCB v1 hierarchy node can actually be a table even when the
+     catalogue does not mark it explicitly as type=table. Try the v2
+     metadata endpoint first; if it succeeds, we have the variables. */
+  if(await swedenTryTableMetadata(state.pxPath,val,item&&item.tableId||val))return;
   var next=order[i+1];
   if(next){
    ["cross","node","table"].forEach(function(id,j){if(j>=i)resetSelect(id)});
