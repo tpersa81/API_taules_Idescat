@@ -154,8 +154,10 @@ async function pxSelect(target){
  if(state.pxPreset==="sweden"){
   var current=state.pxItems.get(target)||[];
   var item=current.find(function(x){return String(x.id)===String(val)});
-  if(item&&item.type==="table"){
-   var ok=await swedenTryTableMetadata(item.path||path,item.tableId||item.id,item.tableId||item.id);
+  if(target==="table"||item&&item.type==="table"){
+   var tablePath=item&&item.path?item.path:path;
+   var tableId=item&&item.tableId?item.tableId:val;
+   var ok=await swedenTryTableMetadata(tablePath,tableId,tableId);
    if(!ok)throw new Error("No s'ha pogut carregar la taula de Statistics Sweden.");
    return;
   }
@@ -294,39 +296,64 @@ async function swedenTryTableMetadata(path,tableId,v2TableId){
  path=Array.isArray(path)?path.slice():[];
  tableId=String(tableId||"").trim();
  v2TableId=String(v2TableId||tableId).trim();
- if(!v2TableId)return false;
- var u="https://statistikdatabasen.scb.se/api/v2/tables/"+encodeURIComponent(v2TableId)+"/metadata?lang=en";
- try{
-  var raw2=await fetchJson(u),ds2=swedenV2MetadataToJsonStat(raw2);
-  if(ds2&&Array.isArray(ds2.id)&&ds2.id.length){
-   state.selected.node=v2TableId;state.selected.table=v2TableId;state.swedenV2Table=true;state.pxPath=path;state.metadata=ds2;renderMetadata(ds2);
-   $("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw2.label||tableId||v2TableId)+"<span class=\"path\">"+esc(u)+"</span>";
-   $("query").disabled=false;return true;
-  }
- }catch(e){}
- try{
-  var v1=pxUrl(path),raw=await fetchJson(v1);
-  if(raw&&Array.isArray(raw.variables)&&raw.variables.length){
-   var ds=pxToJsonStat(raw),legacyTitle=String(raw.title||raw.label||tableId||v2TableId).trim();
-   await loadSwedenV2Tables();
-   var candidates=(state.swedenV2Tables||[]).filter(function(t){
-    return String(t.label||"").trim().toLowerCase()===legacyTitle.toLowerCase();
-   });
-   for(var ci=0;ci<candidates.length;ci++){
-    try{
-     var mapped=candidates[ci],mu="https://statistikdatabasen.scb.se/api/v2/tables/"+encodeURIComponent(mapped.id)+"/metadata?lang=en",mappedRaw=await fetchJson(mu),mappedDs=swedenV2MetadataToJsonStat(mappedRaw);
-     if(mappedDs&&Array.isArray(mappedDs.id)&&mappedDs.id.length){
-      state.selected.node=mapped.id;state.selected.table=mapped.id;state.swedenV2Table=true;state.pxPath=path;state.metadata=mappedDs;renderMetadata(mappedDs);
-      $("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(mappedRaw.label||legacyTitle)+"<span class=\"path\">"+esc(mu)+"</span>";
-      $("query").disabled=false;return true;
-     }
-    }catch(e){}
+ if(!tableId&&!v2TableId)return false;
+
+ // First use PxWeb v1 with the exact path selected by the user.
+ var v1Candidates=[];
+ if(path.length)v1Candidates.push(pxUrl(path));
+ if(tableId){
+  var shortV1=provider().base.replace(/\/+$/,"")+"/"+encodeURIComponent(tableId);
+  if(!v1Candidates.some(function(u){return u===shortV1}))v1Candidates.push(shortV1);
+ }
+ for(var vi=0;vi<v1Candidates.length;vi++){
+  try{
+   var v1=v1Candidates[vi],raw=await fetchJson(v1);
+   if(raw&&Array.isArray(raw.variables)&&raw.variables.length){
+    var ds=pxToJsonStat(raw);
+    state.selected.node=tableId||v2TableId;
+    state.selected.table=tableId||v2TableId;
+    state.swedenV2Table=false;
+    state.pxPath=path;
+    state.metadata=ds;
+    renderMetadata(ds);
+    $("tableInfo").hidden=false;
+    $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||raw.label||tableId||v2TableId)+"<span class=\"path\">"+esc(v1)+"</span>";
+    $("query").disabled=false;
+    return true;
    }
-   state.selected.node=v2TableId;state.selected.table=v2TableId;state.swedenV2Table=false;state.pxPath=path;state.metadata=ds;renderMetadata(ds);
-   $("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(legacyTitle)+"<span class=\"path\">"+esc(v1)+"</span>";
-   $("query").disabled=false;return true;
+  }catch(e){}
+ }
+
+ // Then try PxWebApi v2, resolving the v1 identifier against the v2 catalogue.
+ try{
+  await loadSwedenV2Tables();
+  var candidates=(state.swedenV2Tables||[]).filter(function(t){
+   return String(t.id)===v2TableId ||
+          String(t.id)===tableId ||
+          String(t.label||"").trim().toLowerCase()===String(tableId).trim().toLowerCase();
+  });
+  for(var ci=0;ci<candidates.length;ci++){
+   try{
+    var mapped=candidates[ci],
+        mu="https://statistikdatabasen.scb.se/api/v2/tables/"+encodeURIComponent(mapped.id)+"/metadata?lang=en",
+        mappedRaw=await fetchJson(mu),
+        mappedDs=swedenV2MetadataToJsonStat(mappedRaw);
+    if(mappedDs&&Array.isArray(mappedDs.id)&&mappedDs.id.length){
+     state.selected.node=mapped.id;
+     state.selected.table=mapped.id;
+     state.swedenV2Table=true;
+     state.pxPath=path;
+     state.metadata=mappedDs;
+     renderMetadata(mappedDs);
+     $("tableInfo").hidden=false;
+     $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(mappedRaw.label||mapped.label||tableId||v2TableId)+"<span class=\"path\">"+esc(mu)+"</span>";
+     $("query").disabled=false;
+     return true;
+    }
+   }catch(e){}
   }
  }catch(e){}
+
  return false;
 }
 function swedenV2MetadataToJsonStat(m){if(m&&Array.isArray(m.id)&&m.dimension)return m;var vars=Array.isArray(m&&m.variables)?m.variables:[],ds={version:"2.0",class:"dataset",label:m&&m.label||state.selected.table,id:[],size:[],dimension:{}};vars.forEach(function(v){var id=String(f(v,"id","code","variableCode")).trim(),vals=v.values||v.valueCodes||[],labs=v.valueTexts||v.labels||v.texts||vals,index={},label={};vals.forEach(function(x,i){index[String(x)]=i;label[String(x)]=String(labs[i]==null?x:labs[i])});if(id){ds.id.push(id);ds.size.push(vals.length);ds.dimension[id]={label:String(f(v,"label","text","name")||id),category:{index:index,label:label}}}});return ds}
