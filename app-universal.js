@@ -170,6 +170,25 @@ async function pxSelect(target){
   return;
  }
 
+ var current=state.pxItems.get(target)||[];
+ var selectedItem=current.find(function(x){return String(x.id)===String(val)});
+ var directTable=selectedItem&&pxTable(selectedItem);
+ if(directTable){
+  state.selected.table=val;
+  state.pxPath=path.slice();
+  if(state.pxPreset==="finland"&&!/\\.px$/i.test(state.pxPath[state.pxPath.length-1]))state.pxPath[state.pxPath.length-1]+=".px";
+  var tableUrl=pxUrl(state.pxPath);
+  var td=await fetchJson(tableUrl);
+  if(td&&Array.isArray(td.variables)&&td.variables.length){
+   state.swedenV2Table=false;
+   state.metadata=pxToJsonStat(td);
+   renderMetadata(state.metadata);
+   $("tableInfo").hidden=false;
+   $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(td.title||td.label||val)+"<span class="path">"+esc(tableUrl)+"</span>";
+   $("query").disabled=false;
+   return;
+  }
+ }
  var d=await fetchJson(pxUrl(path));
  if(d&&Array.isArray(d.variables)&&d.variables.length){
   state.selected.table=val;
