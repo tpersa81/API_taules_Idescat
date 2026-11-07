@@ -49,6 +49,7 @@ async function loadStats(){
  if(state.provider==="idescat")out=collection(await fetchJson(c.base+"?lang=ca")).map(function(x){return{value:x.id,label:x.id+" · "+x.label}});
  else if(state.provider==="ine"){var d=await fetchJson(c.base+"/ES/OPERACIONES_DISPONIBLES?det=1");out=a(d).map(function(x){var id=String(f(x,"Id","id","Codigo","Code"));return{value:id,label:id+" · "+String(f(x,"Nombre","nombre","Name","Descripcion","Description")||id)}}).filter(function(x){return x.value})}
  else if(state.provider==="eurostat"){await loadEurostatTOC();out=state.eurostatRoots.map(function(x){return{value:x.code,label:x.label}})}
+ else if(state.pxPreset==="sweden"){await loadSwedenV2Tables();out=swedenV2Children([],null).map(function(x){return{value:x.id,label:x.id+" · "+x.label}})}
  else out=a(await fetchJson(c.base)).map(function(x){var id=String(f(x,"id","dbid","code","path"));return{value:id,label:String(f(x,"text","label","name","title")||id)}}).filter(function(x){return x.value});
  if(loadToken!==state.requestToken||loadProvider!==state.provider||(loadProvider==="pxweb"&&loadPreset!==state.pxPreset))return;
  out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});state.stats=out;fill($("stat"),out);$("stat").disabled=!out.length;
@@ -94,6 +95,7 @@ async function onStatChange(){
   if(state.provider==="idescat"){var d=await fetchJson(provider().base+"/"+encodeURIComponent(state.selected.stat)+"?lang=ca");state.catalog=collection(d).map(function(x){return{node:x.id,name:x.label,concept:deriveConcept(x.label),cross:deriveCross(x.label)}});var cs=[...new Set(state.catalog.map(function(x){return x.concept}).filter(Boolean))];fill($("concept"),cs.map(function(x){return{value:x,label:x}}));$("concept").disabled=!cs.length}
   else if(state.provider==="ine"){var t=await fetchJson(provider().base+"/ES/TABLAS_OPERACION/"+encodeURIComponent(state.selected.stat)+"?det=1");state.ineTables=a(t).map(function(x){var id=String(f(x,"Id","id","Codigo","Code"));return{value:id,label:String(f(x,"Nombre","nombre","Name","Descripcion","Description")||id)}}).filter(function(x){return x.value});fill($("node"),state.ineTables);$("node").disabled=!state.ineTables.length;$("concept").disabled=true;$("cross").disabled=true;$("table").disabled=true;$("geo").disabled=true}
   else if(state.provider==="eurostat"){await eurostatSelectRoot(state.selected.stat)}
+  else if(state.pxPreset==="sweden"){state.pxPath=[state.selected.stat];await swedenV2Children(state.pxPath,"concept")}
   else{state.pxPath=[state.selected.stat];await pxChildren(state.pxPath,"concept")}
  }catch(e){status(e.message,"error")}finally{busy(false)}
 }
@@ -125,8 +127,25 @@ async function pxChildren(path,target){
 }
 function pxTable(x){return/^(t|table)$/i.test(x&&x.type)||/\.px$/i.test(x&&x.id||"")||/_pxt_/i.test(x&&x.id||"")}
 async function pxSelect(target){
- var val=$(target).value;if(!val)return;var item=state.pxItems.get(target).find(function(x){return x.id===val}),order=["concept","cross","node","table"],i=order.indexOf(target);state.pxPath=state.pxPath.slice(0,i);state.pxPath.push(val);if(pxTable(item)){state.selected.node=val;state.selected.table=val;await pxMetadata();return}var next=order[i+1];if(next){["cross","node","table"].forEach(function(id,j){if(j>=i)resetSelect(id)});await pxChildren(state.pxPath,next)}}
+ var val=$(target).value;if(!val)return;
+ if(state.pxPreset==="sweden"){var item=(state.pxItems.get(target)||[]).find(function(x){return x.id===val});if(!item)return;var order=["concept","cross","node","table"],i=order.indexOf(target);state.pxPath=state.pxPath.slice(0,i);state.pxPath.push(val);if(item.type==="table"){state.selected.node=val;state.selected.table=item.tableId||val;state.pxPath=[].concat(item.path||[]);await pxMetadata();return}var next=order[i+1];if(next){["cross","node","table"].forEach(function(id,j){if(j>=i)resetSelect(id)});await swedenV2Children(state.pxPath,next)}return}
+ var item=state.pxItems.get(target).find(function(x){return x.id===val}),order=["concept","cross","node","table"],i=order.indexOf(target);state.pxPath=state.pxPath.slice(0,i);state.pxPath.push(val);if(pxTable(item)){state.selected.node=val;state.selected.table=val;await pxMetadata();return}var next=order[i+1];if(next){["cross","node","table"].forEach(function(id,j){if(j>=i)resetSelect(id)});await pxChildren(state.pxPath,next)}}
 function pxToJsonStat(m){var ds={version:"2.0",class:"dataset",label:m.title||m.label||state.selected.table,id:[],size:[],dimension:{}};(m.variables||[]).forEach(function(v){var id=String(v.code||v.id||"");var vals=v.values||[];var labs=v.valueTexts||v.labels||vals;var index={},label={};vals.forEach(function(x,i){index[String(x)]=i;label[String(x)]=String(labs[i]==null?x:labs[i])});ds.id.push(id);ds.size.push(vals.length);ds.dimension[id]={label:String(v.text||v.label||id),category:{index:index,label:label}}});return ds}
+async function loadSwedenV2Tables(){
+ if(state.swedenV2Tables&&state.swedenV2Tables.length)return;
+ var all=[],page=1,pageSize=500;
+ for(var guard=0;guard<20;guard++,page++){
+  var u="https://statistikdatabasen.scb.se/api/v2/tables?lang=en&pageNumber="+page+"&pageSize="+pageSize;
+  var d=await fetchJson(u),rows=Array.isArray(d&&d.tables)?d.tables:a(d);all=all.concat(rows);
+  var pi=d&&d.pageInfo||d&&d.pagination||{},totalPages=Number(f(pi,"totalPages","pages","pageCount"));
+  if(totalPages&&page>=totalPages)break;if(!rows.length||rows.length<pageSize)break;
+ }
+ if(!all.length)throw new Error("No s'han pogut carregar les taules de Statistics Sweden amb PxWebApi v2.");
+ state.swedenV2Tables=all.map(function(t){var id=String(f(t,"id","tableId","code","tableCode")).trim(),label=String(f(t,"label","title","text","name")||id).trim();return{id:id,label:label,paths:Array.isArray(t.paths)?t.paths:[]}}).filter(function(t){return t.id});
+}
+function swedenPathParts(t){var out=[];(t.paths||[]).forEach(function(path){if(Array.isArray(path)){var p=path.map(function(x){return{id:String(f(x,"id","code","path")).trim(),label:String(f(x,"label","text","name","title")||f(x,"id","code","path")).trim()}}).filter(function(x){return x.id});if(p.length)out.push(p)}});return out}
+function swedenV2Children(path,target){var wanted=(path||[]).map(String),items=[],seen=new Set();(state.swedenV2Tables||[]).forEach(function(t){swedenPathParts(t).forEach(function(parts){if(wanted.length>parts.length)return;for(var i=0;i<wanted.length;i++)if(parts[i].id!==wanted[i])return;if(wanted.length===parts.length)return;var p=parts[wanted.length],key=p.id;if(!seen.has(key)){seen.add(key);items.push({id:p.id,label:p.label,type:"folder",path:parts.slice(0,wanted.length+1).map(function(x){return x.id})})}if(wanted.length+1===parts.length){var tk="__table__"+t.id;if(!seen.has(tk)){seen.add(tk);items.push({id:t.id,label:t.label,type:"table",tableId:t.id,path:parts.map(function(x){return x.id})})}}})});items.sort(function(x,y){return x.label.localeCompare(y.label,"sv",{numeric:true})});if(target){state.pxItems.set(target,items);fill($(target),items.map(function(x){return{value:x.id,label:x.id+" · "+x.label}}));$(target).disabled=!items.length}return items}
+function swedenV2MetadataToJsonStat(m){var vars=Array.isArray(m&&m.variables)?m.variables:[],ds={version:"2.0",class:"dataset",label:m&&m.label||state.selected.table,id:[],size:[],dimension:{}};vars.forEach(function(v){var id=String(f(v,"id","code","variableCode")).trim(),vals=v.values||v.valueCodes||[],labs=v.valueTexts||v.labels||v.texts||vals,index={},label={};vals.forEach(function(x,i){index[String(x)]=i;label[String(x)]=String(labs[i]==null?x:labs[i])});if(id){ds.id.push(id);ds.size.push(vals.length);ds.dimension[id]={label:String(f(v,"label","text","name")||id),category:{index:index,label:label}}}});return ds}
 async function swedenV2Query(query){
  var tableId=String(state.selected.table||"");
  var last=state.pxPath.length?String(state.pxPath[state.pxPath.length-1]):"";
@@ -148,7 +167,14 @@ async function swedenV2Query(query){
  var u="https://statistikdatabasen.scb.se/api/v2/tables/"+encodeURIComponent(tableId)+"/data?"+p.toString();
  return await fetchJson(u)
 }
-async function pxMetadata(){var raw=await fetchJson(pxUrl(state.pxPath)),ds=pxToJsonStat(raw);state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||raw.label||state.selected.table)+"<span class=\"path\">"+esc(pxUrl(state.pxPath))+"</span>";$("query").disabled=false}
+async function pxMetadata(){
+ var raw,ds;
+ if(state.pxPreset==="sweden"){
+  var tableId=String(state.selected.table||"");
+  var mu="https://statistikdatabasen.scb.se/api/v2/tables/"+encodeURIComponent(tableId)+"/metadata?lang=en";
+  raw=await fetchJson(mu);ds=swedenV2MetadataToJsonStat(raw);state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.label||state.selected.table)+"<span class=\"path\">"+esc(mu)+"</span>";$("query").disabled=false;return
+ }
+ raw=await fetchJson(pxUrl(state.pxPath));ds=pxToJsonStat(raw);state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||raw.label||state.selected.table)+"<span class=\"path\">"+esc(pxUrl(state.pxPath))+"</span>";$("query").disabled=false}
 function ineJsonStatUrl(tableId){return "https://servicios.ine.es/wstempus/jsstat/ES/DATASET/"+encodeURIComponent(String(tableId))}
 async function ineMetadata(tableId){
  var u=ineJsonStatUrl(tableId);
@@ -255,14 +281,14 @@ function renderMetadata(ds){
  });updateCells()
 }
 function selectedFilters(){var q={};dims(state.metadata).forEach(function(d){var s=state.filters.get(d.id)||new Set(),n=d.categories.length;if(s.size&&s.size!==n)q[d.id]=Array.from(s)});return q}
-function updateCells(){var n=1;state.filters.forEach(function(s){n*=s.size});var missing=Array.from(state.filters.values()).some(function(s){return !s.size});var cellLimit=state.provider==="idescat"?MAX_CELLS:(state.provider==="pxweb"&&state.pxPreset==="finland"?100000:Infinity);var tooMany=n>cellLimit;var bad=missing||tooMany;$("cellInfo").hidden=false;var icon=bad?"✕":"✓";var msg=missing?"Cal seleccionar valors a totes les dimensions.":tooMany?"Cal filtrar la taula":"Es pot continuar."; $("cellInfo").innerHTML="<span class=\"status-icon "+(bad?"bad":"ok")+"\" aria-hidden=\"true\">"+icon+"</span> <strong>Nombre de cel·les de la taula filtrada:</strong> "+n.toLocaleString("ca-ES")+" · <span class=\""+(bad?"bad":"ok")+"\">"+msg+"</span>";document.querySelectorAll(".filter").forEach(function(x){x.querySelector(".selected-count").textContent=(state.filters.get(x.dataset.dim)||new Set()).size.toLocaleString("ca-ES")+" seleccionades"});$("query").disabled=bad||!state.metadata}
+function updateCells(){var n=1;state.filters.forEach(function(s){n*=s.size});var missing=Array.from(state.filters.values()).some(function(s){return !s.size});var cellLimit=state.provider==="idescat"?MAX_CELLS:(state.provider==="pxweb"&&state.pxPreset==="finland"?100000:(state.provider==="pxweb"&&state.pxPreset==="sweden"?150000:Infinity));var tooMany=n>cellLimit;var bad=missing||tooMany;$("cellInfo").hidden=false;var icon=bad?"✕":"✓";var msg=missing?"Cal seleccionar valors a totes les dimensions.":tooMany?"Cal filtrar la taula":"Es pot continuar."; $("cellInfo").innerHTML="<span class=\"status-icon "+(bad?"bad":"ok")+"\" aria-hidden=\"true\">"+icon+"</span> <strong>Nombre de cel·les de la taula filtrada:</strong> "+n.toLocaleString("ca-ES")+" · <span class=\""+(bad?"bad":"ok")+"\">"+msg+"</span>";document.querySelectorAll(".filter").forEach(function(x){x.querySelector(".selected-count").textContent=(state.filters.get(x.dataset.dim)||new Set()).size.toLocaleString("ca-ES")+" seleccionades"});$("query").disabled=bad||!state.metadata}
 function buildEurostatParams(){var p=new URLSearchParams();p.set("format","JSON");p.set("lang","EN");var q=selectedFilters();Object.keys(q).forEach(function(k){q[k].forEach(function(v){p.append(k,v)})});return p}
 async function runQuery(){
  var token=++state.requestToken;busy(true);$("query").disabled=true;status("Consultant l’API…");
  try{var ds;
   if(state.provider==="idescat"){var base=provider().base+"/"+state.selected.stat+"/"+state.selected.node+"/"+state.selected.table+"/"+state.selected.geo+"/data",q=new URLSearchParams();Object.keys(selectedFilters()).forEach(function(k){q.set(k,selectedFilters()[k].join(","))});q.set("lang","ca");var u=base+"?"+q.toString();ds=await fetchJson(u);state.lastQueryUrl=u}
   else if(state.provider==="eurostat"){var u2=provider().base+"/data/"+state.selected.stat+"?"+buildEurostatParams().toString();ds=await fetchJson(u2);state.lastQueryUrl=u2}
-  else if(state.provider==="pxweb"){var query={query:[],response:{format:"json-stat2"}};dims(state.metadata).forEach(function(d){query.query.push({code:d.id,selection:{filter:"item",values:Array.from(state.filters.get(d.id)||[])}})});var up=pxUrl(state.pxPath);if(state.pxPreset==="sweden"){try{ds=await swedenV2Query(query)}catch(swErr){ds=await fetchJson(up,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(query)});status("Statistics Sweden: s'ha utilitzat PxWebApi v1 com a alternativa mentre es resol la identificació v2.","")} }else{ds=await fetchJson(up,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(query)})}state.lastQueryUrl=up}
+  else if(state.provider==="pxweb"){var query={query:[],response:{format:"json-stat2"}};dims(state.metadata).forEach(function(d){query.query.push({code:d.id,selection:{filter:"item",values:Array.from(state.filters.get(d.id)||[])}})});var up=pxUrl(state.pxPath);if(state.pxPreset==="sweden"){ds=await swedenV2Query(query)}else{ds=await fetchJson(up,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(query)})}state.lastQueryUrl=up}
   else {var qi=new URLSearchParams();Object.keys(selectedFilters()).forEach(function(k){selectedFilters()[k].forEach(function(v){qi.append("tv",k+":"+v)})});var ui=ineJsonStatUrl(state.selected.table)+"?"+qi.toString();ds=await fetchJson(ui);state.lastQueryUrl=ui}
   if(token!==state.requestToken)return;state.lastData=ds;state.page=1;renderResults(ds);var n=Array.isArray(ds.value)?ds.value.length:Object.keys(ds.value||{}).length;$("resultCount").textContent=n.toLocaleString("ca-ES")+" valors retornats";$("exportCsv").disabled=false;$("exportXlsx").disabled=false;$("addToCart").disabled=false;status("")
  }catch(e){if(token===state.requestToken){$("results").innerHTML="<div class=\"error\">"+esc(e.message)+"</div>";status("Error","error")}}finally{busy(false);updateCells()}
