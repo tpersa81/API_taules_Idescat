@@ -3,7 +3,7 @@ const MAX_CELLS=20000;
 const state={provider:"idescat",pxPreset:"finland",stats:[],metadata:null,lastData:null,lastQueryUrl:"",filters:new Map(),page:1,pageSize:100,requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],swedenV2Tables:null,swedenV2Table:false,eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[]};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]});
-async function fetchJson(url,opt){opt=opt||{};const r=await fetch(url,opt);var text="";try{text=await r.text()}catch(e){throw new Error("No s'ha pogut llegir la resposta de l'API (HTTP "+r.status+").")}var d=null;try{d=text?JSON.parse(text):null}catch(e){if(!r.ok)throw new Error("Error HTTP "+r.status+": "+text.slice(0,300));throw new Error("Resposta no vàlida de l'API (HTTP "+r.status+").")}if(!r.ok||d&&d.class==="error")throw new Error(d&&(d.detail||d.label||d.message||d.error||d.title)||"Error HTTP "+r.status+".");return d}
+async function fetchJson(url,opt){opt=opt||{};var r;try{r=await fetch(url,opt)}catch(e){throw new Error("No s'ha pogut connectar amb l'API. "+(e&&e.message||"Failed to fetch")+" · "+url)}var text="";try{text=await r.text()}catch(e){throw new Error("No s'ha pogut llegir la resposta de l'API (HTTP "+r.status+").")}var d=null;try{text?JSON.parse(text):null}catch(e){if(!r.ok)throw new Error("Error HTTP "+r.status+": "+text.slice(0,300));throw new Error("Resposta no vàlida de l'API (HTTP "+r.status+").")}if(!r.ok||d&&d.class==="error")throw new Error(d&&(d.detail||d.label||d.message||d.error||d.title)||"Error HTTP "+r.status+".");return d}
 function a(d){if(Array.isArray(d))return d;if(d&&Array.isArray(d.data))return d.data;if(d&&Array.isArray(d.items))return d.items;if(d&&Array.isArray(d.result))return d.result;return[]}
 function f(o){for(var i=1;i<arguments.length;i++){var k=arguments[i];if(o&&o[k]!=null)return o[k]}return""}
 function fill(sel,items,ph){var old=sel.value;sel.innerHTML="";if(ph!==null)sel.append(new Option(ph||"— Selecciona —",""));items.forEach(function(x){sel.append(new Option(x.label||x.value,x.value))});if([].slice.call(sel.options).some(function(o){return o.value===old}))sel.value=old}
@@ -156,96 +156,25 @@ async function swedenTryTableMetadata(path,tableId,v2TableId){
  try{
   var v1=pxUrl(path),raw=await fetchJson(v1);
   if(raw&&Array.isArray(raw.variables)&&raw.variables.length){
-   var ds=pxToJsonStat(raw);
-   state.selected.node=v2TableId;
-   state.selected.table=v2TableId;
-   state.swedenV2Table=false;
-   state.pxPath=path;
-   state.metadata=ds;
-   renderMetadata(ds);
-   $("tableInfo").hidden=false;
-   $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||tableId||v2TableId)+"<span class=\"path\">"+esc(v1)+"</span>";
-   $("query").disabled=false;
-   return true;
-  }
- }catch(e){}
- return false;
-}
-async function pxSelect(target){
- var val=$(target).value;if(!val)return;
- var item=state.pxItems.get(target).find(function(x){return x.id===val}),
-     order=["concept","cross","node","table"],
-     i=order.indexOf(target);
- state.pxPath=state.pxPath.slice(0,i+1);
- state.pxPath.push(val);
- if(state.pxPreset==="sweden"){
-  /* A SCB v1 hierarchy node can actually be a table even when the
-     catalogue does not mark it explicitly as type=table. Try the v2
-     metadata endpoint first; if it succeeds, we have the variables. */
-  if(await swedenTryTableMetadata(state.pxPath,val,item&&item.tableId||val))return;
-  var next=order[i+1];
-  if(next){
-   ["cross","node","table"].forEach(function(id,j){if(j>=i)resetSelect(id)});
+   var ds=pxToJsonStat(raw),legacyTitle=String(raw.title||raw.label||tableId||v2TableId).trim();
+   /* Resolve legacy v1 table ids against the v2 catalogue by title. */
    await loadSwedenV2Tables();
-   await swedenV2Children(state.pxPath,next);
-   await swedenAutoSelect(next)
-  }
-  return
- }
- if(pxTable(item)){
-  state.selected.node=val;state.selected.table=val;await pxMetadata();return
- }
- var next=order[i+1];
- if(next){
-  ["cross","node","table"].forEach(function(id,j){if(j>=i)resetSelect(id)});
-  await pxChildren(state.pxPath,next)
- }
-}
-function pxToJsonStat(m){var ds={version:"2.0",class:"dataset",label:m.title||m.label||state.selected.table,id:[],size:[],dimension:{}};(m.variables||[]).forEach(function(v){var id=String(v.code||v.id||"");var vals=v.values||[];var labs=v.valueTexts||v.labels||vals;var index={},label={};vals.forEach(function(x,i){index[String(x)]=i;label[String(x)]=String(labs[i]==null?x:labs[i])});ds.id.push(id);ds.size.push(vals.length);ds.dimension[id]={label:String(v.text||v.label||id),category:{index:index,label:label}}});return ds}
-async function loadSwedenV2Tables(){
- if(state.swedenV2Tables&&state.swedenV2Tables.length)return;
- var all=[],page=1,pageSize=500;
- for(var guard=0;guard<20;guard++,page++){
-  var u="https://statistikdatabasen.scb.se/api/v2/tables?lang=en&pageNumber="+page+"&pageSize="+pageSize;
-  var d=await fetchJson(u),rows=Array.isArray(d&&d.tables)?d.tables:a(d);all=all.concat(rows);
-  var pi=d&&d.page||d&&d.pageInfo||d&&d.pagination||{},totalPages=Number(f(pi,"totalPages","pages","pageCount"));
-  if(totalPages&&page>=totalPages)break;if(!rows.length||rows.length<pageSize)break;
- }
- if(!all.length)throw new Error("No s'han pogut carregar les taules de Statistics Sweden amb PxWebApi v2.");
- state.swedenV2Tables=all.map(function(t){var id=String(f(t,"id","tableId","code","tableCode")).trim(),label=String(f(t,"label","title","text","name")||id).trim();return{id:id,label:label,paths:Array.isArray(t.paths)?t.paths:[]}}).filter(function(t){return t.id});
-}
-function swedenPathParts(t){var out=[];(t.paths||[]).forEach(function(path){if(Array.isArray(path)){var p=path.map(function(x){return{id:String(f(x,"id","code","path")).trim(),label:String(f(x,"label","text","name","title")||f(x,"id","code","path")).trim()}}).filter(function(x){return x.id});if(p.length)out.push(p)}});return out}
-async function swedenV2Children(path,target){
- var wanted=(path||[]).map(String),items=[],seen=new Set();
- (state.swedenV2Tables||[]).forEach(function(t){
-  swedenPathParts(t).forEach(function(parts){
-   if(wanted.length>parts.length)return;
-   for(var i=0;i<wanted.length;i++)if(parts[i].id!==wanted[i])return;
-   if(wanted.length===parts.length)return;
-   var p=parts[wanted.length],key=p.id;
-   if(!seen.has(key)){
-    seen.add(key);
-    items.push({id:p.id,label:p.label,type:"folder",path:parts.slice(0,wanted.length+1).map(function(x){return x.id})});
+   var candidates=(state.swedenV2Tables||[]).filter(function(t){
+    return String(t.label||"").trim().toLowerCase()===legacyTitle.toLowerCase();
+   });
+   for(var ci=0;ci<candidates.length;ci++){
+    try{
+     var mapped=candidates[ci],mu="https://statistikdatabasen.scb.se/api/v2/tables/"+encodeURIComponent(mapped.id)+"/metadata?lang=en",mappedRaw=await fetchJson(mu),mappedDs=swedenV2MetadataToJsonStat(mappedRaw);
+     if(mappedDs&&Array.isArray(mappedDs.id)&&mappedDs.id.length){
+      state.selected.node=mapped.id;state.selected.table=mapped.id;state.swedenV2Table=true;state.pxPath=path;state.metadata=mappedDs;renderMetadata(mappedDs);
+      $("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(mappedRaw.label||legacyTitle)+"<span class=\"path\">"+esc(mu)+"</span>";
+      $("query").disabled=false;return true;
+     }
+    }catch(e){}
    }
-   if(wanted.length+1===parts.length){
-    var tk="__table__"+t.id;
-    if(!seen.has(tk)){
-     seen.add(tk);
-     items.push({id:t.id,label:t.label,type:"table",tableId:t.id,path:parts.map(function(x){return x.id})});
-    }
-   }
-  })
- });
- /* SCB's v2 catalogue is authoritative for table ids, but the legacy v1
-    hierarchy is still useful when a v2 path does not expose the intermediate
-    node. In particular this can happen for tables below AA003B. */
- if(!items.length&&target){
-  try{
-   var d=await fetchJson(pxUrl(wanted)),legacy=a(d);
-   items=legacy.map(function(x){
-    var id=String(f(x,"id","code","dbid","path")).trim();
-    return{id:id,label:String(f(x,"text","label","name","title")||id),type:String(f(x,"type","class")||"folder")};
-   }).filter(function(x){return x.id});
+   state.selected.node=v2TableId;state.selected.table=v2TableId;state.swedenV2Table=false;state.pxPath=path;state.metadata=ds;renderMetadata(ds);
+   $("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(legacyTitle)+"<span class=\"path\">"+esc(v1)+"</span>";
+   $("query").disabled=false;return true;
   }catch(e){}
  }
  items.sort(function(x,y){return x.label.localeCompare(y.label,"sv",{numeric:true})});
