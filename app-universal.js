@@ -155,25 +155,20 @@ function swedenPathParts(t){var out=[];(t.paths||[]).forEach(function(path){if(A
 function swedenV2Children(path,target){var wanted=(path||[]).map(String),items=[],seen=new Set();(state.swedenV2Tables||[]).forEach(function(t){swedenPathParts(t).forEach(function(parts){if(wanted.length>parts.length)return;for(var i=0;i<wanted.length;i++)if(parts[i].id!==wanted[i])return;if(wanted.length===parts.length)return;var p=parts[wanted.length],key=p.id;if(!seen.has(key)){seen.add(key);items.push({id:p.id,label:p.label,type:"folder",path:parts.slice(0,wanted.length+1).map(function(x){return x.id})})}if(wanted.length+1===parts.length){var tk="__table__"+t.id;if(!seen.has(tk)){seen.add(tk);items.push({id:t.id,label:t.label,type:"table",tableId:t.id,path:parts.map(function(x){return x.id})})}}})});items.sort(function(x,y){return x.label.localeCompare(y.label,"sv",{numeric:true})});if(target){state.pxItems.set(target,items);fill($(target),items.map(function(x){return{value:x.id,label:x.id+" · "+x.label}}));$(target).disabled=!items.length}return items}
 function swedenV2MetadataToJsonStat(m){if(m&&Array.isArray(m.id)&&m.dimension)return m;var vars=Array.isArray(m&&m.variables)?m.variables:[],ds={version:"2.0",class:"dataset",label:m&&m.label||state.selected.table,id:[],size:[],dimension:{}};vars.forEach(function(v){var id=String(f(v,"id","code","variableCode")).trim(),vals=v.values||v.valueCodes||[],labs=v.valueTexts||v.labels||v.texts||vals,index={},label={};vals.forEach(function(x,i){index[String(x)]=i;label[String(x)]=String(labs[i]==null?x:labs[i])});if(id){ds.id.push(id);ds.size.push(vals.length);ds.dimension[id]={label:String(f(v,"label","text","name")||id),category:{index:index,label:label}}}});return ds}
 async function swedenV2Query(query){
- var tableId=String(state.selected.table||"");
- var last=state.pxPath.length?String(state.pxPath[state.pxPath.length-1]):"";
- if(!/^TAB/i.test(tableId)&&/^TAB/i.test(last))tableId=last;
- if(!/^TAB/i.test(tableId)){
-  var title=String(state.metadata&&state.metadata.label||"").trim();
-  var candidates=[last,title].filter(function(v,i,self){return v&&self.indexOf(v)===i});
-  for(var ci=0;ci<candidates.length&&!/^TAB/i.test(tableId);ci++){
-   var qs=new URLSearchParams();qs.set("lang","en");qs.set("query",candidates[ci]);qs.set("pageNumber","1");qs.set("pageSize","100");
-   var list=await fetchJson("https://statistikdatabasen.scb.se/api/v2/tables?"+qs.toString());
-   var rows=Array.isArray(list&&list.tables)?list.tables:a(list);
-   var hit=rows.find(function(x){return String(f(x,"id","tableId","code","tableCode")).trim()&&String(f(x,"label","title","text","name")).trim()===candidates[ci]})||rows.find(function(x){return String(f(x,"id","tableId","code","tableCode")).trim()});
-   if(hit)tableId=String(f(hit,"id","tableId","code","tableCode")).trim();
+ var tableId=String(state.selected.table||"").trim();
+ if(!tableId)throw new Error("No s'ha pogut identificar la taula de Statistics Sweden.");
+ var selections=(query.query||[]).map(function(q){
+  return {
+   variableCode:String(q.code),
+   valueCodes:Array.from(q.selection&&q.selection.values||[])
   }
- }
- if(!/^TAB/i.test(tableId))throw new Error("No s'ha pogut identificar la taula de Statistics Sweden a PxWebApi v2.");
- var p=new URLSearchParams();p.set("lang","en");p.set("outputFormat","json-stat2");
- query.query.forEach(function(q){var vals=q.selection&&q.selection.values||[];p.set("valueCodes["+q.code+"]",vals.length?vals.join(","):"*")});
- var u="https://statistikdatabasen.scb.se/api/v2/tables/"+encodeURIComponent(tableId)+"/data?"+p.toString();
- return await fetchJson(u)
+ });
+ var u="https://statistikdatabasen.scb.se/api/v2/tables/"+encodeURIComponent(tableId)+"/data?lang=en&outputFormat=json-stat2";
+ return await fetchJson(u,{
+  method:"POST",
+  headers:{"Content-Type":"application/json"},
+  body:JSON.stringify({selection:selections})
+ })
 }
 async function pxMetadata(){
  var raw,ds;
