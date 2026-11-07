@@ -131,7 +131,7 @@ async function swedenAutoSelect(target){
  if(options.length===1){sel.value=options[0].value;await pxSelect(target)}
 }
 
-async async function pxSelect(target){
+async function pxSelect(target){
  var order=["concept","cross","node","table"],idx=order.indexOf(target);
  if(idx<0)return;
  var val=$(target).value;
