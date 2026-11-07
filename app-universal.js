@@ -171,7 +171,7 @@ async function swedenV2Query(query){
  }
  if(!/^TAB/i.test(tableId))throw new Error("No s'ha pogut identificar la taula de Statistics Sweden a PxWebApi v2.");
  var p=new URLSearchParams();p.set("lang","en");p.set("outputFormat","json-stat2");
- query.query.forEach(function(q){var vals=q.selection&&q.selection.values||[];p.set("valuecodes["+q.code+"]",vals.length?vals.join(","):"*")});
+ query.query.forEach(function(q){var vals=q.selection&&q.selection.values||[];p.set("valueCodes["+q.code+"]",vals.length?vals.join(","):"*")});
  var u="https://statistikdatabasen.scb.se/api/v2/tables/"+encodeURIComponent(tableId)+"/data?"+p.toString();
  return await fetchJson(u)
 }
