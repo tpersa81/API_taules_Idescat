@@ -141,23 +141,15 @@ async function swedenTryTableMetadata(path,tableId,v2TableId){
  try{
   var raw2=await fetchJson(u),ds2=swedenV2MetadataToJsonStat(raw2);
   if(ds2&&Array.isArray(ds2.id)&&ds2.id.length){
-   state.selected.node=v2TableId;
-   state.selected.table=v2TableId;
-   state.swedenV2Table=true;
-   state.pxPath=path;
-   state.metadata=ds2;
-   renderMetadata(ds2);
-   $("tableInfo").hidden=false;
-   $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw2.label||tableId||v2TableId)+"<span class=\"path\">"+esc(u)+"</span>";
-   $("query").disabled=false;
-   return true;
+   state.selected.node=v2TableId;state.selected.table=v2TableId;state.swedenV2Table=true;state.pxPath=path;state.metadata=ds2;renderMetadata(ds2);
+   $("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw2.label||tableId||v2TableId)+"<span class=\"path\">"+esc(u)+"</span>";
+   $("query").disabled=false;return true;
   }
  }catch(e){}
  try{
   var v1=pxUrl(path),raw=await fetchJson(v1);
   if(raw&&Array.isArray(raw.variables)&&raw.variables.length){
    var ds=pxToJsonStat(raw),legacyTitle=String(raw.title||raw.label||tableId||v2TableId).trim();
-   /* Resolve legacy v1 table ids against the v2 catalogue by title. */
    await loadSwedenV2Tables();
    var candidates=(state.swedenV2Tables||[]).filter(function(t){
     return String(t.label||"").trim().toLowerCase()===legacyTitle.toLowerCase();
@@ -175,15 +167,9 @@ async function swedenTryTableMetadata(path,tableId,v2TableId){
    state.selected.node=v2TableId;state.selected.table=v2TableId;state.swedenV2Table=false;state.pxPath=path;state.metadata=ds;renderMetadata(ds);
    $("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(legacyTitle)+"<span class=\"path\">"+esc(v1)+"</span>";
    $("query").disabled=false;return true;
-  }catch(e){}
- }
- items.sort(function(x,y){return x.label.localeCompare(y.label,"sv",{numeric:true})});
- if(target){
-  state.pxItems.set(target,items);
-  fill($(target),items.map(function(x){return{value:x.id,label:x.id+" · "+x.label}}));
-  $(target).disabled=!items.length;
- }
- return items
+  }
+ }catch(e){}
+ return false;
 }
 function swedenV2MetadataToJsonStat(m){if(m&&Array.isArray(m.id)&&m.dimension)return m;var vars=Array.isArray(m&&m.variables)?m.variables:[],ds={version:"2.0",class:"dataset",label:m&&m.label||state.selected.table,id:[],size:[],dimension:{}};vars.forEach(function(v){var id=String(f(v,"id","code","variableCode")).trim(),vals=v.values||v.valueCodes||[],labs=v.valueTexts||v.labels||v.texts||vals,index={},label={};vals.forEach(function(x,i){index[String(x)]=i;label[String(x)]=String(labs[i]==null?x:labs[i])});if(id){ds.id.push(id);ds.size.push(vals.length);ds.dimension[id]={label:String(f(v,"label","text","name")||id),category:{index:index,label:label}}}});return ds}
 async function swedenV2Query(query){
