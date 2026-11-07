@@ -123,7 +123,17 @@ async function eurostatSelect(code){
 
 async function eurostatSelect(code){state.selected.node=code;state.selected.table=code;var ds=await fetchJson(provider().base+"/data/"+encodeURIComponent(code)+"?format=JSON&lang=EN&lastTimePeriod=3");state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Conjunt de dades:</strong> "+esc(ds.label||code)+"<span class=\"path\">"+esc(provider().base+"/data/"+code)+"</span>";$("query").disabled=false}
 async function pxChildren(path,target){
- var d=await fetchJson(pxUrl(path)),items=a(d).map(function(x){return{id:String(f(x,"id","code","dbid","path")),label:String(f(x,"text","label","name","title")||f(x,"id","code","path")),type:String(f(x,"type","class"))}}).filter(function(x){return x.id});state.pxItems.set(target,items);fill($(target),items.map(function(x){return{value:x.id,label:x.id+" · "+x.label}}));$(target).disabled=!items.length
+ var d=await fetchJson(pxUrl(path)),items=a(d).map(function(x){return{id:String(f(x,"id","code","dbid","path")),label:String(f(x,"text","label","name","title")||f(x,"id","code","path")),type:String(f(x,"type","class"))}}).filter(function(x){return x.id});
+ state.pxItems.set(target,items);
+ fill($(target),items.map(function(x){return{value:x.id,label:x.id+" · "+x.label}}));
+ $(target).disabled=!items.length;
+ // Some PxWeb databases put the table directly at the first level.
+ // If that level contains exactly one table, load its metadata immediately
+ // instead of forcing the user through an empty/deeper selector.
+ if(items.length===1&&pxTable(items[0])){
+  $(target).value=items[0].id;
+  await pxSelect(target);
+ }
 }
 async function swedenAutoSelect(target){
  var sel=$(target);if(!sel||sel.disabled)return;
