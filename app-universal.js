@@ -152,23 +152,55 @@ async function swedenV2Children(path,target){
    if(wanted.length>parts.length)return;
    for(var i=0;i<wanted.length;i++)if(parts[i].id!==wanted[i])return;
    if(wanted.length===parts.length)return;
-   var p=parts[wanted.length],key=p.id;
-   if(!seen.has(key)){seen.add(key);items.push({id:p.id,label:p.label,type:"folder",path:parts.slice(0,wanted.length+1).map(function(x){return x.id})})}
+   var p=parts[wanted.length];
+   var key=p.id;
+   if(!seen.has(key)){
+    seen.add(key);
+    items.push({
+     id:p.id,
+     label:p.label,
+     type:"folder",
+     path:parts.slice(0,wanted.length+1).map(function(x){return x.id})
+    });
+   }
    if(wanted.length+1===parts.length){
     var tk="__table__"+t.id;
-    if(!seen.has(tk)){seen.add(tk);items.push({id:t.id,label:t.label,type:"table",tableId:t.id,path:parts.map(function(x){return x.id})})}
+    if(!seen.has(tk)){
+     seen.add(tk);
+     items.push({
+      id:t.id,
+      label:t.label,
+      type:"table",
+      tableId:t.id,
+      path:parts.map(function(x){return x.id})
+     });
+    }
    }
-  })
+  });
  });
  if(!items.length&&target){
   try{
-   var d=await fetchJson(pxUrl(wanted)),legacy=a(d);
-   items=legacy.map(function(x){var id=String(f(x,"id","code","dbid","path")).trim();return{id:id,label:String(f(x,"text","label","name","title")||id),type:String(f(x,"type","class")||"folder")}}).filter(function(x){return x.id});
+   var d=await fetchJson(pxUrl(wanted));
+   var legacy=a(d);
+   items=legacy.map(function(x){
+    var id=String(f(x,"id","code","dbid","path")).trim();
+    return {
+     id:id,
+     label:String(f(x,"text","label","name","title")||id),
+     type:String(f(x,"type","class")||"folder")
+    };
+   }).filter(function(x){return x.id});
   }catch(e){}
  }
  items.sort(function(x,y){return x.label.localeCompare(y.label,"sv",{numeric:true})});
- if(target){state.pxItems.set(target,items);fill($(target),items.map(function(x){return{value:x.id,label:x.id+" · "+x.label}}));$(target).disabled=!items.length)}
- return items
+ if(target){
+  state.pxItems.set(target,items);
+  fill($(target),items.map(function(x){
+   return {value:x.id,label:x.id+" · "+x.label};
+  }));
+  $(target).disabled=!items.length;
+ }
+ return items;
 }
 async function swedenTryTableMetadata(path,tableId,v2TableId){
  path=Array.isArray(path)?path.slice():[];
