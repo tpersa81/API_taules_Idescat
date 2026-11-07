@@ -137,7 +137,7 @@ async function pxSelect(target){
  var item=state.pxItems.get(target).find(function(x){return x.id===val}),
      order=["concept","cross","node","table"],
      i=order.indexOf(target);
- state.pxPath=state.pxPath.slice(0,i);
+ state.pxPath=state.pxPath.slice(0,i+1);
  state.pxPath.push(val);
  if(state.pxPreset==="sweden"){
   if(target==="table"){
