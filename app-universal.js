@@ -136,22 +136,22 @@ async function swedenTryTableMetadata(tableId){
  tableId=String(tableId||"").trim();
  if(!tableId)return false;
  var u="https://statistikdatabasen.scb.se/api/v2/tables/"+encodeURIComponent(tableId)+"/metadata?lang=en";
- var r=await fetch(u),text="";
- try{text=await r.text()}catch(e){text=""}
- if(r.status===404)return false;
- var raw=null;
- try{raw=text?JSON.parse(text):null}catch(e){raw=null}
- if(!r.ok)throw new Error(raw&&(raw.label||raw.message||raw.error)||"Error HTTP "+r.status+".");
- var ds=swedenV2MetadataToJsonStat(raw);
- if(!ds||!Array.isArray(ds.id)||!ds.id.length)return false;
- state.selected.node=tableId;
- state.selected.table=tableId;
- state.metadata=ds;
- renderMetadata(ds);
- $("tableInfo").hidden=false;
- $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.label||tableId)+"<span class=\"path\">"+esc(u)+"</span>";
- $("query").disabled=false;
- return true
+ try{
+  var raw=await fetchJson(u),ds=swedenV2MetadataToJsonStat(raw);
+  if(!ds||!Array.isArray(ds.id)||!ds.id.length)return false;
+  state.selected.node=tableId;
+  state.selected.table=tableId;
+  state.pxPath=[tableId];
+  state.metadata=ds;
+  renderMetadata(ds);
+  $("tableInfo").hidden=false;
+  $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.label||tableId)+"<span class=\"path\">"+esc(u)+"</span>";
+  $("query").disabled=false;
+  return true;
+ }catch(e){
+  if(/HTTP 404/i.test(String(e&&e.message||e)))return false;
+  return false;
+ }
 }
 async function pxSelect(target){
  var val=$(target).value;if(!val)return;
