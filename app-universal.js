@@ -132,6 +132,44 @@ async function swedenAutoSelect(target){
 }
 
 function pxTable(x){return/^(t|table)$/i.test(x&&x.type)||/\.px$/i.test(x&&x.id||"")||/_pxt_/i.test(x&&x.id||"")}
+async function loadSwedenV2Tables(){
+ if(state.swedenV2Tables&&state.swedenV2Tables.length)return;
+ var all=[],page=1,pageSize=500;
+ for(var guard=0;guard<20;guard++,page++){
+  var u="https://statistikdatabasen.scb.se/api/v2/tables?lang=en&pageNumber="+page+"&pageSize="+pageSize;
+  var d=await fetchJson(u),rows=Array.isArray(d&&d.tables)?d.tables:a(d);all=all.concat(rows);
+  var pi=d&&d.page||d&&d.pageInfo||d&&d.pagination||{},totalPages=Number(f(pi,"totalPages","pages","pageCount"));
+  if(totalPages&&page>=totalPages)break;if(!rows.length||rows.length<pageSize)break;
+ }
+ if(!all.length)throw new Error("No s'han pogut carregar les taules de Statistics Sweden amb PxWebApi v2.");
+ state.swedenV2Tables=all.map(function(t){var id=String(f(t,"id","tableId","code","tableCode")).trim(),label=String(f(t,"label","title","text","name")||id).trim();return{id:id,label:label,paths:Array.isArray(t.paths)?t.paths:[]}}).filter(function(t){return t.id});
+}
+function swedenPathParts(t){var out=[];(t.paths||[]).forEach(function(path){if(Array.isArray(path)){var p=path.map(function(x){return{id:String(f(x,"id","code","path")).trim(),label:String(f(x,"label","text","name","title")||f(x,"id","code","path")).trim()}}).filter(function(x){return x.id});if(p.length)out.push(p)}});return out}
+async function swedenV2Children(path,target){
+ var wanted=(path||[]).map(String),items=[],seen=new Set();
+ (state.swedenV2Tables||[]).forEach(function(t){
+  swedenPathParts(t).forEach(function(parts){
+   if(wanted.length>parts.length)return;
+   for(var i=0;i<wanted.length;i++)if(parts[i].id!==wanted[i])return;
+   if(wanted.length===parts.length)return;
+   var p=parts[wanted.length],key=p.id;
+   if(!seen.has(key)){seen.add(key);items.push({id:p.id,label:p.label,type:"folder",path:parts.slice(0,wanted.length+1).map(function(x){return x.id})})}
+   if(wanted.length+1===parts.length){
+    var tk="__table__"+t.id;
+    if(!seen.has(tk)){seen.add(tk);items.push({id:t.id,label:t.label,type:"table",tableId:t.id,path:parts.map(function(x){return x.id})})}
+   }
+  })
+ });
+ if(!items.length&&target){
+  try{
+   var d=await fetchJson(pxUrl(wanted)),legacy=a(d);
+   items=legacy.map(function(x){var id=String(f(x,"id","code","dbid","path")).trim();return{id:id,label:String(f(x,"text","label","name","title")||id),type:String(f(x,"type","class")||"folder")}}).filter(function(x){return x.id});
+  }catch(e){}
+ }
+ items.sort(function(x,y){return x.label.localeCompare(y.label,"sv",{numeric:true})});
+ if(target){state.pxItems.set(target,items);fill($(target),items.map(function(x){return{value:x.id,label:x.id+" · "+x.label}}));$(target).disabled=!items.length)}
+ return items
+}
 async function swedenTryTableMetadata(path,tableId,v2TableId){
  path=Array.isArray(path)?path.slice():[];
  tableId=String(tableId||"").trim();
