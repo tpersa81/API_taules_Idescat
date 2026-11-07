@@ -136,28 +136,7 @@ async function swedenTryTableMetadata(path,tableId,v2TableId){
  path=Array.isArray(path)?path.slice():[];
  tableId=String(tableId||"").trim();
  v2TableId=String(v2TableId||tableId).trim();
- if(!tableId)return false;
- var v1=pxUrl(path);
- try{
-  var raw=await fetchJson(v1);
-  if(raw&&Array.isArray(raw.variables)&&raw.variables.length){
-   var ds=pxToJsonStat(raw);
-   try{
-    var v2meta=await fetchJson("https://statistikdatabasen.scb.se/api/v2/tables/"+encodeURIComponent(v2TableId)+"/metadata?lang=en");
-    if(v2meta&&Array.isArray(v2meta.id)&&v2meta.id.length)ds=v2meta;
-    else if(v2meta&&Array.isArray(v2meta.variables)&&v2meta.variables.length)ds=swedenV2MetadataToJsonStat(v2meta);
-   }catch(e){}
-   state.selected.node=v2TableId;
-   state.selected.table=v2TableId;
-   state.pxPath=path;
-   state.metadata=ds;
-   renderMetadata(ds);
-   $("tableInfo").hidden=false;
-   $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||tableId)+"<span class=\"path\">"+esc(v1)+"</span>";
-   $("query").disabled=false;
-   return true;
-  }
- }catch(e){}
+ if(!v2TableId)return false;
  var u="https://statistikdatabasen.scb.se/api/v2/tables/"+encodeURIComponent(v2TableId)+"/metadata?lang=en";
  try{
   var raw2=await fetchJson(u),ds2=swedenV2MetadataToJsonStat(raw2);
@@ -168,7 +147,22 @@ async function swedenTryTableMetadata(path,tableId,v2TableId){
    state.metadata=ds2;
    renderMetadata(ds2);
    $("tableInfo").hidden=false;
-   $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw2.label||tableId)+"<span class=\"path\">"+esc(u)+"</span>";
+   $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw2.label||tableId||v2TableId)+"<span class=\"path\">"+esc(u)+"</span>";
+   $("query").disabled=false;
+   return true;
+  }
+ }catch(e){}
+ try{
+  var v1=pxUrl(path),raw=await fetchJson(v1);
+  if(raw&&Array.isArray(raw.variables)&&raw.variables.length){
+   var ds=pxToJsonStat(raw);
+   state.selected.node=v2TableId;
+   state.selected.table=v2TableId;
+   state.pxPath=path;
+   state.metadata=ds;
+   renderMetadata(ds);
+   $("tableInfo").hidden=false;
+   $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||tableId||v2TableId)+"<span class=\"path\">"+esc(v1)+"</span>";
    $("query").disabled=false;
    return true;
   }
@@ -183,13 +177,14 @@ async function pxSelect(target){
  state.pxPath=state.pxPath.slice(0,i+1);
  state.pxPath.push(val);
  if(state.pxPreset==="sweden"){
-  // A Statistics Sweden, un element pot ser ja una taula abans d'arribar
-  // al selector visual "Taula". Ho comprovem directament amb l'API v2.
-  if(await swedenTryTableMetadata(state.pxPath,val,item&&item.tableId||val))return;
+  if(item&&item.type==="table"){
+   if(await swedenTryTableMetadata(state.pxPath,val,item.tableId||val))return;
+  }
   var next=order[i+1];
   if(next){
    ["cross","node","table"].forEach(function(id,j){if(j>=i)resetSelect(id)});
-   await pxChildren(state.pxPath,next);
+   await loadSwedenV2Tables();
+   swedenV2Children(state.pxPath,next);
    await swedenAutoSelect(next)
   }
   return
