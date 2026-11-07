@@ -1927,18 +1927,47 @@ function updateCells() {
   const n =
     cellCount();
 
-  const bad =
-    n > MAX_CELLS ||
+  const missing =
     [...state.filters.values()]
       .some(
         s => s.size === 0
       );
 
+  const tooMany =
+    n > MAX_CELLS;
+
+  const bad =
+    missing ||
+    tooMany;
+
   $('cellInfo').hidden =
     false;
 
+  const icon =
+    bad
+      ? '✕'
+      : '✓';
+
+  const message =
+    missing
+      ? 'Cal seleccionar valors a totes les dimensions.'
+      : tooMany
+        ? 'Cal filtrar la taula'
+        : 'Es pot continuar.';
+
   $('cellInfo').innerHTML =
-    `<strong>Nombre de cel·les de la taula filtrada:</strong> ${n.toLocaleString('ca-ES')} · <span class="${bad ? 'bad' : 'ok'}">${[...state.filters.values()].some(s => s.size === 0) ? 'Cal seleccionar almenys un valor per cada dimensió.' : bad ? 'L’API no accepta més de 20.000 cel·les. Cal filtrar la taula.' : 'Es pot continuar sense filtrar més la taula.'}</span>`;
+    '<span class="status-icon ' +
+    (bad ? 'bad' : 'ok') +
+    '" aria-hidden="true">' +
+    icon +
+    '</span> ' +
+    '<strong>Nombre de cel·les de la taula filtrada:</strong> ' +
+    n.toLocaleString('ca-ES') +
+    ' · <span class="' +
+    (bad ? 'bad' : 'ok') +
+    '">' +
+    message +
+    '</span>';
 
   document
     .querySelectorAll(
