@@ -131,6 +131,73 @@ async function swedenAutoSelect(target){
  if(options.length===1){sel.value=options[0].value;await pxSelect(target)}
 }
 
+async function pxSelect(target){
+ var order=["concept","cross","node","table"],idx=order.indexOf(target);
+ if(idx<0)return;
+ var val=$(target).value;
+ if(!val)return;
+ state.selected[target==="concept"?"concept":target==="cross"?"cross":target==="node"?"node":"table"]=val;
+ var path=[state.selected.stat];
+ for(var i=0;i<idx;i++){
+  var pv=$(order[i]).value;
+  if(pv)path.push(pv);
+ }
+ path.push(val);
+ for(var j=idx+1;j<order.length;j++)resetSelect(order[j]);
+ state.metadata=null;
+ $("query").disabled=true;
+ $("tableInfo").hidden=true;
+ $("cellInfo").hidden=true;
+ $("filters").innerHTML="";
+ state.filters.clear();
+
+ if(state.pxPreset==="sweden"){
+  var current=state.pxItems.get(target)||[];
+  var item=current.find(function(x){return String(x.id)===String(val)});
+  if(item&&item.type==="table"){
+   var ok=await swedenTryTableMetadata(item.path||path,item.tableId||item.id,item.tableId||item.id);
+   if(!ok)throw new Error("No s'ha pogut carregar la taula de Statistics Sweden.");
+   return;
+  }
+  var children=await swedenV2Children(path,order[idx+1]||null);
+  if(children.length===1){
+   var next=order[idx+1];
+   if(next){
+    $(next).value=children[0].id;
+    await pxSelect(next);
+   }
+  }
+  return;
+ }
+
+ var d=await fetchJson(pxUrl(path));
+ if(d&&Array.isArray(d.variables)&&d.variables.length){
+  state.selected.table=val;
+  state.pxPath=path.slice();
+  state.swedenV2Table=false;
+  state.metadata=pxToJsonStat(d);
+  renderMetadata(state.metadata);
+  $("tableInfo").hidden=false;
+  $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(d.title||d.label||val)+"<span class=\"path\">"+esc(pxUrl(path))+"</span>";
+  $("query").disabled=false;
+  return;
+ }
+ var items=a(d).map(function(x){
+  var id=String(f(x,"id","code","dbid","path")).trim();
+  return{id:id,label:String(f(x,"text","label","name","title")||id),type:String(f(x,"type","class")||"folder")};
+ }).filter(function(x){return x.id});
+ var next=order[idx+1];
+ if(!next){
+  throw new Error("L'element seleccionat no conté metadades de taula.");
+ }
+ state.pxItems.set(next,items);
+ fill($(next),items.map(function(x){return{value:x.id,label:x.id+" · "+x.label}}));
+ $(next).disabled=!items.length;
+ if(items.length===1){
+  $(next).value=items[0].id;
+  await pxSelect(next);
+ }
+}
 function pxTable(x){return/^(t|table)$/i.test(x&&x.type)||/\.px$/i.test(x&&x.id||"")||/_pxt_/i.test(x&&x.id||"")}
 async function loadSwedenV2Tables(){
  if(state.swedenV2Tables&&state.swedenV2Tables.length)return;
