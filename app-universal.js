@@ -175,6 +175,17 @@ async function swedenSelectDynamic(index,val){var items=state.pxItems.get("swede
 async function swedenLoadV1Table(path,tableId){
  path=(path||[]).slice();tableId=String(tableId||path[path.length-1]||"").trim();
  if(!tableId)throw new Error("No s'ha pogut identificar la taula de Statistics Sweden.");
+
+ // La navegació encara es fa amb PxWeb v1, però la consulta de dades
+ // es fa amb PxWebApi v2. El POST de v1 pot donar "Failed to fetch"
+ // des d'una pàgina web per les polítiques CORS de l'API.
+ try{
+  await swedenLoadTable(tableId);
+  state.pxPath=path;
+  return;
+ }catch(e){}
+
+ // Fallback per a taules antigues que encara no apareguin al catàleg v2.
  var u=pxUrl(path),raw=await fetchJson(u),ds=pxToJsonStat(raw);
  if(!ds||!Array.isArray(ds.id)||!ds.id.length)throw new Error("La taula de Statistics Sweden no ha retornat metadades.");
  state.selected.node=tableId;state.selected.table=tableId;state.pxPath=path;state.swedenV2Table=false;state.metadata=ds;renderMetadata(ds);
