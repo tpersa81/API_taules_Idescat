@@ -394,6 +394,31 @@ async function pxSelect(target){
   await pxSelect(next);
  }
 }
+function pxToJsonStat(m){
+ if(m&&Array.isArray(m.id)&&m.dimension)return m;
+ var vars=Array.isArray(m&&m.variables)?m.variables:[];
+ var ds={version:"2.0",class:"dataset",label:String(m&&m.title||m&&mlabel||m&&m.label||state.selected.table||""),id:[],size:[],dimension:{}};
+ vars.forEach(function(v){
+  var id=String(f(v,"code","id","variableCode","key")).trim();
+  var vals=v&&Array.isArray(v.values)?v.values:(v&&Array.isArray(v.valueCodes)?v.valueCodes:[]);
+  var labs=v&&Array.isArray(v.valueTexts)?v.valueTexts:(v&&Array.isArray(v.labels)?v.labels:(v&&Array.isArray(v.texts)?v.texts:[]));
+  var index={},label={};
+  vals.forEach(function(x,i){
+   var code;
+   if(x&&typeof x==="object")code=String(f(x,"id","code","value","key"));
+   else code=String(x);
+   if(!code)return;
+   index[code]=i;
+   label[code]=String(labs[i]==null?(x&&typeof x==="object"?f(x,"text","label","name"):code):labs[i]);
+  });
+  if(id){
+   ds.id.push(id);
+   ds.size.push(vals.length);
+   ds.dimension[id]={label:String(f(v,"text","label","name","title")||id),category:{index:index,label:label}};
+  }
+ });
+ return ds;
+}
 function pxTable(x){return/^(t|table)$/i.test(x&&x.type)||/\.px$/i.test(x&&x.id||"")||/_pxt_/i.test(x&&x.id||"")}
 async function loadSwedenV2Tables(){
  if(state.swedenV2Tables&&state.swedenV2Tables.length)return;
