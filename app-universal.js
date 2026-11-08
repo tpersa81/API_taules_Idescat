@@ -6,8 +6,11 @@ const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&am
 async function fetchJson(url,opt){opt=opt||{};var r;try{r=await fetch(url,opt)}catch(e){
   // Statistics Iceland no exposa CORS per a les peticions de la seva API.
   // Reintentem la mateixa petició a través de cors.tools, que admet també POST.
-  if(state.provider==="pxweb"&&state.pxPreset==="iceland"&&/^https:\/\/px\.hagstofa\.is\//i.test(url)){
+  if(state.provider==="pxweb"&&((state.pxPreset==="iceland"&&/^https:\/\/px\.hagstofa\.is\//i.test(url))||(state.pxPreset==="finland"&&/^https:\/\/pxdata\.stat\.fi\//i.test(url)))){
    try{
+    // Statistics Iceland i Statistics Finland no permeten les peticions POST
+    // directes des de GitHub Pages per CORS. cors.tools admet també POST i
+    // reenvia el body i els headers de la petició original.
     var proxyUrl="https://cors.tools/proxy?url="+encodeURIComponent(url);
     r=await fetch(proxyUrl,opt);
    }catch(e2){throw new Error("No s'ha pogut connectar amb l'API. "+(e2&&e2.message||"Failed to fetch")+" · "+url)}
