@@ -516,9 +516,13 @@ async function pxSelect(target){
  }
 }
 function pxToJsonStat(m){
- if(m&&Array.isArray(m.id)&&m.dimension)return m;
- var vars=Array.isArray(m&&m.variables)?m.variables:[];
- var ds={version:"2.0",class:"dataset",label:String(m&&m.title||m&&m.label||state.selected.table||""),id:[],size:[],dimension:{}};
+ // PxWeb pot retornar les dades JSON-stat dins d'un embolcall
+ // {dataset:{...}}. També pot retornar les metadades clàssiques
+ // {title,variables:[...]}. Normalitzem tots dos formats.
+ var src=m&&m.dataset&&typeof m.dataset==="object"?m.dataset:m;
+ if(src&&Array.isArray(src.id)&&src.dimension)return src;
+ var vars=Array.isArray(src&&src.variables)?src.variables:(Array.isArray(m&&m.variables)?m.variables:[]);
+ var ds={version:"2.0",class:"dataset",label:String(src&&src.label||m&&m.title||m&&m.label||state.selected.table||""),id:[],size:[],dimension:{}};
  vars.forEach(function(v){
   var id=String(f(v,"code","id","variableCode","key")).trim();
   var vals=v&&Array.isArray(v.values)?v.values:(v&&Array.isArray(v.valueCodes)?v.valueCodes:[]);
@@ -538,6 +542,19 @@ function pxToJsonStat(m){
    ds.dimension[id]={label:String(f(v,"text","label","name","title")||id),category:{index:index,label:label}};
   }
  });
+ // Si el metadata clàssic no porta variables però sí dimensions JSON-stat,
+ // preservem també l'ordre i les etiquetes originals.
+ if(!ds.id.length&&src&&src.dimension){
+  ds.id=Array.isArray(src.id)?src.id.slice():Object.keys(src.dimension);
+  ds.size=ds.id.map(function(id){
+   var cat=src.dimension[id]&&src.dimension[id].category;
+   if(cat&&Array.isArray(cat.index))return cat.index.length;
+   if(cat&&cat.index&&typeof cat.index==="object")return Object.keys(cat.index).length;
+   return 0;
+  });
+  ds.dimension=src.dimension;
+  if(src.role)ds.role=src.role;
+ }
  return ds;
 }
 function finlandTableUrls(path){
