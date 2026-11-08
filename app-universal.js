@@ -58,14 +58,27 @@ async function loadStats(){
 }
 async function loadEurostatTOC(){
  if(state.eurostatTOC&&state.eurostatTOC.length)return;
- var u="https://ec.europa.eu/eurostat/api/dissemination/catalogue/toc/txt?lang=en",r=await fetch(u);
+ var u="https://ec.europa.eu/eurostat/api/dissemination/catalogue/toc/txt?lang=en";
+ var r;
+ try{r=await fetch(u)}catch(e){
+  throw new Error("No s'ha pogut carregar el catàleg d'Eurostat. "+(e&&e.message||"Failed to fetch"));
+ }
  if(!r.ok)throw new Error("No s'ha pogut carregar el catàleg d'Eurostat (HTTP "+r.status+").");
  var txt=await r.text(),rows=[];
  txt.split(/\r?\n/).forEach(function(line){
-  if(!line.trim())return;var p=line.split("\t");if(p.length<3)return;
-  var rawTitle=String(p[0]||""),title=rawTitle.replace(/^\s+/,"").trim(),code=String(p[1]||"").trim(),type=String(p[2]||"").trim().toLowerCase();
-  var hierarchy=Number(String(p[8]||"").trim());if(!Number.isFinite(hierarchy))hierarchy=Math.floor((rawTitle.match(/^ */)||[""])[0].length/4);
-  if(title&&code&&(type==="folder"||type==="dataset"||type==="table"))rows.push({title:title,code:code,type:type,hierarchy:hierarchy});
+  if(!line.trim())return;
+  var p=line.split("\t");
+  if(p.length<3)return;
+  // Eurostat's TXT TOC is tab-separated and every field is quoted.
+  // Remove the surrounding quotes before interpreting type/code/title.
+  var clean=function(v){return String(v==null?"":v).replace(/^"|"$/g,"").trim()};
+  var rawTitle=clean(p[0]),title=rawTitle.replace(/^\s+/,"").trim(),
+      code=clean(p[1]),type=clean(p[2]).toLowerCase();
+  var hierarchy=Number(clean(p[8]));
+  if(!Number.isFinite(hierarchy))
+    hierarchy=Math.floor((rawTitle.match(/^ */)||[""])[0].length/4);
+  if(title&&code&&(type==="folder"||type==="dataset"||type==="table"))
+    rows.push({title:title,code:code,type:type,hierarchy:hierarchy});
  });
  if(!rows.length)throw new Error("El catàleg d'Eurostat no conté elements navegables.");
  state.eurostatTOC=rows;
@@ -73,12 +86,20 @@ async function loadEurostatTOC(){
  rows.forEach(function(x){
   while(stack.length&&stack[stack.length-1].level>=x.hierarchy)stack.pop();
   var node={label:x.title,code:x.code,type:x.type,hierarchy:x.hierarchy,path:[],children:[]};
-  if(stack.length){var parent=stack[stack.length-1].node;parent.children.push(node);node.path=parent.path.concat([node.code])}
-  if(x.type==="folder"){if(!stack.length)roots.push(node);stack.push({node:node,level:x.hierarchy})}
+  if(stack.length){
+   var parent=stack[stack.length-1].node;
+   parent.children.push(node);
+   node.path=parent.path.concat([node.code]);
+  }
+  if(x.type==="folder"){
+   if(!stack.length)roots.push(node);
+   stack.push({node:node,level:x.hierarchy});
+  }
  });
  function fixPaths(n,path){n.path=path;n.children.forEach(function(c){fixPaths(c,path.concat([c.code]))})}
  roots.forEach(function(r){fixPaths(r,[r.code])});
- state.eurostatRoots=roots;state.eurostatNodes=[];
+ state.eurostatRoots=roots;
+ state.eurostatNodes=[];
  function flatten(n){state.eurostatNodes.push(n);n.children.forEach(flatten)}
  roots.forEach(flatten);
 }
