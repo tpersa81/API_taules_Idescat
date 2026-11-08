@@ -228,7 +228,7 @@ async function swedenLoadV1Table(path,tableId){
      state.metadata=ds;
      renderMetadata(ds);
      $("tableInfo").hidden=false;
-     $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.label||mapped.label||v1Title||tableId)+"<span class="path">"+esc(mu)+"</span>";
+     $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.label||mapped.label||v1Title||tableId)+"<span class=\"path\">"+esc(mu)+"</span>";
      $("query").disabled=false;
      return;
     }
@@ -249,7 +249,7 @@ async function swedenLoadV1Table(path,tableId){
    state.metadata=ds1;
    renderMetadata(ds1);
    $("tableInfo").hidden=false;
-   $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(v1Raw.title||v1Raw.label||tableId)+"<span class="path">"+esc(v1Url)+"</span>";
+   $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(v1Raw.title||v1Raw.label||tableId)+"<span class=\"path\">"+esc(v1Url)+"</span>";
    $("query").disabled=false;
    return;
   }
