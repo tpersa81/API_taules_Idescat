@@ -465,3 +465,6 @@
 select{text-align:left;text-align-last:left}
 select option{text-align:left}
 #stat{min-width:0}
+
+
+.eurostat-loading{margin:10px 0 14px;padding:10px 14px;text-align:center;font-size:14px;font-weight:600;border-radius:8px;background:#f3f4f6;color:#374151;}
