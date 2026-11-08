@@ -1,6 +1,6 @@
 
 const MAX_CELLS=20000;
-const state={provider:"idescat",pxPreset:"finland",stats:[],metadata:null,lastData:null,lastQueryUrl:"",filters:new Map(),page:1,pageSize:100,requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],swedenV2Tables:null,swedenV2Table:false,swedenPath:[],eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[]};
+const state={provider:"idescat",pxPreset:"finland",stats:[],metadata:null,lastData:null,lastQueryUrl:"",finlandTableUrl:"",filters:new Map(),page:1,pageSize:100,requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],swedenV2Tables:null,swedenV2Table:false,swedenPath:[],eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[]};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]});
 async function fetchJson(url,opt){opt=opt||{};var r;try{r=await fetch(url,opt)}catch(e){
@@ -448,7 +448,8 @@ async function pxSelect(target){
   for(var fu=0;fu<finUrls.length&&!finRaw;fu++){
    try{finRaw=await fetchJson(finUrls[fu]);finTableUrl=finUrls[fu]}catch(e){finLastError=e}
   }
-  if(finRaw&&((Array.isArray(finRaw.variables)&&finRaw.variables.length)||(Array.isArray(finRaw.id)&&finRaw.dimension))){
+  if(finRaw&&isPxMetadata(finRaw)){
+   state.finlandTableUrl=finTableUrl;
    state.swedenV2Table=false;
    state.metadata=pxToJsonStat(finRaw);
    renderMetadata(state.metadata);
@@ -464,9 +465,13 @@ async function pxSelect(target){
   state.selected.table=val;
   state.pxPath=path.slice();
   if(state.pxPreset==="finland"&&!/\\.px$/i.test(state.pxPath[state.pxPath.length-1]))state.pxPath[state.pxPath.length-1]+=".px";
-  var tableUrl=finlandTableUrl(state.pxPath);
-  var td=await fetchJson(tableUrl);
-  if(td&&Array.isArray(td.variables)&&td.variables.length){
+  var tableUrls=state.pxPreset==="finland"?finlandTableUrls(state.pxPath):[pxUrl(state.pxPath)];
+  var tableUrl=tableUrls[0],td=null;
+  for(var tu=0;tu<tableUrls.length&&!td;tu++){
+   try{td=await fetchJson(tableUrls[tu]);tableUrl=tableUrls[tu]}catch(e){}
+  }
+  if(td&&isPxMetadata(td)){
+   if(state.pxPreset==="finland")state.finlandTableUrl=tableUrl;
    state.swedenV2Table=false;
    state.metadata=pxToJsonStat(td);
    renderMetadata(state.metadata);
@@ -562,18 +567,22 @@ function finlandTableUrls(path){
  if(state.pxPreset!=="finland")return [pxUrl(p)];
  var last=String(p[p.length-1]||"").trim().replace(/\.px$/i,"");
  var db=String(p[0]||state.selected.stat||"").replace(/^StatFin__/i,"").trim();
- // Finland ha canviat l'estructura dels fitxers PX el 2026. La taula
- // pública és /StatFin/StatFin__synt/12dj.px, mentre que l'API pot
- // acceptar tant l'identificador curt com el nom físic del fitxer.
  var urls=[];
  if(last){
+  // Format físic actual de Statistics Finland: /StatFin/statfin_<db>_pxt_<taula>.px
+  var physical="statfin_"+db+"_pxt_"+last+".px";
+  if(db)urls.push(base+"/"+physical);
+  if(db)urls.push(base+"/"+db+"/"+physical);
   if(db)urls.push(base+"/"+db+"/"+last+".px");
-  if(db)urls.push(base+"/"+db+"/statfin_"+db+"_pxt_"+last+".px");
   urls.push(base+"/"+last+".px");
  }
  return [...new Set(urls)];
 }
 function finlandTableUrl(path){return finlandTableUrls(path)[0]}
+function isPxMetadata(d){
+ var s=d&&d.dataset&&typeof d.dataset==="object"?d.dataset:d;
+ return !!(s&&((Array.isArray(s.variables)&&s.variables.length)||(Array.isArray(s.id)&&s.dimension)));
+}
 function pxTable(x){return/^(t|table)$/i.test(x&&x.type)||/\.px$/i.test(x&&x.id||"")||/_pxt_/i.test(x&&x.id||"")}
 async function loadSwedenV2Tables(){
  if(state.swedenV2Tables&&state.swedenV2Tables.length)return;
@@ -894,7 +903,7 @@ async function runQuery(){
    dims(state.metadata).forEach(function(d){
     query.query.push({code:d.id,selection:{filter:"item",values:Array.from(state.filters.get(d.id)||[])}});
    });
-   var up=finlandTableUrl(state.pxPath);
+   var up=state.pxPreset==="finland"&&state.finlandTableUrl?state.finlandTableUrl:finlandTableUrl(state.pxPath);
    if(state.pxPreset==="sweden"){
     ds=await swedenV2Query(query);
    }else{
