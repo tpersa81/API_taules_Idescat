@@ -546,9 +546,23 @@ function pxToJsonStat(m){
 function finlandTableUrl(path){
  var p=(path||[]).slice();
  if(p.length&&state.pxPreset==="finland"){
-  var last=String(p[p.length-1]||"");
-  if(!/\.px$/i.test(last))last+=".px";
-  return provider().base.replace(/\/+$/,"")+"/"+last;
+  // Des de la reestructuració dels fitxers PX de juny de 2026,
+  // el catàleg mostra l'identificador curt (p. ex. 12dj), però
+  // l'API requereix el nom físic del fitxer PX:
+  // /StatFin/synt/statfin_synt_pxt_12dj.px
+  var last=String(p[p.length-1]||"").trim();
+  if(!/\.px$/i.test(last)){
+   if(/^[A-Za-z0-9]+$/.test(last)){
+    var folder=p.length>1?String(p[p.length-2]||"").trim():"";
+    var prefix=folder?folder.replace(/[^A-Za-z0-9]+/g,"_"):"";
+    if(prefix)last="statfin_"+prefix+"_pxt_"+last+".px";
+    else last="statfin_pxt_"+last+".px";
+   }else last+=".px";
+  }
+  p[p.length-1]=last;
+  // La nova API pot requerir el nivell temàtic abans del fitxer.
+  // Si la navegació ja l'ha proporcionat, es conserva.
+  return provider().base.replace(/\/+$/,"")+"/"+p.slice(0,-1).concat([last]).join("/");
  }
  return pxUrl(p);
 }
