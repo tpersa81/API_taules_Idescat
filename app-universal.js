@@ -201,6 +201,12 @@ function eurostatAddLevel(children,path,index){
    status(e&&e.message?e.message:String(e),"error");
   }
  };
+ if(list.length===1){
+  sel.value=list[0].code;
+  eurostatSelectDynamic(index,list[0].code).catch(function(e){
+   status(e&&e.message?e.message:String(e),"error");
+  });
+ }
 }
 async function eurostatSelectRoot(rootCode){
  var root=state.eurostatRoots.find(function(x){return x.code===rootCode});
@@ -231,7 +237,7 @@ async function eurostatSelectDynamic(index,val){
  }
  eurostatAddLevel(item.children||[],path,index+1);
 }
-async function eurostatSelect(code){state.selected.node=code;state.selected.table=code;var ds=await fetchJson(provider().base+"/data/"+encodeURIComponent(code)+"?format=JSON&lang=EN&lastTimePeriod=3");state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Conjunt de dades:</strong> "+esc(ds.label||code)+"<span class=\"path\">"+esc(provider().base+"/data/"+code)+"</span>";$("query").disabled=false}
+async function eurostatSelect(code){state.selected.node=code;state.selected.table=code;var ds=await fetchJson(provider().base+"/data/"+encodeURIComponent(code)+"?format=JSON&lang=EN");state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Conjunt de dades:</strong> "+esc(ds.label||code)+"<span class=\"path\">"+esc(provider().base+"/data/"+code)+"</span>";$("query").disabled=false}
 async function pxChildren(path,target){
  var d=await fetchJson(pxUrl(path)),items=a(d).map(function(x){return{id:String(f(x,"id","code","dbid","path")),label:String(f(x,"text","label","name","title")||f(x,"id","code","path")),type:String(f(x,"type","class"))}}).filter(function(x){return x.id});
  state.pxItems.set(target,items);
