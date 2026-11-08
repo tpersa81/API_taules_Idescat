@@ -553,7 +553,7 @@ function finlandTableUrl(path){
   var last=String(p[p.length-1]||"").trim();
   if(!/\.px$/i.test(last)){
    if(/^[A-Za-z0-9]+$/.test(last)){
-    var folder=p.length>1?String(p[p.length-2]||"").trim():"";
+    var folder=p.length?String(p[0]||"").trim():"";
     var prefix=folder?folder.replace(/[^A-Za-z0-9]+/g,"_"):"";
     if(prefix)last="statfin_"+prefix+"_pxt_"+last+".px";
     else last="statfin_pxt_"+last+".px";
