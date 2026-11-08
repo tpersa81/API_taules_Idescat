@@ -59,12 +59,23 @@ async function loadStats(){
 async function loadEurostatTOC(){
  if(state.eurostatTOC&&state.eurostatTOC.length)return;
  var u="https://ec.europa.eu/eurostat/api/dissemination/catalogue/toc/txt?lang=en";
- var r;
- try{r=await fetch(u)}catch(e){
-  throw new Error("No s'ha pogut carregar el catàleg d'Eurostat. "+(e&&e.message||"Failed to fetch"));
+ var r,txt="";
+ try{
+  r=await fetch(u);
+  if(r.ok)txt=await r.text();
+ }catch(e){}
+ // The Eurostat Catalogue API does not expose the same browser CORS
+ // support as the Statistics API. GitHub Pages therefore needs a
+ // CORS-enabled relay for the catalogue only.
+ if(!txt){
+  var proxy="https://api.allorigins.win/raw?url="+encodeURIComponent(u);
+  try{
+   r=await fetch(proxy);
+   if(r.ok)txt=await r.text();
+  }catch(e){}
  }
- if(!r.ok)throw new Error("No s'ha pogut carregar el catàleg d'Eurostat (HTTP "+r.status+").");
- var txt=await r.text(),rows=[];
+ if(!txt)throw new Error("No s'ha pogut carregar el catàleg d'Eurostat. Comprova la connexió o torna-ho a provar.");
+ var rows=[];
  txt.split(/\r?\n/).forEach(function(line){
   if(!line.trim())return;
   var p=line.split("\t");
