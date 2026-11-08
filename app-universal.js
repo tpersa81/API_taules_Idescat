@@ -397,7 +397,7 @@ async function pxSelect(target){
 function pxToJsonStat(m){
  if(m&&Array.isArray(m.id)&&m.dimension)return m;
  var vars=Array.isArray(m&&m.variables)?m.variables:[];
- var ds={version:"2.0",class:"dataset",label:String(m&&m.title||m&&mlabel||m&&m.label||state.selected.table||""),id:[],size:[],dimension:{}};
+ var ds={version:"2.0",class:"dataset",label:String(m&&m.title||m&&m.label||state.selected.table||""),id:[],size:[],dimension:{}};
  vars.forEach(function(v){
   var id=String(f(v,"code","id","variableCode","key")).trim();
   var vals=v&&Array.isArray(v.values)?v.values:(v&&Array.isArray(v.valueCodes)?v.valueCodes:[]);
