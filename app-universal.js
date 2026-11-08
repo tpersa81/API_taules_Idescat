@@ -27,7 +27,7 @@ function fill(sel,items,ph){if(!sel)return;var old=sel.value;sel.innerHTML="";if
 function resetSelect(id){if($(id)){$(id).innerHTML='<option value="">— Selecciona —</option>';$(id).disabled=true}}
 function busy(v){document.body.classList.toggle("busy",v)}
 function status(s,t){$("status").textContent=s||"";$("status").className=t||""}
-function provider(){var p={idescat:{label:"Idescat",base:"https://api.idescat.cat/taules/v2",doc:"https://www.idescat.cat/dev/api/taules/"},pxweb:{label:"PXWeb",base:"",doc:"https://pxdata.stat.fi/api1.html"},ine:{label:"INE",base:"https://servicios.ine.es/wstempus/js",doc:"https://www.ine.es/OpenAPI/"},eurostat:{label:"Eurostat",base:"https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0",doc:"https://ec.europa.eu/eurostat/web/user-guides/data-browser/api-data-access/"}};if(state.provider==="pxweb"){var x={finland:"https://pxdata.stat.fi/PxWeb/api/v1/en/StatFin/",sweden:"https://api.scb.se/OV0104/v1/doris/en/ssd",unece:"https://w3.unece.org/PXWeb2015/api/v1/en/STAT",iceland:"https://px.hagstofa.is/pxen/api/v1/en"};p.pxweb.base=x[state.pxPreset]||x.finland}return p[state.provider]}
+function provider(){var p={idescat:{label:"Idescat",base:"https://api.idescat.cat/taules/v2",doc:"https://www.idescat.cat/dev/api/taules/"},pxweb:{label:"PXWeb",base:"",doc:"https://pxdata.stat.fi/api1.html"},ine:{label:"INE",base:"https://servicios.ine.es/wstempus/js",doc:"https://www.ine.es/OpenAPI/"},eurostat:{label:"Eurostat",base:"https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0",doc:"https://ec.europa.eu/eurostat/web/user-guides/data-browser/api-data-access/"}};if(state.provider==="pxweb"){var x={finland:"https://pxdata.stat.fi/PxWeb/api/v1/en/StatFin",sweden:"https://api.scb.se/OV0104/v1/doris/en/ssd",unece:"https://w3.unece.org/PXWeb2015/api/v1/en/STAT",iceland:"https://px.hagstofa.is/pxen/api/v1/en"};p.pxweb.base=x[state.pxPreset]||x.finland}return p[state.provider]}
 function pxUrl(path){
  var p=(path||[]).slice();
  // Statistics Finland mostra els identificadors de carpeta com StatFin__xxx,
@@ -75,7 +75,24 @@ async function loadStats(){
  else if(state.provider==="ine"){var d=await fetchJson(c.base+"/ES/OPERACIONES_DISPONIBLES?det=1");out=a(d).map(function(x){var id=String(f(x,"Id","id","Codigo","Code"));return{value:id,label:id+" · "+String(f(x,"Nombre","nombre","Name","Descripcion","Description")||id)}}).filter(function(x){return x.value})}
  else if(state.provider==="eurostat"){await loadEurostatTOC();out=state.eurostatRoots.map(function(x){return{value:x.code,label:x.label}})}
  else if(state.pxPreset==="sweden"){out=a(await fetchJson(c.base)).map(function(x){return{id:String(f(x,"id","code","dbid","path")),label:String(f(x,"text","label","name","title")||f(x,"id","code","dbid","path")),type:String(f(x,"type","class"))}}).filter(function(x){return x.id}).map(function(x){return{value:x.id,label:x.id+" · "+x.label}})}
- else out=a(await fetchJson(c.base)).map(function(x){var id=String(f(x,"id","dbid","code","path"));return{value:id,label:String(f(x,"text","label","name","title")||id)}}).filter(function(x){return x.value});
+ else if(state.pxPreset==="finland"){
+  var finCatalog=null;
+  try{finCatalog=await fetchJson(c.base)}
+  catch(finErr){
+   // Statistics Finland pot rebutjar la petició directa des de GitHub Pages
+   // segons el CORS de la resposta. Per a la navegació GET del catàleg,
+   // disposem d'un fallback de lectura.
+   try{
+    var finProxy="https://api.allorigins.win/raw?url="+encodeURIComponent(c.base);
+    finCatalog=await fetchJson(finProxy);
+   }catch(e){throw finErr}
+  }
+  out=a(finCatalog).map(function(x){
+   var id=String(f(x,"id","dbid","code","path")).trim();
+   return{value:id,label:String(f(x,"text","label","name","title")||id).trim()}
+  }).filter(function(x){return x.value});
+}
+else out=a(await fetchJson(c.base)).map(function(x){var id=String(f(x,"id","dbid","code","path"));return{value:id,label:String(f(x,"text","label","name","title")||id)}}).filter(function(x){return x.value});
  if(loadToken!==state.requestToken||loadProvider!==state.provider||(loadProvider==="pxweb"&&loadPreset!==state.pxPreset))return;
  out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});state.stats=out;fill($("stat"),out);$("stat").disabled=!out.length;
  var initial=new URLSearchParams(location.search).get("stat")||"";
