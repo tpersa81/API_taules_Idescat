@@ -410,7 +410,14 @@ async function pxSelect(target){
   if(!/\.px$/i.test(state.pxPath[state.pxPath.length-1]))
     state.pxPath[state.pxPath.length-1]+=".px";
   var finTableUrl=pxUrl(state.pxPath);
-  var finRaw=await fetchJson(finTableUrl);
+  var finRaw=null;
+  try{finRaw=await fetchJson(finTableUrl)}catch(e){
+   // Alguns nodes de Finland poden arribar sense l'extensió .px al catàleg.
+   var altPath=state.pxPath.slice();
+   altPath[altPath.length-1]=String(altPath[altPath.length-1]).replace(/\.px$/i,"");
+   var altUrl=pxUrl(altPath);
+   if(altUrl!==finTableUrl)finRaw=await fetchJson(altUrl);
+  }
   if(finRaw&&Array.isArray(finRaw.variables)&&finRaw.variables.length){
    state.swedenV2Table=false;
    state.metadata=pxToJsonStat(finRaw);
@@ -807,7 +814,28 @@ async function runQuery(){
    var u2=provider().base+"/data/"+encodeURIComponent(euroCode)+"?"+buildEurostatParams().toString();
    ds=await fetchJson(u2);state.lastQueryUrl=u2
   }
-  else if(state.provider==="pxweb"){var query={query:[],response:{format:"json-stat2"}};dims(state.metadata).forEach(function(d){query.query.push({code:d.id,selection:{filter:"item",values:Array.from(state.filters.get(d.id)||[])}})});var up=pxUrl(state.pxPath);if(state.pxPreset==="sweden"){ds=await swedenV2Query(query)}else{ds=await fetchJson(up,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(query)})}state.lastQueryUrl=up}
+  else if(state.provider==="pxweb"){
+   var query={query:[],response:{format:"json-stat2"}};
+   dims(state.metadata).forEach(function(d){
+    query.query.push({code:d.id,selection:{filter:"item",values:Array.from(state.filters.get(d.id)||[])}});
+   });
+   var up=pxUrl(state.pxPath);
+   if(state.pxPreset==="sweden"){
+    ds=await swedenV2Query(query);
+   }else{
+    try{
+     ds=await fetchJson(up,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(query)});
+    }catch(pxErr){
+     // Statistics Iceland pot servir JSON-stat clàssic encara que la
+     // interfície PxWeb publiqui l'opció json-stat2.
+     if(state.pxPreset==="iceland"){
+      var fallbackQuery={query:query.query,response:{format:"json"}};
+      ds=await fetchJson(up,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(fallbackQuery)});
+     }else throw pxErr;
+    }
+   }
+   state.lastQueryUrl=up
+  }
   else {var qi=new URLSearchParams();Object.keys(selectedFilters()).forEach(function(k){selectedFilters()[k].forEach(function(v){qi.append("tv",k+":"+v)})});var ui=ineJsonStatUrl(state.selected.table)+"?"+qi.toString();ds=await fetchJson(ui);state.lastQueryUrl=ui}
   if(token!==state.requestToken)return;state.lastData=ds;state.page=1;renderResults(ds);var n=Array.isArray(ds.value)?ds.value.length:Object.keys(ds.value||{}).length;$("resultCount").textContent=n.toLocaleString("ca-ES")+" valors retornats";$("exportCsv").disabled=false;$("exportXlsx").disabled=false;$("addToCart").disabled=false;status("")
  }catch(e){if(token===state.requestToken){$("results").innerHTML="<div class=\"error\">"+esc(e.message)+"</div>";status("Error","error")}}finally{busy(false);updateCells()}
