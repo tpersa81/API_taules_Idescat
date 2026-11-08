@@ -442,13 +442,13 @@ async function pxSelect(target){
   state.pxPath=path.slice();
   if(!/\.px$/i.test(state.pxPath[state.pxPath.length-1]))
     state.pxPath[state.pxPath.length-1]+=".px";
-  var finTableUrl=pxUrl(state.pxPath);
+  var finTableUrl=finlandTableUrl(state.pxPath);
   var finRaw=null;
   try{finRaw=await fetchJson(finTableUrl)}catch(e){
    // Alguns nodes de Finland poden arribar sense l'extensió .px al catàleg.
    var altPath=state.pxPath.slice();
    altPath[altPath.length-1]=String(altPath[altPath.length-1]).replace(/\.px$/i,"");
-   var altUrl=pxUrl(altPath);
+   var altUrl=finlandTableUrl(altPath);
    if(altUrl!==finTableUrl)finRaw=await fetchJson(altUrl);
   }
   if(finRaw&&Array.isArray(finRaw.variables)&&finRaw.variables.length){
@@ -467,7 +467,7 @@ async function pxSelect(target){
   state.selected.table=val;
   state.pxPath=path.slice();
   if(state.pxPreset==="finland"&&!/\\.px$/i.test(state.pxPath[state.pxPath.length-1]))state.pxPath[state.pxPath.length-1]+=".px";
-  var tableUrl=pxUrl(state.pxPath);
+  var tableUrl=finlandTableUrl(state.pxPath);
   var td=await fetchJson(tableUrl);
   if(td&&Array.isArray(td.variables)&&td.variables.length){
    state.swedenV2Table=false;
@@ -542,6 +542,15 @@ function pxToJsonStat(m){
   }
  });
  return ds;
+}
+function finlandTableUrl(path){
+ var p=(path||[]).slice();
+ if(p.length&&state.pxPreset==="finland"){
+  var last=String(p[p.length-1]||"");
+  if(!/\.px$/i.test(last))last+=".px";
+  return provider().base.replace(/\/+$/,"")+"/"+last;
+ }
+ return pxUrl(p);
 }
 function pxTable(x){return/^(t|table)$/i.test(x&&x.type)||/\.px$/i.test(x&&x.id||"")||/_pxt_/i.test(x&&x.id||"")}
 async function loadSwedenV2Tables(){
@@ -863,7 +872,7 @@ async function runQuery(){
    dims(state.metadata).forEach(function(d){
     query.query.push({code:d.id,selection:{filter:"item",values:Array.from(state.filters.get(d.id)||[])}});
    });
-   var up=pxUrl(state.pxPath);
+   var up=finlandTableUrl(state.pxPath);
    if(state.pxPreset==="sweden"){
     ds=await swedenV2Query(query);
    }else{
