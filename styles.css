@@ -363,6 +363,10 @@
 
 .query-actions #status{
   margin-left:8px;
+  margin-right:8px;
+  min-height:20px;
+  display:inline-flex;
+  align-items:center;
 }
 
 .export-actions{
@@ -380,7 +384,7 @@
   }
 
   .query-actions #status{
-    width:100%;
+    width:auto;
     margin:4px 0 0;
   }
 
