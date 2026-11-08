@@ -39,9 +39,9 @@ function collection(d){
   return jsonstatCats(d,d.id[0]).map(function(x){return{id:x.code,label:x.label}});
  return[];
 }
-function clearBelow(keepStat){state.pivot={rows:[],columns:[]};if(!keepStat)fill($("stat"),[]);["concept","cross","node","table","geo"].forEach(resetSelect);state.metadata=null;state.lastData=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;$("resultCount").textContent=""}
+function clearBelow(keepStat){state.pivot={rows:[],columns:[]};if(!keepStat)fill($("stat"),[]);["concept","cross","node","table","geo"].forEach(resetSelect);eurostatClearLevels();state.metadata=null;state.lastData=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;$("resultCount").textContent=""}
 function setLabels(){var p=state.provider,ls=p==="idescat"?["Organisme","Tema","Encreuament","Entrada","Taula","Geografia"]:p==="pxweb"&&state.pxPreset==="sweden"?["Organisme","Tema","Nivell 2","Nivell 3","Taula","Geografia"]:p==="pxweb"?["Organisme","Nivell 1","Nivell 2","Nivell 3","Taula","Geografia"]:p==="ine"?["Organisme","—","—","Taula","—","—"]:["Organisme","Tipus de dades","Tema","Subtema","Estadística","—"];var l=document.querySelectorAll("#step2 label");document.querySelector("#step1 label:nth-child(1)").firstChild.textContent=ls[0]+" ";l.forEach(function(x,i){x.firstChild.textContent=ls[i+1]+" "})}
-function setProviderUI(){setLabels();var isEuro=state.provider==="eurostat",sl=document.querySelector("#step1 .grid label:nth-child(2)");if(sl)sl.firstChild.textContent=(isEuro?"Tipus de dades":"Estadística")+" ";var tl=$("table")&&$("table").parentElement,gl=$("geo")&&$("geo").parentElement;if(tl)tl.style.display=isEuro?"none":"";if(gl)gl.style.display=isEuro?"none":"";$("docLink").href=provider().doc;var sel=state.provider==="pxweb"?"pxweb:"+state.pxPreset:state.provider;if($("provider")&&[].slice.call($("provider").options).some(function(o){return o.value===sel}))$("provider").value=sel}
+function setProviderUI(){setLabels();var isEuro=state.provider==="eurostat",sl=document.querySelector("#step1 .grid label:nth-child(2)");if(sl)sl.firstChild.textContent=(isEuro?"Tipus de dades":"Estadística")+" ";var fixedGrid=document.querySelector("#step2>.grid"),euroBox=$("eurostatLevels");if(fixedGrid)fixedGrid.style.display=isEuro?"none":"";if(euroBox)euroBox.hidden=!isEuro;var tl=$("table")&&$("table").parentElement,gl=$("geo")&&$("geo").parentElement;if(tl)tl.style.display=isEuro?"none":"";if(gl)gl.style.display=isEuro?"none":"";$("docLink").href=provider().doc;var sel=state.provider==="pxweb"?"pxweb:"+state.pxPreset:state.provider;if($("provider")&&[].slice.call($("provider").options).some(function(o){return o.value===sel}))$("provider").value=sel}
 async function loadStats(){
  var loadToken=state.requestToken,loadProvider=state.provider,loadPreset=state.pxPreset;
  setProviderUI();state.stats=[];state.selected.stat="";fill($("stat"),[]);$("stat").disabled=true;
@@ -157,63 +157,70 @@ async function onStatChange(){
   else{state.pxPath=[state.selected.stat];await pxChildren(state.pxPath,"concept")}
  }catch(e){status(e.message,"error")}finally{busy(false)}
 }
+function eurostatClearLevels(){
+ var box=$("eurostatLevels");
+ if(box){box.innerHTML="";box.hidden=true}
+}
+function eurostatLevelLabel(i){
+ if(i===0)return "Tema";
+ if(i===1)return "Subtema";
+ return "Nivell "+(i+1);
+}
+function eurostatAddLevel(children,path,index){
+ var box=$("eurostatLevels");
+ if(!box)return;
+ var list=(children||[]).filter(function(x){return x.type==="folder"||x.type==="dataset"||x.type==="table"});
+ if(!list.length)return;
+ box.hidden=false;
+ var label=document.createElement("label");
+ label.dataset.eurostatLevel=String(index);
+ label.textContent=eurostatLevelLabel(index)+" ";
+ var sel=document.createElement("select");
+ sel.id="eurostatLevel"+index;
+ sel.disabled=false;
+ label.appendChild(sel);
+ box.appendChild(label);
+ list.forEach(function(x){
+  sel.appendChild(new Option(x.label+(x.type!=="folder"?" ["+x.code+"]":""),x.code));
+ });
+ sel.onchange=async function(){
+  var val=sel.value;
+  if(!val)return;
+  await eurostatSelectDynamic(index,val);
+ };
+ if(list.length===1){
+  sel.value=list[0].code;
+  eurostatSelectDynamic(index,sel.value);
+ }
+}
 async function eurostatSelectRoot(rootCode){
  var root=state.eurostatRoots.find(function(x){return x.code===rootCode});
  if(!root)throw new Error("No s'ha trobat el tipus de dades d'Eurostat.");
  state.eurostatPath=[root.code];
  state.eurostatNodeParentPath=[root.code];
+ eurostatClearLevels();
  ["concept","cross","node","table","geo"].forEach(resetSelect);
- var children=(root.children||[]).filter(function(x){return x.type==="folder"||x.type==="dataset"||x.type==="table"});
- fill($("concept"),children.map(function(x){return{value:x.code,label:x.label+(x.type!=="folder"?" ["+x.code+"]":"")}}));
- $("concept").disabled=!children.length;
- if(children.length===1){$("concept").value=children[0].value;await eurostatSelectLevel("concept")}
+ eurostatAddLevel(root.children||[],[root.code],0);
 }
-function eurostatFillLevel(target,children,parentPath){
- var list=(children||[]).filter(function(x){return x.type==="folder"||x.type==="dataset"||x.type==="table"});
- state.eurostatNodeParentPath=parentPath.slice();
- fill($(target),list.map(function(x){
-   return{value:x.code,label:x.label+(x.type!=="folder"?" ["+x.code+"]":"")}
- }));
- $(target).disabled=!list.length;
- return list;
-}
-async function eurostatSelectLevel(target){
- var val=$(target).value;if(!val)return;
- var item,path,parentPath;
- if(target==="concept"){
-  parentPath=[state.eurostatPath[0]];
-  path=parentPath.concat([val]);
-  state.eurostatPath=path;
-  ["cross","node","table","geo"].forEach(resetSelect);
- }else if(target==="cross"){
-  parentPath=(state.eurostatPath||[]).slice(0,2);
-  path=parentPath.concat([val]);
-  state.eurostatPath=path;
-  ["node","table","geo"].forEach(resetSelect);
- }else if(target==="node"){
-  parentPath=(state.eurostatNodeParentPath||state.eurostatPath||[]).slice();
-  path=parentPath.concat([val]);
-  state.eurostatPath=path;
-  ["table","geo"].forEach(resetSelect);
- }else{
-  return;
- }
- item=eurostatNodeByPath(path);
+async function eurostatSelectDynamic(index,val){
+ var base=(state.eurostatPath||[]).slice(0,index+1);
+ var path=base.concat([val]);
+ var item=eurostatNodeByPath(path);
  if(!item)throw new Error("No s'ha trobat l'element seleccionat d'Eurostat.");
+ state.eurostatPath=path;
+ var box=$("eurostatLevels");
+ if(box){
+  Array.from(box.querySelectorAll("label")).forEach(function(l){
+   if(Number(l.dataset.eurostatLevel)>index)l.remove();
+  });
+ }
  if(item.type==="dataset"||item.type==="table"){
   state.selected.node=item.code;
   state.selected.table=item.code;
   await eurostatSelect(item.code);
   return;
  }
- var children=(item.children||[]).filter(function(x){return x.type==="folder"||x.type==="dataset"||x.type==="table"});
- if(target==="concept"){
-  eurostatFillLevel("cross",children,path);
-  if(children.length===1){$("cross").value=children[0].value;await eurostatSelectLevel("cross")}
- }else{
-  eurostatFillLevel("node",children,path);
-  if(children.length===1){$("node").value=children[0].value;await eurostatSelectLevel("node")}
- }
+ eurostatAddLevel(item.children||[],path,index+1);
 }
 async function eurostatSelect(code){state.selected.node=code;state.selected.table=code;var ds=await fetchJson(provider().base+"/data/"+encodeURIComponent(code)+"?format=JSON&lang=EN&lastTimePeriod=3");state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Conjunt de dades:</strong> "+esc(ds.label||code)+"<span class=\"path\">"+esc(provider().base+"/data/"+code)+"</span>";$("query").disabled=false}
 async function pxChildren(path,target){
