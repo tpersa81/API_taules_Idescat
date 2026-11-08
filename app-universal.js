@@ -3,7 +3,16 @@ const MAX_CELLS=20000;
 const state={provider:"idescat",pxPreset:"finland",stats:[],metadata:null,lastData:null,lastQueryUrl:"",filters:new Map(),page:1,pageSize:100,requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],swedenV2Tables:null,swedenV2Table:false,swedenPath:[],eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[]};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]});
-async function fetchJson(url,opt){opt=opt||{};var r;try{r=await fetch(url,opt)}catch(e){throw new Error("No s'ha pogut connectar amb l'API. "+(e&&e.message||"Failed to fetch")+" · "+url)}var text="";try{text=await r.text()}catch(e){throw new Error("No s'ha pogut llegir la resposta de l'API (HTTP "+r.status+").")}var d=null;try{d=text?JSON.parse(text):null}catch(e){if(!r.ok)throw new Error("Error HTTP "+r.status+": "+text.slice(0,300));throw new Error("Resposta no vàlida de l'API (HTTP "+r.status+").")}if(!r.ok||d&&(d.class==="error"||d.error||d.errors)){
+async function fetchJson(url,opt){opt=opt||{};var r;try{r=await fetch(url,opt)}catch(e){
+  // Statistics Iceland no exposa CORS per a les peticions de la seva API.
+  // Reintentem la mateixa petició a través de cors.tools, que admet també POST.
+  if(state.provider==="pxweb"&&state.pxPreset==="iceland"&&/^https:\/\/px\.hagstofa\.is\//i.test(url)){
+   try{
+    var proxyUrl="https://cors.tools/proxy?url="+encodeURIComponent(url);
+    r=await fetch(proxyUrl,opt);
+   }catch(e2){throw new Error("No s'ha pogut connectar amb l'API. "+(e2&&e2.message||"Failed to fetch")+" · "+url)}
+  }else throw new Error("No s'ha pogut connectar amb l'API. "+(e&&e.message||"Failed to fetch")+" · "+url)
+}var text="";try{text=await r.text()}catch(e){throw new Error("No s'ha pogut llegir la resposta de l'API (HTTP "+r.status+").")}var d=null;try{d=text?JSON.parse(text):null}catch(e){if(!r.ok)throw new Error("Error HTTP "+r.status+": "+text.slice(0,300));throw new Error("Resposta no vàlida de l'API (HTTP "+r.status+").")}if(!r.ok||d&&(d.class==="error"||d.error||d.errors)){
   var detail=d&&(d.detail||d.label||d.message||d.error||d.errors||d.title);
   if(detail&&typeof detail==="object"){
    if(Array.isArray(detail))detail=detail.map(function(x){return x&&typeof x==="object"?String(x.message||x.detail||x.error||JSON.stringify(x)):String(x)}).join(" · ");
@@ -446,15 +455,26 @@ async function pxSelect(target){
    return;
   }
  }
- var d=await fetchJson(pxUrl(path));
+ var d=null,requestPath=path.slice();
+ try{d=await fetchJson(pxUrl(requestPath))}catch(pxErr){
+  // A Finland pot haver-hi nodes que el catàleg publica sense .px.
+  // Si la primera consulta falla, provem la mateixa ruta amb l'extensió .px.
+  var last=requestPath.length-1;
+  if(state.pxPreset==="finland"&&last>=0&&!/\.px$/i.test(String(requestPath[last]))){
+   var altPath=requestPath.slice();
+   altPath[last]=String(altPath[last])+".px";
+   d=await fetchJson(pxUrl(altPath));
+   requestPath=altPath;
+  }else throw pxErr;
+ }
  if(d&&Array.isArray(d.variables)&&d.variables.length){
   state.selected.table=val;
-  state.pxPath=path.slice();
+  state.pxPath=requestPath.slice();
   state.swedenV2Table=false;
   state.metadata=pxToJsonStat(d);
   renderMetadata(state.metadata);
   $("tableInfo").hidden=false;
-  $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(d.title||d.label||val)+"<span class=\"path\">"+esc(pxUrl(path))+"</span>";
+  $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(d.title||d.label||val)+"<span class=\"path\">"+esc(pxUrl(requestPath))+"</span>";
   $("query").disabled=false;
   return;
  }
