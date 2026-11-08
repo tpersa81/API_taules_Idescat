@@ -173,12 +173,6 @@ async function eurostatSelectLevel(target){
  var children=(item.children||[]).filter(function(x){return x.type==="folder"||x.type==="dataset"||x.type==="table"}),next=order[idx+1];
  if(next){fill($(next),children.map(function(x){return{value:x.code,label:x.label+(x.type!=="folder"?" ["+x.code+"]":"")}}));$(next).disabled=!children.length;if(children.length===1){$(next).value=children[0].value;await eurostatSelectLevel(next)}}
 }
-async function eurostatSelect(code){
- state.selected.node=code;state.selected.table=code;
- var ds=await fetchJson(provider().base+"/data/"+encodeURIComponent(code)+"?format=JSON&lang=EN&lastTimePeriod=3");
- state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Conjunt de dades:</strong> "+esc(ds.label||code)+" <span class=\"path\">["+esc(code)+"]</span>";$("query").disabled=false;
-}
-
 async function eurostatSelect(code){state.selected.node=code;state.selected.table=code;var ds=await fetchJson(provider().base+"/data/"+encodeURIComponent(code)+"?format=JSON&lang=EN&lastTimePeriod=3");state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Conjunt de dades:</strong> "+esc(ds.label||code)+"<span class=\"path\">"+esc(provider().base+"/data/"+code)+"</span>";$("query").disabled=false}
 async function pxChildren(path,target){
  var d=await fetchJson(pxUrl(path)),items=a(d).map(function(x){return{id:String(f(x,"id","code","dbid","path")),label:String(f(x,"text","label","name","title")||f(x,"id","code","path")),type:String(f(x,"type","class"))}}).filter(function(x){return x.id});
