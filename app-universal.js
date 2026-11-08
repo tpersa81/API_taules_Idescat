@@ -574,9 +574,13 @@ function finlandTableUrls(path){
  if(last){
   // Format físic actual de Statistics Finland: /StatFin/statfin_<db>_pxt_<taula>.px
   var physical="statfin_"+db+"_pxt_"+last+".px";
-  if(db)urls.push(base+"/"+physical);
+  // Statistics Finland recomana la ruta amb el nivell de base de dades
+  // per a les peticions POST: /StatFin/<nivell>/<taula>.px.
+  // La ruta curta /StatFin/<taula>.px pot funcionar per GET però no és
+  // la més fiable per a les consultes POST.
   if(db)urls.push(base+"/"+db+"/"+physical);
   if(db)urls.push(base+"/"+db+"/"+last+".px");
+  if(db)urls.push(base+"/"+physical);
   urls.push(base+"/"+last+".px");
  }
  return [...new Set(urls)];
