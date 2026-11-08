@@ -176,24 +176,86 @@ async function swedenLoadV1Table(path,tableId){
  path=(path||[]).slice();tableId=String(tableId||path[path.length-1]||"").trim();
  if(!tableId)throw new Error("No s'ha pogut identificar la taula de Statistics Sweden.");
 
- // La navegació encara es fa amb PxWeb v1, però la consulta de dades
- // es fa amb PxWebApi v2. El POST de v1 pot donar "Failed to fetch"
- // des d'una pàgina web per les polítiques CORS de l'API.
+ // La navegació de Statistics Sweden continua fent-se amb PxWeb v1,
+ // però els identificadors de taula de v1 no són compatibles amb v2.
+ // Primer obtenim les metadades v1 per conèixer el títol i després
+ // resolem la taula equivalent al catàleg v2.
+ var v1Url=pxUrl(path),v1Raw=null;
+ try{v1Raw=await fetchJson(v1Url)}catch(e){}
+
+ var terms=[tableId];
+ var v1Title=String(v1Raw&&(v1Raw.title||v1Raw.label)||"").trim();
+ if(v1Title&&v1Title.toLowerCase()!==tableId.toLowerCase())terms.push(v1Title);
+
+ var candidates=[];
  try{
-  await swedenLoadTable(tableId);
-  state.pxPath=path;
-  return;
+  for(var ti=0;ti<terms.length&&!candidates.length;ti++){
+   var su="https://statistikdatabasen.scb.se/api/v2/tables?lang=en&query="+encodeURIComponent(terms[ti])+"&pageSize=100";
+   var sd=await fetchJson(su);
+   var rows=Array.isArray(sd&&sd.tables)?sd.tables:a(sd);
+   if(Array.isArray(rows)&&rows.length){
+    candidates=rows.map(function(t){
+     return{
+      id:String(f(t,"id","tableId","code","tableCode")).trim(),
+      label:String(f(t,"label","title","text","name")||"").trim()
+     };
+    }).filter(function(t){return t.id});
+   }
+  }
  }catch(e){}
 
- // Fallback per a taules antigues que encara no apareguin al catàleg v2.
- var u=pxUrl(path),raw=await fetchJson(u),ds=pxToJsonStat(raw);
- if(!ds||!Array.isArray(ds.id)||!ds.id.length)throw new Error("La taula de Statistics Sweden no ha retornat metadades.");
- state.selected.node=tableId;state.selected.table=tableId;state.pxPath=path;state.swedenV2Table=false;state.metadata=ds;renderMetadata(ds);
- $("tableInfo").hidden=false;
- $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||raw.label||tableId)+"<span class=\"path\">"+esc(u)+"</span>";
- $("query").disabled=false
+ // Prioritzem una coincidència exacta del títol; si no n'hi ha,
+ // provem la primera coincidència retornada pel cercador v2.
+ if(candidates.length){
+  var titleLower=v1Title.toLowerCase();
+  candidates.sort(function(x,y){
+   var xs=x.label.toLowerCase(),ys=y.label.toLowerCase();
+   var xr=xs===titleLower?0:(titleLower&&xs.indexOf(titleLower)>=0?1:2);
+   var yr=ys===titleLower?0:(titleLower&&ys.indexOf(titleLower)>=0?1:2);
+   return xr-yr;
+  });
+  for(var ci=0;ci<candidates.length;ci++){
+   try{
+    var mapped=candidates[ci],
+        mu="https://statistikdatabasen.scb.se/api/v2/tables/"+encodeURIComponent(mapped.id)+"/metadata?lang=en",
+        raw=await fetchJson(mu),
+        ds=swedenV2MetadataToJsonStat(raw);
+    if(ds&&Array.isArray(ds.id)&&ds.id.length){
+     state.selected.node=mapped.id;
+     state.selected.table=mapped.id;
+     state.pxPath=path;
+     state.swedenV2Table=true;
+     state.metadata=ds;
+     renderMetadata(ds);
+     $("tableInfo").hidden=false;
+     $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.label||mapped.label||v1Title||tableId)+"<span class="path">"+esc(mu)+"</span>";
+     $("query").disabled=false;
+     return;
+    }
+   }catch(e){}
+  }
+ }
+
+ // Si no podem resoldre la taula a v2, mantenim les metadades v1
+ // per no trencar la navegació; la consulta posterior mostrarà
+ // l'error real de l'API en lloc d'inventar un identificador v2.
+ if(v1Raw){
+  var ds1=pxToJsonStat(v1Raw);
+  if(ds1&&Array.isArray(ds1.id)&&ds1.id.length){
+   state.selected.node=tableId;
+   state.selected.table=tableId;
+   state.pxPath=path;
+   state.swedenV2Table=false;
+   state.metadata=ds1;
+   renderMetadata(ds1);
+   $("tableInfo").hidden=false;
+   $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(v1Raw.title||v1Raw.label||tableId)+"<span class="path">"+esc(v1Url)+"</span>";
+   $("query").disabled=false;
+   return;
+  }
+ }
+ throw new Error("No s'ha pogut resoldre la taula de Statistics Sweden a PxWebApi v2.");
 }
-async function swedenLoadTable(tableId){tableId=String(tableId||"").trim();if(!tableId)throw new Error("No s'ha pogut identificar la taula de Statistics Sweden.");var mu="https://statistikdatabasen.scb.se/api/v2/tables/"+encodeURIComponent(tableId)+"/metadata?lang=en";var raw=await fetchJson(mu),ds=swedenV2MetadataToJsonStat(raw);if(!ds||!Array.isArray(ds.id)||!ds.id.length)throw new Error("La taula de Statistics Sweden no ha retornat metadades.");state.selected.node=tableId;state.selected.table=tableId;state.swedenV2Table=true;state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.label||tableId)+"<span class=\"path\">"+esc(mu)+"</span>";$("query").disabled=false}
 function eurostatClearLevels(){
  var box=$("eurostatLevels");
  if(box){box.innerHTML="";box.hidden=true}
