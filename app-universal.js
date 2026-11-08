@@ -3,7 +3,15 @@ const MAX_CELLS=20000;
 const state={provider:"idescat",pxPreset:"finland",stats:[],metadata:null,lastData:null,lastQueryUrl:"",filters:new Map(),page:1,pageSize:100,requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],swedenV2Tables:null,swedenV2Table:false,eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[]};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]});
-async function fetchJson(url,opt){opt=opt||{};var r;try{r=await fetch(url,opt)}catch(e){throw new Error("No s'ha pogut connectar amb l'API. "+(e&&e.message||"Failed to fetch")+" · "+url)}var text="";try{text=await r.text()}catch(e){throw new Error("No s'ha pogut llegir la resposta de l'API (HTTP "+r.status+").")}var d=null;try{d=text?JSON.parse(text):null}catch(e){if(!r.ok)throw new Error("Error HTTP "+r.status+": "+text.slice(0,300));throw new Error("Resposta no vàlida de l'API (HTTP "+r.status+").")}if(!r.ok||d&&d.class==="error")throw new Error(d&&(d.detail||d.label||d.message||d.error||d.title)||"Error HTTP "+r.status+".");return d}
+async function fetchJson(url,opt){opt=opt||{};var r;try{r=await fetch(url,opt)}catch(e){throw new Error("No s'ha pogut connectar amb l'API. "+(e&&e.message||"Failed to fetch")+" · "+url)}var text="";try{text=await r.text()}catch(e){throw new Error("No s'ha pogut llegir la resposta de l'API (HTTP "+r.status+").")}var d=null;try{d=text?JSON.parse(text):null}catch(e){if(!r.ok)throw new Error("Error HTTP "+r.status+": "+text.slice(0,300));throw new Error("Resposta no vàlida de l'API (HTTP "+r.status+").")}if(!r.ok||d&&(d.class==="error"||d.error||d.errors)){
+  var detail=d&&(d.detail||d.label||d.message||d.error||d.errors||d.title);
+  if(detail&&typeof detail==="object"){
+   if(Array.isArray(detail))detail=detail.map(function(x){return x&&typeof x==="object"?String(x.message||x.detail||x.error||JSON.stringify(x)):String(x)}).join(" · ");
+   else detail=detail.message||detail.detail||detail.error||JSON.stringify(detail);
+  }
+  throw new Error(String(detail||"Error HTTP "+r.status+"."));
+ }
+ return d}
 function a(d){if(Array.isArray(d))return d;if(d&&Array.isArray(d.data))return d.data;if(d&&Array.isArray(d.items))return d.items;if(d&&Array.isArray(d.result))return d.result;return[]}
 function f(o){for(var i=1;i<arguments.length;i++){var k=arguments[i];if(o&&o[k]!=null)return o[k]}return""}
 function fill(sel,items,ph){var old=sel.value;sel.innerHTML="";if(ph!==null)sel.append(new Option(ph||"— Selecciona —",""));items.forEach(function(x){sel.append(new Option(x.label||x.value,x.value))});if([].slice.call(sel.options).some(function(o){return o.value===old}))sel.value=old}
@@ -178,6 +186,7 @@ function eurostatAddLevel(children,path,index){
  var sel=document.createElement("select");
  sel.id="eurostatLevel"+index;
  sel.disabled=false;
+ sel.appendChild(new Option("— Selecciona —",""));
  label.appendChild(sel);
  box.appendChild(label);
  list.forEach(function(x){
@@ -186,12 +195,12 @@ function eurostatAddLevel(children,path,index){
  sel.onchange=async function(){
   var val=sel.value;
   if(!val)return;
-  await eurostatSelectDynamic(index,val);
+  try{
+   await eurostatSelectDynamic(index,val);
+  }catch(e){
+   status(e&&e.message?e.message:String(e),"error");
+  }
  };
- if(list.length===1){
-  sel.value=list[0].code;
-  eurostatSelectDynamic(index,sel.value);
- }
 }
 async function eurostatSelectRoot(rootCode){
  var root=state.eurostatRoots.find(function(x){return x.code===rootCode});
@@ -643,7 +652,12 @@ async function runQuery(){
  var token=++state.requestToken;busy(true);$("query").disabled=true;status("Consultant l’API…");
  try{var ds;
   if(state.provider==="idescat"){var base=provider().base+"/"+state.selected.stat+"/"+state.selected.node+"/"+state.selected.table+"/"+state.selected.geo+"/data",q=new URLSearchParams();Object.keys(selectedFilters()).forEach(function(k){q.set(k,selectedFilters()[k].join(","))});q.set("lang","ca");var u=base+"?"+q.toString();ds=await fetchJson(u);state.lastQueryUrl=u}
-  else if(state.provider==="eurostat"){var u2=provider().base+"/data/"+state.selected.stat+"?"+buildEurostatParams().toString();ds=await fetchJson(u2);state.lastQueryUrl=u2}
+  else if(state.provider==="eurostat"){
+   var euroCode=state.selected.table||state.selected.node;
+   if(!euroCode)throw new Error("No s'ha seleccionat cap conjunt de dades d'Eurostat.");
+   var u2=provider().base+"/data/"+encodeURIComponent(euroCode)+"?"+buildEurostatParams().toString();
+   ds=await fetchJson(u2);state.lastQueryUrl=u2
+  }
   else if(state.provider==="pxweb"){var query={query:[],response:{format:"json-stat2"}};dims(state.metadata).forEach(function(d){query.query.push({code:d.id,selection:{filter:"item",values:Array.from(state.filters.get(d.id)||[])}})});var up=pxUrl(state.pxPath);if(state.pxPreset==="sweden"){ds=await swedenV2Query(query)}else{ds=await fetchJson(up,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(query)})}state.lastQueryUrl=up}
   else {var qi=new URLSearchParams();Object.keys(selectedFilters()).forEach(function(k){selectedFilters()[k].forEach(function(v){qi.append("tv",k+":"+v)})});var ui=ineJsonStatUrl(state.selected.table)+"?"+qi.toString();ds=await fetchJson(ui);state.lastQueryUrl=ui}
   if(token!==state.requestToken)return;state.lastData=ds;state.page=1;renderResults(ds);var n=Array.isArray(ds.value)?ds.value.length:Object.keys(ds.value||{}).length;$("resultCount").textContent=n.toLocaleString("ca-ES")+" valors retornats";$("exportCsv").disabled=false;$("exportXlsx").disabled=false;$("addToCart").disabled=false;status("")
