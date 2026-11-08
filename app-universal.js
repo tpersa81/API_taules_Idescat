@@ -28,7 +28,25 @@ function resetSelect(id){if($(id)){$(id).innerHTML='<option value="">— Selecci
 function busy(v){document.body.classList.toggle("busy",v)}
 function status(s,t){$("status").textContent=s||"";$("status").className=t||""}
 function provider(){var p={idescat:{label:"Idescat",base:"https://api.idescat.cat/taules/v2",doc:"https://www.idescat.cat/dev/api/taules/"},pxweb:{label:"PXWeb",base:"",doc:"https://pxdata.stat.fi/api1.html"},ine:{label:"INE",base:"https://servicios.ine.es/wstempus/js",doc:"https://www.ine.es/OpenAPI/"},eurostat:{label:"Eurostat",base:"https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0",doc:"https://ec.europa.eu/eurostat/web/user-guides/data-browser/api-data-access/"}};if(state.provider==="pxweb"){var x={finland:"https://pxdata.stat.fi/PxWeb/api/v1/en/StatFin/",sweden:"https://api.scb.se/OV0104/v1/doris/en/ssd",unece:"https://w3.unece.org/PXWeb2015/api/v1/en/STAT",iceland:"https://px.hagstofa.is/pxen/api/v1/en"};p.pxweb.base=x[state.pxPreset]||x.finland}return p[state.provider]}
-function pxUrl(path){return [provider().base.replace(/\/+$/,"")].concat(path).join("/")}
+function pxUrl(path){
+ var p=(path||[]).slice();
+ // Statistics Finland's web catalogue can expose hierarchical IDs such as
+ // "StatFin__vrm__synt", while the API endpoint uses the corresponding
+ // path "vrm/synt". Normalize those IDs only for Finland.
+ if(state.provider==="pxweb"&&state.pxPreset==="finland"){
+  var out=[];
+  p.forEach(function(seg){
+   seg=String(seg||"");
+   if(/^StatFin__/.test(seg)){
+    seg.slice("StatFin__".length).split("__").filter(Boolean).forEach(function(x){out.push(x)});
+   }else if(seg==="StatFin"&&out.length===0){
+    // StatFin is already part of the API base.
+   }else out.push(seg);
+  });
+  p=out;
+ }
+ return [provider().base.replace(/\\/+$/,"")].concat(p).join("/");
+}
 function jsonstatCats(ds,id){var c=ds.dimension&&ds.dimension[id]&&ds.dimension[id].category||{},lab=c.label&&typeof c.label==="object"?c.label:{};if(Array.isArray(c.index))return c.index.map(function(code,i){return{code:String(code),label:String(lab[code]==null?code:lab[code]),index:i}});if(c.index&&typeof c.index==="object")return Object.keys(c.index).map(function(code){return{code:String(code),label:String(lab[code]==null?code:lab[code]),index:Number(c.index[code])}}).sort(function(x,y){return x.index-y.index});return Object.keys(lab).map(function(code,i){return{code:String(code),label:String(lab[code]),index:i}})}
 function dims(ds){return(ds.id||[]).map(function(id){var d=ds.dimension&&ds.dimension[id]||{};return{id:id,label:d.label||id,role:d.extension&&d.extension.role||d.role||"",categories:jsonstatCats(ds,id)}})}
 function temporal(d){var id=String(d.id||"").toUpperCase(),r=String(d.role||"").toUpperCase();return["YEAR","MONTH","QUARTER","SEMESTER","BIMONTH","WEEK","DAY","DATE","TIME","TIME_PERIOD","PERIOD"].indexOf(id)>=0||id.indexOf("TIME")===0||r.indexOf("TIME")>=0||r.indexOf("TEMPOR")>=0}
