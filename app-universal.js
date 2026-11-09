@@ -1071,7 +1071,8 @@ async function ineResolveFilters(filters){
  for(var di=0;di<dsDims.length;di++){
   var d=dsDims[di],wanted=filters[d.id];
   if(!wanted||!wanted.length)continue;
-  var dn=ineNorm(d.label||d.id),v=vars.find(function(x){
+  var dn=ineNorm(d.label||d.id);
+  var v=vars.find(function(x){
    var id=String(f(x,"Id","id")).trim();
    var name=ineNorm(f(x,"Nombre","nombre","Name","Descripcion","Description")||"");
    var code=ineNorm(f(x,"Codigo","codigo","Code","code")||"");
@@ -1079,6 +1080,12 @@ async function ineResolveFilters(filters){
           name.replace(/[^A-Z0-9]/g,"")===dn.replace(/[^A-Z0-9]/g,"") ||
           code.replace(/[^A-Z0-9]/g,"")===dn.replace(/[^A-Z0-9]/g,"");
   });
+  // JSON-stat de l'INE pot exposar «Clases» mentre Tempus3 publica
+  // «CLASES». Si la correspondència textual falla, usem el codi/nom
+  // conegut de la variable de la taula a partir dels valors disponibles.
+  if(!v && dn.replace(/[^A-Z0-9]/g,"")==="CLASES"){
+   v=vars.find(function(x){return ineNorm(f(x,"Nombre","nombre","Name")||"").replace(/[^A-Z0-9]/g,"")==="CLASES"});
+  }
   if(!v)throw new Error("No s'ha pogut identificar la variable INE «"+String(d.label||d.id)+"».");
   var vid=String(f(v,"Id","id")).trim();
   if(!vid)throw new Error("La variable INE «"+String(d.label||d.id)+"» no té identificador.");
