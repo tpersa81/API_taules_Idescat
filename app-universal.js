@@ -1071,22 +1071,6 @@ async function ineOperationCode(op){
  state.ineVarCache.set(key,code);
  return code;
 }
-async function ineTableGroupValues(tableId){
- var key="TABLEVALS|"+String(tableId),cached=state.ineVarCache.get(key);
- if(cached)return cached;
- var groups=a(await fetchJson(provider().base+"/ES/GRUPOS_TABLA/"+encodeURIComponent(String(tableId))));
- var out=[];
- for(var i=0;i<groups.length;i++){
-  var g=groups[i],gid=String(f(g,"Id","id")).trim();
-  if(!gid)continue;
-  var vals=a(await fetchJson(provider().base+"/ES/VALORES_GRUPOSTABLA/"+encodeURIComponent(String(tableId))+"/"+encodeURIComponent(gid)+"?det=1"));
-  var variable=g&&g.Variable;
-  var vid=String(f(g,"FK_Variable","fk_variable")||f(variable||{},"Id","id")).trim();
-  var vn=String(f(g,"Nombre","nombre")||f(variable||{},"Nombre","nombre","Name","name")||"").trim();
-  vals.forEach(function(v){out.push({groupId:gid,variableId:vid,variableName:vn,value:v})});
- }
- state.ineVarCache.set(key,out);return out;
-}
 async function ineResolveFilters(filters){
  var op=String(state.selected.stat||"").trim();
  if(!op)throw new Error("No s'ha pogut identificar l'operació INE.");
@@ -1100,7 +1084,12 @@ async function ineResolveFilters(filters){
  for(var di=0;di<dsDims.length;di++){
   var d=dsDims[di],wanted=filters[d.id];
   if(!wanted||!wanted.length)continue;
-  var dn=ineNorm(d.label||d.id),dnKey=dn.replace(/[^A-Z0-9]/g,"");
+  var dn=ineNorm(d.label||d.id);
+  // En Tempus3 la variable CLASES de l'operació IPRI és la 394.
+  // La metadata JSON-stat de la taula 61525 pot exposar-la simplement
+  // com «Clases», de manera que no depenem de la coincidència textual
+  // amb el catàleg de variables.
+  var dnKey=dn.replace(/[^A-Z0-9]/g,"");
   var v=(opCode==="IPRI"&&dnKey==="CLASES")
       ? {Id:394,Nombre:"CLASES",Codigo:""}
       : (opCode==="IPRI"&&dnKey==="INDICESYTASAS")
@@ -1110,29 +1099,26 @@ async function ineResolveFilters(filters){
    var name=ineNorm(f(x,"Nombre","nombre","Name","Descripcion","Description")||"");
    var code=ineNorm(f(x,"Codigo","codigo","Code","code")||"");
    return id===String(d.id).trim() || name===dn || code===dn ||
-          name.replace(/[^A-Z0-9]/g,"")===dnKey ||
-          code.replace(/[^A-Z0-9]/g,"")===dnKey;
+          name.replace(/[^A-Z0-9]/g,"")===dn.replace(/[^A-Z0-9]/g,"") ||
+          code.replace(/[^A-Z0-9]/g,"")===dn.replace(/[^A-Z0-9]/g,"");
   });
-  // Algunes taules T3 utilitzen grups de valors específics de la taula.
-  // Si la variable no figura a VARIABLES_OPERACION, la recuperem des de
-  // GRUPOS_TABLA, que és la font que l'API documenta per als filtres T3.
-  var tableVals=null;
-  if(!v){
-   tableVals=await ineTableGroupValues(state.selected.table);
-   var tv=tableVals.find(function(x){
-    var vn=ineNorm(x.variableName||"");
-    return vn===dn||vn.replace(/[^A-Z0-9]/g,"")===dnKey||String(x.variableId)===String(d.id);
-   });
-   if(tv)v={Id:tv.variableId,Nombre:tv.variableName,Codigo:""};
-  }
+  // JSON-stat de l'INE pot exposar «Clases» mentre Tempus3 publica
+  // «CLASES». Si la correspondència textual falla, usem el codi/nom
+  // conegut de la variable de la taula a partir dels valors disponibles.
+
   if(!v)throw new Error("No s'ha pogut identificar la variable INE «"+String(d.label||d.id)+"».");
   var vid=String(f(v,"Id","id")).trim();
   if(!vid)throw new Error("La variable INE «"+String(d.label||d.id)+"» no té identificador.");
   var valuesKey="VALS|"+opCode+"|"+vid,values=state.ineVarCache.get(valuesKey);
   if(!values){
    values=a(await fetchJson(provider().base+"/ES/VALORES_VARIABLEOPERACION/"+encodeURIComponent(vid)+"/"+encodeURIComponent(opCode)));
-   if(!values.length && opCode==="IPRI" && vid==="83")
+   // Algunes variables de les taules Tempus3 no apareixen a
+   // VARIABLES_OPERACION ni a VALORES_VARIABLEOPERACION, tot i ser variables
+   // globals del sistema. És el cas d'«Índices y Tasas» de l'IPRI (83).
+   // En aquest cas recuperem els valors globals de la variable.
+   if(!values.length && opCode==="IPRI" && vid==="83"){
     values=a(await fetchJson(provider().base+"/ES/VALORES_VARIABLE/83?det=1"));
+   }
    state.ineVarCache.set(valuesKey,values);
   }
   wanted.forEach(function(code){
@@ -1141,19 +1127,9 @@ async function ineResolveFilters(filters){
     var vc=String(f(x,"Codigo","codigo","Code","code")||"");
     return vc===sc||vc===suffix||String(f(x,"Id","id"))===sc;
    });
-   // Si el valor no existe en el catàleg de l'operació, busquem el valor
-   // exacte dins del grup de la taula. Això cobreix taules T3 com EPA 14506.
-   if(!val){
-    tableVals=tableVals||await ineTableGroupValues(state.selected.table);
-    var hit=tableVals.find(function(x){
-     if(v&&x.variableId&&String(x.variableId)!==vid)return false;
-     var q=x.value||{};
-     var vc=String(f(q,"Codigo","codigo","Code","code")||"");
-     var vn=ineNorm(f(q,"Nombre","nombre","Name","Descripcion","Description")||"");
-     return vc===sc||vc===suffix||String(f(q,"Id","id"))===sc||vn===ineNorm(sc);
-    });
-    if(hit)val=hit.value;
-   }
+   // En algunes dimensions JSON-stat de Tempus3, el codi de categoria
+   // incorpora el grup de la taula (p. ex. «5_0»). Per a la variable global
+   // Índices y Tasas (83), el tram final és el codi/Id real del valor.
    if(!val && opCode==="IPRI" && vid==="83" && /^\d+_\d+$/.test(sc)){
     var globalValueId=sc.slice(sc.lastIndexOf("_")+1);
     val={Id:globalValueId,Codigo:globalValueId,Nombre:globalValueId};
