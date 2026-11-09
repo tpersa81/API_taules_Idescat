@@ -452,7 +452,13 @@ async function pxSelect(target){
    try{finRaw=await fetchJson(finUrls[fu]);finTableUrl=finUrls[fu]}catch(e){finLastError=e}
   }
   if(finRaw&&isPxMetadata(finRaw)){
-   state.finlandTableUrl=finTableUrl;
+   // Encara que les metadades s'hagin obtingut per un alias antic,
+   // el POST s'ha de fer contra el nom curt introduït el 08/06/2026.
+   var finDb=String(state.pxPath[0]||state.selected.stat||"").replace(/^StatFin__/i,"").trim();
+   var finShort=String(state.pxPath[state.pxPath.length-1]||val).replace(/\.px$/i,"");
+   state.finlandTableUrl=finDb
+     ? provider().base.replace(/\/+$/,"")+"/"+finDb+"/"+finShort+".px"
+     : finTableUrl;
    state.swedenV2Table=false;
    state.metadata=pxToJsonStat(finRaw);
    renderMetadata(state.metadata);
@@ -574,12 +580,11 @@ function finlandTableUrls(path){
  if(last){
   // Format físic actual de Statistics Finland: /StatFin/statfin_<db>_pxt_<taula>.px
   var physical="statfin_"+db+"_pxt_"+last+".px";
-  // Statistics Finland recomana la ruta amb el nivell de base de dades
-  // per a les peticions POST: /StatFin/<nivell>/<taula>.px.
-  // La ruta curta /StatFin/<taula>.px pot funcionar per GET però no és
-  // la més fiable per a les consultes POST.
-  if(db)urls.push(base+"/"+db+"/"+physical);
+  // Des del canvi de 8/6/2026 Statistics Finland ha escurçat els
+  // noms dels fitxers de les taules. Per a les taules actives de
+  // StatFin, l'endpoint API canònic és /StatFin/<nivell>/<id>.px.
   if(db)urls.push(base+"/"+db+"/"+last+".px");
+  if(db)urls.push(base+"/"+db+"/"+physical);
   if(db)urls.push(base+"/"+physical);
   urls.push(base+"/"+last+".px");
  }
