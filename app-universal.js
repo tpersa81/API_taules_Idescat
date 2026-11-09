@@ -940,7 +940,7 @@ async function ineDatosTablaFiltered(tableId,filters){
   if(temporal(d))localFilters[d.id]=wanted;
   else apiFilters[d.id]=wanted;
  });
- var iq=await ineResolveFilters(apiFilters);
+ var iq=await ineResolveFilters(tableId,apiFilters);
  var u=ineJsonStatUrl(tableId)+(iq.toString()?"?"+iq.toString():"");
  var raw=await fetchJson(u);
  if(!raw)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
@@ -1067,109 +1067,66 @@ async function ineOperationCode(op){
  state.ineVarCache.set(key,code);
  return code;
 }
-async function ineResolveFilters(filters){
- var op=String(state.selected.stat||"").trim();
- if(!op)throw new Error("No s'ha pogut identificar l'operació INE.");
- var opCode=await ineOperationCode(op);
- var varsKey="VARS|"+opCode,vars=state.ineVarCache.get(varsKey);
- if(!vars){
-  vars=a(await fetchJson(provider().base+"/ES/VARIABLES_OPERACION/"+encodeURIComponent(opCode)));
-  state.ineVarCache.set(varsKey,vars);
+async function ineResolveFilters(tableId,filters){
+ var out=new URLSearchParams(),dsDims=dims(state.metadata),tableKey="TABLEVALS|"+String(tableId),tableVals=state.ineVarCache.get(tableKey);
+ if(!tableVals){
+  var groups=a(await fetchJson(provider().base+"/ES/GRUPOS_TABLA/"+encodeURIComponent(String(tableId))));
+  tableVals=[];
+  for(var gi=0;gi<groups.length;gi++){
+   var gid=String(f(groups[gi],"Id","id")).trim();
+   if(!gid)continue;
+   var vals=a(await fetchJson(provider().base+"/ES/VALORES_GRUPOSTABLA/"+encodeURIComponent(String(tableId))+"/"+encodeURIComponent(gid)));
+   vals.forEach(function(v){tableVals.push(v)});
+  }
+  state.ineVarCache.set(tableKey,tableVals);
  }
- var out=new URLSearchParams(),dsDims=dims(state.metadata);
+ function valueVarId(v){
+  var nested=f(v,"Variable","variable");
+  return String(f(v,"FK_Variable","fk_variable","VariableId","variableId")||f(nested||{},"Id","id")).trim();
+ }
+ function valueVarName(v){
+  var nested=f(v,"Variable","variable");
+  return ineNorm(f(nested||{},"Nombre","nombre","Name","Descripcion","Description")||f(v,"T3_Variable","VariableNombre","variableNombre"));
+ }
+ function valueCode(v){return String(f(v,"Codigo","codigo","Code","code")||"").trim()}
+ function valueId(v){return String(f(v,"Id","id")).trim()}
+ function findVariableValues(d,wanted){
+  var dn=ineNorm(d.label||d.id),dnKey=dn.replace(/[^A-Z0-9]/g,"");
+  var candidates=tableVals.filter(function(v){
+   var vn=valueVarName(v),vnKey=vn.replace(/[^A-Z0-9]/g,""),vid=valueVarId(v);
+   return vn===dn||vnKey===dnKey||vid===String(d.id).trim();
+  });
+  if(!candidates.length){
+   var wantedNorm=(wanted||[]).map(function(x){return String(x)});
+   candidates=tableVals.filter(function(v){
+    var vc=valueCode(v),vi=valueId(v);
+    return wantedNorm.indexOf(vc)>=0||wantedNorm.indexOf(vi)>=0||
+      wantedNorm.some(function(sc){var suffix=sc.indexOf("_")>=0?sc.slice(sc.lastIndexOf("_")+1):sc;return vc===suffix});
+   });
+   var vids=[...new Set(candidates.map(valueVarId).filter(Boolean))];
+   if(vids.length===1)candidates=tableVals.filter(function(v){return valueVarId(v)===vids[0]});
+  }
+  return candidates;
+ }
  for(var di=0;di<dsDims.length;di++){
   var d=dsDims[di],wanted=filters[d.id];
   if(!wanted||!wanted.length)continue;
-  var dn=ineNorm(d.label||d.id);
-  // En Tempus3 la variable CLASES de l'operació IPRI és la 394.
-  // La metadata JSON-stat de la taula 61525 pot exposar-la simplement
-  // com «Clases», de manera que no depenem de la coincidència textual
-  // amb el catàleg de variables.
-  var dnKey=dn.replace(/[^A-Z0-9]/g,"");
-  var v=(opCode==="IPRI"&&dnKey==="CLASES")
-      ? {Id:394,Nombre:"CLASES",Codigo:""}
-      : (opCode==="IPRI"&&dnKey==="INDICESYTASAS")
-      ? {Id:83,Nombre:"Índices y Tasas",Codigo:""}
-      : vars.find(function(x){
-   var id=String(f(x,"Id","id")).trim();
-   var name=ineNorm(f(x,"Nombre","nombre","Name","Descripcion","Description")||"");
-   var code=ineNorm(f(x,"Codigo","codigo","Code","code")||"");
-   return id===String(d.id).trim() || name===dn || code===dn ||
-          name.replace(/[^A-Z0-9]/g,"")===dn.replace(/[^A-Z0-9]/g,"") ||
-          code.replace(/[^A-Z0-9]/g,"")===dn.replace(/[^A-Z0-9]/g,"");
-  });
-  // JSON-stat de l'INE pot exposar «Clases» mentre Tempus3 publica
-  // «CLASES». Si la correspondència textual falla, usem el codi/nom
-  // conegut de la variable de la taula a partir dels valors disponibles.
-
-  if(!v)throw new Error("No s'ha pogut identificar la variable INE «"+String(d.label||d.id)+"».");
-  var vid=String(f(v,"Id","id")).trim();
-  if(!vid)throw new Error("La variable INE «"+String(d.label||d.id)+"» no té identificador.");
-  var valuesKey="VALS|"+opCode+"|"+vid,values=state.ineVarCache.get(valuesKey);
-  if(!values){
-   values=a(await fetchJson(provider().base+"/ES/VALORES_VARIABLEOPERACION/"+encodeURIComponent(vid)+"/"+encodeURIComponent(opCode)));
-   state.ineVarCache.set(valuesKey,values);
-  }
+  var values=findVariableValues(d,wanted);
+  if(!values.length)throw new Error("No s'ha pogut identificar la variable INE «"+String(d.label||d.id)+"» a la taula "+String(tableId)+".");
+  var vid=valueVarId(values[0]);
+  if(!vid)throw new Error("La variable INE «"+String(d.label||d.id)+"» no té identificador a la taula.");
   wanted.forEach(function(code){
    var sc=String(code),suffix=sc.indexOf("_")>=0?sc.slice(sc.lastIndexOf("_")+1):sc;
-   var val=values.find(function(x){
-    var vc=String(f(x,"Codigo","codigo","Code","code")||"");
-    return vc===sc||vc===suffix||String(f(x,"Id","id"))===sc;
-   });
-   if(!val)throw new Error("No s'ha trobat el valor INE «"+sc+"» de la variable «"+String(d.label||d.id)+"».");
-   var valueId=String(f(val,"Id","id")).trim();
-   if(!valueId)throw new Error("El valor INE «"+sc+"» no té identificador.");
-   out.append("tv",vid+":"+valueId);
+   var val=values.find(function(x){var vc=valueCode(x),vi=valueId(x);return vc===sc||vc===suffix||vi===sc});
+   if(!val)throw new Error("No s'ha trobat el valor INE «"+sc+"» de la variable «"+String(d.label||d.id)+"» a la taula "+String(tableId)+".");
+   var valueIdNum=valueId(val);
+   if(!valueIdNum)throw new Error("El valor INE «"+sc+"» no té identificador.");
+   out.append("tv",vid+":"+valueIdNum);
   });
  }
  return out;
 }
-async function runQuery(){
- var token=++state.requestToken;busy(true);$("query").disabled=true;status("Consultant l’API…");
- try{var ds;
-  if(state.provider==="idescat"){var base=provider().base+"/"+state.selected.stat+"/"+state.selected.node+"/"+state.selected.table+"/"+state.selected.geo+"/data",q=new URLSearchParams();Object.keys(selectedFilters()).forEach(function(k){q.set(k,selectedFilters()[k].join(","))});q.set("lang","ca");var u=base+"?"+q.toString();ds=await fetchJson(u);state.lastQueryUrl=u}
-  else if(state.provider==="eurostat"){
-   var euroCode=state.selected.table||state.selected.node;
-   if(!euroCode)throw new Error("No s'ha seleccionat cap conjunt de dades d'Eurostat.");
-   var u2=provider().base+"/data/"+encodeURIComponent(euroCode)+"?"+buildEurostatParams().toString();
-   ds=await fetchJson(u2);state.lastQueryUrl=u2
-  }
-  else if(state.provider==="pxweb"){
-   var query={query:[],response:{format:"json-stat2"}};
-   dims(state.metadata).forEach(function(d){
-    query.query.push({code:d.id,selection:{filter:"item",values:Array.from(state.filters.get(d.id)||[])}});
-   });
-   var up=state.pxPreset==="finland"&&state.finlandTableUrl?state.finlandTableUrl:finlandTableUrl(state.pxPath);
-   if(state.pxPreset==="sweden"){
-    ds=await swedenV2Query(query);
-   }else{
-    try{
-     ds=await fetchJson(up,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(query)});
-    }catch(pxErr){
-     // Statistics Iceland pot servir JSON-stat clàssic encara que la
-     // interfície PxWeb publiqui l'opció json-stat2.
-     if(state.pxPreset==="iceland"){
-      var fallbackQuery={query:query.query,response:{format:"json"}};
-      ds=await fetchJson(up,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(fallbackQuery)});
-     }else throw pxErr;
-    }
-   }
-   state.lastQueryUrl=up
-  }
-  else {
-   var sf=selectedFilters();
-   var hasIneFilters=Object.keys(sf).some(function(k){return sf[k]&&sf[k].length});
-   if(hasIneFilters){
-    var ir=await ineDatosTablaFiltered(state.selected.table,sf);
-    ds=ir.data;state.lastQueryUrl=ir.url;
-   }else{
-    var iu=ineJsonStatUrl(state.selected.table);
-    ds=await fetchJson(iu);state.lastQueryUrl=iu;
-   }
-  }
-  if(token!==state.requestToken)return;state.lastData=ds;state.page=1;renderResults(ds);var n=Array.isArray(ds.value)?ds.value.length:Object.keys(ds.value||{}).length;$("resultCount").textContent=n.toLocaleString("ca-ES")+" valors retornats";$("exportCsv").disabled=false;$("exportXlsx").disabled=false;$("addToCart").disabled=false;status("")
- }catch(e){if(token===state.requestToken){$("results").innerHTML="<div class=\"error\">"+esc(e.message)+"</div>";status("Error","error")}}finally{busy(false);updateCells()}
-}
+
 function diceJsonStat(ds,filters){
  if(!filters||!Object.keys(filters).length)return ds;
  var ids=ds.id||[],oldSizes=ds.size||[],kept=[],oldStrides=[];
