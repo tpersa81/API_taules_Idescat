@@ -1085,6 +1085,7 @@ async function ineResolveFilters(filters){
   // conegut de la variable de la taula a partir dels valors disponibles.
   if(!v && dn.replace(/[^A-Z0-9]/g,"")==="CLASES"){
    v=vars.find(function(x){return ineNorm(f(x,"Nombre","nombre","Name")||"").replace(/[^A-Z0-9]/g,"")==="CLASES"});
+   if(!v) v={Id:394,Nombre:"CLASES",Codigo:""};
   }
   if(!v)throw new Error("No s'ha pogut identificar la variable INE «"+String(d.label||d.id)+"».");
   var vid=String(f(v,"Id","id")).trim();
