@@ -929,12 +929,22 @@ async function ineFilterJsonStat(ds,filters){
  return out;
 }
 async function ineDatosTablaFiltered(tableId,filters){
- var dsx=state.metadata;
- var iq=await ineResolveFilters(filters||{});
- if(!iq.toString())return null;
- var u=ineJsonStatUrl(tableId)+"?"+iq.toString();
+ var allFilters=filters||{},apiFilters={},localFilters={};
+ // «Periodo» (i altres dimensions temporals) no és una variable Tempus3 de
+ // l'operació: forma part de les observacions de les sèries. Per tant no es
+ // pot enviar com tv=id_variable:id_valor. Apliquem aquests filtres després
+ // de rebre el JSON-stat, mantenint els filtres de variables a l'API.
+ dims(state.metadata).forEach(function(d){
+  var wanted=allFilters[d.id];
+  if(!wanted||!wanted.length)return;
+  if(temporal(d))localFilters[d.id]=wanted;
+  else apiFilters[d.id]=wanted;
+ });
+ var iq=await ineResolveFilters(apiFilters);
+ var u=ineJsonStatUrl(tableId)+(iq.toString()?"?"+iq.toString():"");
  var raw=await fetchJson(u);
  if(!raw)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
+ if(Object.keys(localFilters).length)raw=diceJsonStat(raw,localFilters);
  return{data:raw,url:u};
 }
 async function ineMetadata(tableId){
