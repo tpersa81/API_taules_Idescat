@@ -1078,14 +1078,12 @@ async function runQuery(){
    state.lastQueryUrl=up
   }
   else {
-   var sf=selectedFilters();
-   if(Object.keys(sf).length===0){
-    var iu=ineJsonStatUrl(state.selected.table);
-    ds=await fetchJson(iu);state.lastQueryUrl=iu
-   }else{
-    ds=ineFilterJsonStat(state.metadata,sf);
-    state.lastQueryUrl=ineJsonStatUrl(state.selected.table)+" (filtre local)";
-   }
+   var sf=selectedFilters(),iu=ineJsonStatUrl(state.selected.table),iq=new URLSearchParams();
+   Object.keys(sf).forEach(function(k){
+    sf[k].forEach(function(v){iq.append("tv",String(k)+":"+String(v))});
+   });
+   var iuq=iq.toString()?iu+"?"+iq.toString():iu;
+   ds=await fetchJson(iuq);state.lastQueryUrl=iuq
   }
   if(token!==state.requestToken)return;state.lastData=ds;state.page=1;renderResults(ds);var n=Array.isArray(ds.value)?ds.value.length:Object.keys(ds.value||{}).length;$("resultCount").textContent=n.toLocaleString("ca-ES")+" valors retornats";$("exportCsv").disabled=false;$("exportXlsx").disabled=false;$("addToCart").disabled=false;status("")
  }catch(e){if(token===state.requestToken){$("results").innerHTML="<div class=\"error\">"+esc(e.message)+"</div>";status("Error","error")}}finally{busy(false);updateCells()}
