@@ -921,7 +921,7 @@ async function ineFilterJsonStat(ds,filters){
  }
  return out;
 }
-function ineDatosTablaFiltered(tableId,filters){
+async function ineDatosTablaFiltered(tableId,filters){
  var dsx=state.metadata,q={};
  dims(dsx).forEach(function(d){var vals=filters[d.id];if(vals&&vals.length)q[d.id]=vals});
  var dimsList=dims(dsx).filter(function(d){return q[d.id]&&q[d.id].length});
