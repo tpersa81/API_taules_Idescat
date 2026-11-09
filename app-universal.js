@@ -15,14 +15,22 @@ async function fetchJson(url,opt){opt=opt||{};var r;try{r=await fetch(url,opt)}c
     r=await fetch(proxyUrl,opt);
    }catch(e2){throw new Error("No s'ha pogut connectar amb l'API. "+(e2&&e2.message||"Failed to fetch")+" · "+url)}
   }else if(state.provider==="ine"&&/^https:\/\/servicios\.ine\.es\//i.test(url)){
-   // INE pot retornar una resposta d'error sense cap capçalera CORS quan la
-   // consulta DATASET porta filtres tv. Reintentem la mateixa petició GET
-   // mitjançant un proxy de lectura per poder obtenir també el cos real de
-   // la resposta (i no confondre l'error CORS amb un error de connexió).
-   try{
-    var ineProxy="https://api.allorigins.win/raw?url="+encodeURIComponent(url);
-    r=await fetch(ineProxy,{cache:"no-store"});
-   }catch(e2){throw new Error("No s'ha pogut connectar amb l'API. "+(e2&&e2.message||"Failed to fetch")+" · "+url)}
+   // Les peticions INE des de GitHub Pages poden fallar per CORS. Fem
+   // diversos intents de proxy perquè una incidència puntual d'un proxy no
+   // impedeixi una consulta vàlida de Tempus3.
+   var ineProxyOk=false,ineProxyErr=null;
+   var ineProxies=[
+    "https://api.allorigins.win/raw?url="+encodeURIComponent(url),
+    "https://corsproxy.io/?url="+encodeURIComponent(url)
+   ];
+   for(var ip=0;ip<ineProxies.length&&!ineProxyOk;ip++){
+    try{
+     var pr=await fetch(ineProxies[ip],{cache:"no-store"});
+     if(pr.ok){r=pr;ineProxyOk=true}
+     else ineProxyErr=new Error("HTTP "+pr.status);
+    }catch(e2){ineProxyErr=e2}
+   }
+   if(!ineProxyOk)throw new Error("No s'ha pogut connectar amb l'API. "+(ineProxyErr&&ineProxyErr.message||"Failed to fetch")+" · "+url)
   }else throw new Error("No s'ha pogut connectar amb l'API. "+(e&&e.message||"Failed to fetch")+" · "+url)
 }var text="";try{text=await r.text()}catch(e){throw new Error("No s'ha pogut llegir la resposta de l'API (HTTP "+r.status+").")}var d=null;try{d=text?JSON.parse(text):null}catch(e){if(!r.ok)throw new Error("Error HTTP "+r.status+": "+text.slice(0,300));throw new Error("Resposta no vàlida de l'API (HTTP "+r.status+").")}if(!r.ok||d&&(d.class==="error"||d.error||d.errors)){
   var detail=d&&(d.detail||d.label||d.message||d.error||d.errors||d.title);
