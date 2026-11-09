@@ -15,13 +15,12 @@ async function fetchJson(url,opt){opt=opt||{};var r;try{r=await fetch(url,opt)}c
     r=await fetch(proxyUrl,opt);
    }catch(e2){throw new Error("No s'ha pogut connectar amb l'API. "+(e2&&e2.message||"Failed to fetch")+" · "+url)}
   }else if(state.provider==="ine"&&/^https:\/\/servicios\.ine\.es\//i.test(url)){
-   // Les peticions INE des de GitHub Pages poden fallar per CORS. Fem
-   // diversos intents de proxy perquè una incidència puntual d'un proxy no
-   // impedeixi una consulta vàlida de Tempus3.
+   // Si INE no exposa CORS, provem diversos proxies GET.
    var ineProxyOk=false,ineProxyErr=null;
    var ineProxies=[
     "https://api.allorigins.win/raw?url="+encodeURIComponent(url),
-    "https://corsproxy.io/?url="+encodeURIComponent(url)
+    "https://corsproxy.io/?url="+encodeURIComponent(url),
+    "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(url)
    ];
    for(var ip=0;ip<ineProxies.length&&!ineProxyOk;ip++){
     try{
@@ -811,8 +810,6 @@ async function pxMetadata(){
  raw=await fetchJson(pxUrl(state.pxPath));ds=pxToJsonStat(raw);state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||raw.label||state.selected.table)+"<span class=\"path\">"+esc(pxUrl(state.pxPath))+"</span>";$("query").disabled=false}
 function ineJsonStatUrl(tableId){return "https://servicios.ine.es/wstempus/jsstat/ES/DATASET/"+encodeURIComponent(String(tableId))}
 function ineDatosTablaUrl(tableId,query){
-  // Per a les consultes filtrades Tempus3 utilitzem DATOS_TABLA, que és
-  // l'endpoint documentat per l'INE per al paràmetre tv.
   var u="https://servicios.ine.es/wstempus/js/ES/DATOS_TABLA/"+encodeURIComponent(String(tableId));
   return u+(query?"?"+query:"");
 }
@@ -935,13 +932,10 @@ async function ineDatosTablaFiltered(tableId,filters){
  var dsx=state.metadata;
  var iq=await ineResolveFilters(filters||{});
  if(!iq.toString())return null;
- var qp=new URLSearchParams();
- qp.append("tip","AM");
- iq.forEach(function(value,key){qp.append(key,value)});
- var u=ineDatosTablaUrl(tableId,qp.toString());
- var raw=await fetchJson(u),converted=ineDatosTablaToJsonStat(raw,dsx);
- if(!converted)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
- return{data:converted,url:u};
+ var u=ineJsonStatUrl(tableId)+"?"+iq.toString();
+ var raw=await fetchJson(u);
+ if(!raw)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
+ return{data:raw,url:u};
 }
 async function ineMetadata(tableId){
  var u=ineJsonStatUrl(tableId);
