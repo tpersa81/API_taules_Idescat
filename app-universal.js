@@ -14,7 +14,7 @@ async function fetchJson(url,opt){opt=opt||{};var r;try{r=await fetch(url,opt)}c
     var proxyUrl="https://cors.tools/proxy?url="+encodeURIComponent(url);
     r=await fetch(proxyUrl,opt);
    }catch(e2){throw new Error("No s'ha pogut connectar amb l'API. "+(e2&&e2.message||"Failed to fetch")+" · "+url)}
-  }else if(state.provider==="ine"&&/^https:\/\/servicios\\.ine\\.es\//i.test(url)&&/\?/.test(url)){
+  }else if(state.provider==="ine"&&/^https:\/\/servicios\\.ine\\.es\//i.test(url)){
    // INE pot retornar una resposta d'error sense cap capçalera CORS quan la
    // consulta DATASET porta filtres tv. Reintentem la mateixa petició GET
    // mitjançant un proxy de lectura per poder obtenir també el cos real de
@@ -84,7 +84,7 @@ async function loadStats(){
  setProviderUI();state.stats=[];state.selected.stat="";fill($("stat"),[]);$("stat").disabled=true;
  var c=provider(),out=[];
  if(state.provider==="idescat")out=collection(await fetchJson(c.base+"?lang=ca")).map(function(x){return{value:x.id,label:x.id+" · "+x.label}});
- else if(state.provider==="ine"){var d=await fetchJson(c.base+"/ES/OPERACIONES_DISPONIBLES?det=1");out=a(d).map(function(x){var id=String(f(x,"Id","id","Codigo","Code"));return{value:id,label:id+" · "+String(f(x,"Nombre","nombre","Name","Descripcion","Description")||id)}}).filter(function(x){return x.value})}
+ else if(state.provider==="ine"){var d=await fetchJson(c.base+"/ES/OPERACIONES_DISPONIBLES?det=1");out=a(d).map(function(x){var id=String(f(x,"Id","id")).trim(),code=String(f(x,"Codigo","codigo","Code","code")||"").trim();return{value:id,code:code,label:id+" · "+String(f(x,"Nombre","nombre","Name","Descripcion","Description")||id)}}).filter(function(x){return x.value})}
  else if(state.provider==="eurostat"){await loadEurostatTOC();out=state.eurostatRoots.map(function(x){return{value:x.code,label:x.label}})}
  else if(state.pxPreset==="sweden"){out=a(await fetchJson(c.base)).map(function(x){return{id:String(f(x,"id","code","dbid","path")),label:String(f(x,"text","label","name","title")||f(x,"id","code","dbid","path")),type:String(f(x,"type","class"))}}).filter(function(x){return x.id}).map(function(x){return{value:x.id,label:x.id+" · "+x.label}})}
  else if(state.pxPreset==="finland"){
@@ -1048,34 +1048,44 @@ function buildEurostatParams(){var p=new URLSearchParams();p.set("format","JSON"
 function ineNorm(s){
  return String(s==null?"":s).normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").trim().toUpperCase();
 }
+async function ineOperationCode(op){
+ var key="OP|"+String(op||"").trim(),cached=state.ineVarCache.get(key);
+ if(cached)return cached;
+ var vars=a(await fetchJson(provider().base+"/ES/OPERACIONES_DISPONIBLES?det=1"));
+ var x=vars.find(function(v){return String(f(v,"Id","id")).trim()===String(op).trim()});
+ var code=String(f(x||{},"Codigo","codigo","Code","code")||"").trim();
+ if(!code)throw new Error("No s'ha pogut identificar el codi de l'operació INE «"+String(op)+"».");
+ state.ineVarCache.set(key,code);
+ return code;
+}
 async function ineResolveFilters(filters){
  var op=String(state.selected.stat||"").trim();
  if(!op)throw new Error("No s'ha pogut identificar l'operació INE.");
- var vars=state.ineVarCache.get(op);
+ var opCode=await ineOperationCode(op);
+ var varsKey="VARS|"+opCode,vars=state.ineVarCache.get(varsKey);
  if(!vars){
-  vars=a(await fetchJson(provider().base+"/ES/VARIABLES_OPERACION/"+encodeURIComponent(op)));
-  state.ineVarCache.set(op,vars);
+  vars=a(await fetchJson(provider().base+"/ES/VARIABLES_OPERACION/"+encodeURIComponent(opCode)));
+  state.ineVarCache.set(varsKey,vars);
  }
- var out=new URLSearchParams();
- var dsDims=dims(state.metadata);
+ var out=new URLSearchParams(),dsDims=dims(state.metadata);
  for(var di=0;di<dsDims.length;di++){
   var d=dsDims[di],wanted=filters[d.id];
   if(!wanted||!wanted.length)continue;
   var dn=ineNorm(d.label||d.id),v=vars.find(function(x){
-   var id=String(f(x,"Id","id","Codigo","Code")||"").trim();
+   var id=String(f(x,"Id","id")).trim();
    var name=ineNorm(f(x,"Nombre","nombre","Name","Descripcion","Description")||"");
    var code=ineNorm(f(x,"Codigo","codigo","Code","code")||"");
-   return id===String(d.id) || name===dn || code===dn || code===ineNorm(d.id) ||
+   return id===String(d.id).trim() || name===dn || code===dn ||
           name.replace(/[^A-Z0-9]/g,"")===dn.replace(/[^A-Z0-9]/g,"") ||
           code.replace(/[^A-Z0-9]/g,"")===dn.replace(/[^A-Z0-9]/g,"");
   });
   if(!v)throw new Error("No s'ha pogut identificar la variable INE «"+String(d.label||d.id)+"».");
   var vid=String(f(v,"Id","id")).trim();
   if(!vid)throw new Error("La variable INE «"+String(d.label||d.id)+"» no té identificador.");
-  var vk=op+"|"+vid,values=state.ineVarCache.get(vk);
+  var valuesKey="VALS|"+opCode+"|"+vid,values=state.ineVarCache.get(valuesKey);
   if(!values){
-   values=a(await fetchJson(provider().base+"/ES/VALORES_VARIABLEOPERACION/"+encodeURIComponent(vid)+"/"+encodeURIComponent(op)));
-   state.ineVarCache.set(vk,values);
+   values=a(await fetchJson(provider().base+"/ES/VALORES_VARIABLEOPERACION/"+encodeURIComponent(vid)+"/"+encodeURIComponent(opCode)));
+   state.ineVarCache.set(valuesKey,values);
   }
   wanted.forEach(function(code){
    var sc=String(code),suffix=sc.indexOf("_")>=0?sc.slice(sc.lastIndexOf("_")+1):sc;
