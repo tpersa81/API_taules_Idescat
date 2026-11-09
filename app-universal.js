@@ -950,13 +950,23 @@ async function runQuery(){
     // Les consultes INE DATASET amb filtres tv no exposen sempre CORS
     // des de GitHub Pages. En consultes filtrades utilitzem directament
     // el proxy de lectura i deixem la URL real com a referència de la consulta.
-    var ineProxyUrl="https://api.allorigins.win/raw?url="+encodeURIComponent(ui);
-    try{
-     ds=await fetchJson(ineProxyUrl,{cache:"no-store"});
-    }catch(ineProxyErr){
-     // Si el proxy no està disponible, mantenim un últim intent directe.
-     ds=await fetchJson(ui);
+    // L'endpoint JSON-stat de l'INE no exposa CORS de manera consistent
+    // quan s'envia tv. Fem la consulta filtrada mitjançant diversos proxies
+    // de lectura, sense tornar a l'endpoint directe (que provoca "Failed to fetch").
+    var ineProxyUrls=[
+      "https://api.allorigins.win/raw?url="+encodeURIComponent(ui),
+      "https://corsproxy.io/?url="+encodeURIComponent(ui),
+      "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(ui)
+    ];
+    var ineProxyLastError=null;
+    for(var ip=0;ip<ineProxyUrls.length;ip++){
+      try{
+       ds=await fetchJson(ineProxyUrls[ip],{cache:"no-store"});
+       ineProxyLastError=null;
+       break;
+      }catch(ineProxyErr){ineProxyLastError=ineProxyErr}
     }
+    if(ineProxyLastError)throw ineProxyLastError;
    }else{
     ds=await fetchJson(ui);
    }
