@@ -954,6 +954,9 @@ async function runQuery(){
     // quan s'envia tv. Fem la consulta filtrada mitjançant diversos proxies
     // de lectura, sense tornar a l'endpoint directe (que provoca "Failed to fetch").
     var ineProxyUrls=[
+      // cors.dev és actualment un proxy GET públic, sense clau, i amb
+      // suport explícit de qualsevol URL HTTP/HTTPS pública.
+      "https://proxy.cors.dev/"+ui,
       "https://api.allorigins.win/raw?url="+encodeURIComponent(ui),
       "https://corsproxy.io/?url="+encodeURIComponent(ui),
       "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(ui)
