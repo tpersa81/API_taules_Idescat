@@ -1117,8 +1117,13 @@ async function ineResolveFilters(tableId,filters){
   if(!vid)throw new Error("La variable INE «"+String(d.label||d.id)+"» no té identificador a la taula.");
   wanted.forEach(function(code){
    var sc=String(code),suffix=sc.indexOf("_")>=0?sc.slice(sc.lastIndexOf("_")+1):sc;
-   var val=values.find(function(x){var vc=valueCode(x),vi=valueId(x);return vc===sc||vc===suffix||vi===sc});
-   if(!val)throw new Error("No s'ha trobat el valor INE «"+sc+"» de la variable «"+String(d.label||d.id)+"» a la taula "+String(tableId)+".");
+   var wantedCat=(d.categories||[]).find(function(c){return String(c.code)===sc});
+   var wantedLabel=ineNorm(wantedCat&&wantedCat.label||"");
+   var val=values.find(function(x){
+    var vc=valueCode(x),vi=valueId(x),vn=ineNorm(f(x,"Nombre","nombre","Name","Descripcion","Description")||"");
+    return vc===sc||vc===suffix||vi===sc||(wantedLabel&&vn===wantedLabel);
+   });
+   if(!val)throw new Error("No s'ha trobat el valor INE «"+sc+"» («"+String(wantedCat&&wantedCat.label||sc)+"») de la variable «"+String(d.label||d.id)+"» a la taula "+String(tableId)+".");
    var valueIdNum=valueId(val);
    if(!valueIdNum)throw new Error("El valor INE «"+sc+"» no té identificador.");
    out.append("tv",vid+":"+valueIdNum);
