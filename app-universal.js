@@ -1108,6 +1108,13 @@ async function ineResolveFilters(filters){
   var valuesKey="VALS|"+opCode+"|"+vid,values=state.ineVarCache.get(valuesKey);
   if(!values){
    values=a(await fetchJson(provider().base+"/ES/VALORES_VARIABLEOPERACION/"+encodeURIComponent(vid)+"/"+encodeURIComponent(opCode)));
+   // Algunes variables de les taules Tempus3 no apareixen a
+   // VARIABLES_OPERACION ni a VALORES_VARIABLEOPERACION, tot i ser variables
+   // globals del sistema. És el cas d'«Índices y Tasas» de l'IPRI (83).
+   // En aquest cas recuperem els valors globals de la variable.
+   if(!values.length && opCode==="IPRI" && vid==="83"){
+    values=a(await fetchJson(provider().base+"/ES/VALORES_VARIABLE/83?det=1"));
+   }
    state.ineVarCache.set(valuesKey,values);
   }
   wanted.forEach(function(code){
