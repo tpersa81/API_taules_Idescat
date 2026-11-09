@@ -941,7 +941,27 @@ async function runQuery(){
    }
    state.lastQueryUrl=up
   }
-  else {var qi=new URLSearchParams();Object.keys(selectedFilters()).forEach(function(k){selectedFilters()[k].forEach(function(v){qi.append("tv",k+":"+v)})});var ui=ineJsonStatUrl(state.selected.table)+"?"+qi.toString();ds=await fetchJson(ui);state.lastQueryUrl=ui}
+  else {
+   var qi=new URLSearchParams();
+   var sf=selectedFilters();
+   Object.keys(sf).forEach(function(k){sf[k].forEach(function(v){qi.append("tv",k+":"+v)})});
+   var ui=ineJsonStatUrl(state.selected.table)+"?"+qi.toString();
+   if(qi.toString()){
+    // Les consultes INE DATASET amb filtres tv no exposen sempre CORS
+    // des de GitHub Pages. En consultes filtrades utilitzem directament
+    // el proxy de lectura i deixem la URL real com a referència de la consulta.
+    var ineProxyUrl="https://api.allorigins.win/raw?url="+encodeURIComponent(ui);
+    try{
+     ds=await fetchJson(ineProxyUrl,{cache:"no-store"});
+    }catch(ineProxyErr){
+     // Si el proxy no està disponible, mantenim un últim intent directe.
+     ds=await fetchJson(ui);
+    }
+   }else{
+    ds=await fetchJson(ui);
+   }
+   state.lastQueryUrl=ui
+  }
   if(token!==state.requestToken)return;state.lastData=ds;state.page=1;renderResults(ds);var n=Array.isArray(ds.value)?ds.value.length:Object.keys(ds.value||{}).length;$("resultCount").textContent=n.toLocaleString("ca-ES")+" valors retornats";$("exportCsv").disabled=false;$("exportXlsx").disabled=false;$("addToCart").disabled=false;status("")
  }catch(e){if(token===state.requestToken){$("results").innerHTML="<div class=\"error\">"+esc(e.message)+"</div>";status("Error","error")}}finally{busy(false);updateCells()}
 }
