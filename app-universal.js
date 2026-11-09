@@ -1,6 +1,6 @@
 
 const MAX_CELLS=20000;
-const state={provider:"idescat",pxPreset:"finland",stats:[],metadata:null,lastData:null,lastQueryUrl:"",finlandTableUrl:"",filters:new Map(),page:1,pageSize:100,requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],swedenV2Tables:null,swedenV2Table:false,swedenPath:[],eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[]};
+const state={provider:"idescat",pxPreset:"finland",stats:[],metadata:null,lastData:null,lastQueryUrl:"",finlandTableUrl:"",ineVarCache:new Map(),filters:new Map(),page:1,pageSize:100,requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],swedenV2Tables:null,swedenV2Table:false,swedenPath:[],eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[]};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]});
 async function fetchJson(url,opt){opt=opt||{};var r;try{r=await fetch(url,opt)}catch(e){
@@ -1045,6 +1045,50 @@ function renderMetadata(ds){
 function selectedFilters(){var q={};dims(state.metadata).forEach(function(d){var s=state.filters.get(d.id)||new Set(),n=d.categories.length;if(s.size&&s.size!==n)q[d.id]=Array.from(s)});return q}
 function updateCells(){var n=1;state.filters.forEach(function(s){n*=s.size});var missing=Array.from(state.filters.values()).some(function(s){return !s.size});var cellLimit=state.provider==="idescat"?MAX_CELLS:(state.provider==="pxweb"&&state.pxPreset==="finland"?100000:(state.provider==="pxweb"&&state.pxPreset==="sweden"?150000:Infinity));var tooMany=n>cellLimit;var bad=missing||tooMany;$("cellInfo").hidden=false;var icon=bad?"✕":"✓";var limitText=Number.isFinite(cellLimit)?cellLimit.toLocaleString("ca-ES"):"—";var msg=missing?"Cal seleccionar valors a totes les dimensions.":tooMany?"Cal filtrar la taula (màxim "+limitText+" cel·les)":"Es pot continuar."; $("cellInfo").innerHTML="<span class=\"status-icon "+(bad?"bad":"ok")+"\" aria-hidden=\"true\">"+icon+"</span> <strong>Nombre de cel·les de la taula filtrada:</strong> "+n.toLocaleString("ca-ES")+" · <span class=\""+(bad?"bad":"ok")+"\">"+msg+"</span>";document.querySelectorAll(".filter").forEach(function(x){x.querySelector(".selected-count").textContent=(state.filters.get(x.dataset.dim)||new Set()).size.toLocaleString("ca-ES")+" seleccionades"});$("query").disabled=bad||!state.metadata}
 function buildEurostatParams(){var p=new URLSearchParams();p.set("format","JSON");p.set("lang","EN");var q=selectedFilters();Object.keys(q).forEach(function(k){q[k].forEach(function(v){p.append(k,v)})});return p}
+function ineNorm(s){
+ return String(s==null?"":s).normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").trim().toUpperCase();
+}
+async function ineResolveFilters(filters){
+ var op=String(state.selected.stat||"").trim();
+ if(!op)throw new Error("No s'ha pogut identificar l'operació INE.");
+ var vars=state.ineVarCache.get(op);
+ if(!vars){
+  vars=a(await fetchJson(provider().base+"/ES/VARIABLES_OPERACION/"+encodeURIComponent(op)));
+  state.ineVarCache.set(op,vars);
+ }
+ var out=new URLSearchParams();
+ var dsDims=dims(state.metadata);
+ for(var di=0;di<dsDims.length;di++){
+  var d=dsDims[di],wanted=filters[d.id];
+  if(!wanted||!wanted.length)continue;
+  var dn=ineNorm(d.label||d.id),v=vars.find(function(x){
+   var id=String(f(x,"Id","id","Codigo","Code")||"").trim();
+   var name=ineNorm(f(x,"Nombre","nombre","Name","Descripcion","Description")||"");
+   var code=ineNorm(f(x,"Codigo","codigo","Code","code")||"");
+   return id===String(d.id) || name===dn || code===dn || code===ineNorm(d.id);
+  });
+  if(!v)throw new Error("No s'ha pogut identificar la variable INE «"+String(d.label||d.id)+"».");
+  var vid=String(f(v,"Id","id")).trim();
+  if(!vid)throw new Error("La variable INE «"+String(d.label||d.id)+"» no té identificador.");
+  var vk=op+"|"+vid,values=state.ineVarCache.get(vk);
+  if(!values){
+   values=a(await fetchJson(provider().base+"/ES/VALORES_VARIABLEOPERACION/"+encodeURIComponent(vid)+"/"+encodeURIComponent(op)));
+   state.ineVarCache.set(vk,values);
+  }
+  wanted.forEach(function(code){
+   var sc=String(code),suffix=sc.indexOf("_")>=0?sc.slice(sc.lastIndexOf("_")+1):sc;
+   var val=values.find(function(x){
+    var vc=String(f(x,"Codigo","codigo","Code","code")||"");
+    return vc===sc||vc===suffix||String(f(x,"Id","id"))===sc;
+   });
+   if(!val)throw new Error("No s'ha trobat el valor INE «"+sc+"» de la variable «"+String(d.label||d.id)+"».");
+   var valueId=String(f(val,"Id","id")).trim();
+   if(!valueId)throw new Error("El valor INE «"+sc+"» no té identificador.");
+   out.append("tv",vid+":"+valueId);
+  });
+ }
+ return out;
+}
 async function runQuery(){
  var token=++state.requestToken;busy(true);$("query").disabled=true;status("Consultant l’API…");
  try{var ds;
@@ -1078,10 +1122,7 @@ async function runQuery(){
    state.lastQueryUrl=up
   }
   else {
-   var sf=selectedFilters(),iu=ineJsonStatUrl(state.selected.table),iq=new URLSearchParams();
-   Object.keys(sf).forEach(function(k){
-    sf[k].forEach(function(v){iq.append("tv",String(k)+":"+String(v))});
-   });
+   var sf=selectedFilters(),iu=ineJsonStatUrl(state.selected.table),iq=await ineResolveFilters(sf);
    var iuq=iq.toString()?iu+"?"+iq.toString():iu;
    ds=await fetchJson(iuq);state.lastQueryUrl=iuq
   }
