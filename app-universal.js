@@ -945,38 +945,68 @@ async function runQuery(){
    var qi=new URLSearchParams();
    var sf=selectedFilters();
    Object.keys(sf).forEach(function(k){sf[k].forEach(function(v){qi.append("tv",k+":"+v)})});
-   var ui=ineJsonStatUrl(state.selected.table)+"?"+qi.toString();
-   if(qi.toString()){
-    // Les consultes INE DATASET amb filtres tv no exposen sempre CORS
-    // des de GitHub Pages. En consultes filtrades utilitzem directament
-    // el proxy de lectura i deixem la URL real com a referència de la consulta.
-    // L'endpoint JSON-stat de l'INE no exposa CORS de manera consistent
-    // quan s'envia tv. Fem la consulta filtrada mitjançant diversos proxies
-    // de lectura, sense tornar a l'endpoint directe (que provoca "Failed to fetch").
-    var ineProxyUrls=[
-      // cors.dev és actualment un proxy GET públic, sense clau, i amb
-      // suport explícit de qualsevol URL HTTP/HTTPS pública.
-      "https://proxy.cors.dev/"+ui,
-      "https://api.allorigins.win/raw?url="+encodeURIComponent(ui),
-      "https://corsproxy.io/?url="+encodeURIComponent(ui),
-      "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(ui)
-    ];
-    var ineProxyLastError=null;
-    for(var ip=0;ip<ineProxyUrls.length;ip++){
-      try{
-       ds=await fetchJson(ineProxyUrls[ip],{cache:"no-store"});
-       ineProxyLastError=null;
-       break;
-      }catch(ineProxyErr){ineProxyLastError=ineProxyErr}
-    }
-    if(ineProxyLastError)throw ineProxyLastError;
-   }else{
-    ds=await fetchJson(ui);
-   }
-   state.lastQueryUrl=ui
+   // Durant el manteniment de l'INE, DATASET funciona sense filtres però
+   // les peticions DATASET amb tv poden fallar per CORS/servidor. Descarreguem
+   // sempre el cub complet (que ja sabem que funciona) i fem el filtre
+   // localment sobre el JSON-stat. Això manté exactament les mateixes
+   // seleccions i evita dependre de proxies CORS.
+   var ui=ineJsonStatUrl(state.selected.table);
+   var fullDs=await fetchJson(ui);
+   ds=diceJsonStat(fullDs,sf);
+   state.lastQueryUrl=ineJsonStatUrl(state.selected.table)+(qi.toString()?"?"+qi.toString():"")
   }
   if(token!==state.requestToken)return;state.lastData=ds;state.page=1;renderResults(ds);var n=Array.isArray(ds.value)?ds.value.length:Object.keys(ds.value||{}).length;$("resultCount").textContent=n.toLocaleString("ca-ES")+" valors retornats";$("exportCsv").disabled=false;$("exportXlsx").disabled=false;$("addToCart").disabled=false;status("")
  }catch(e){if(token===state.requestToken){$("results").innerHTML="<div class=\"error\">"+esc(e.message)+"</div>";status("Error","error")}}finally{busy(false);updateCells()}
+}
+function diceJsonStat(ds,filters){
+ if(!filters||!Object.keys(filters).length)return ds;
+ var ids=ds.id||[],oldSizes=ds.size||[],kept=[],oldStrides=[];
+ var stride=1;
+ for(var si=oldSizes.length-1;si>=0;si--){oldStrides[si]=stride;stride*=Number(oldSizes[si]||0)}
+ ids.forEach(function(id,j){
+  var cats=jsonstatCats(ds,id),wanted=filters[id];
+  kept[j]=wanted?cats.filter(function(c){return wanted.indexOf(c.code)>=0}):cats;
+ });
+ var out=Object.assign({},ds);
+ out.id=ids.slice();
+ out.size=kept.map(function(c){return c.length});
+ out.dimension=Object.assign({},ds.dimension||{});
+ ids.forEach(function(id,j){
+  var dim=Object.assign({},ds.dimension&&ds.dimension[id]||{});
+  var cat=Object.assign({},dim.category||{}),labels=cat.label&&typeof cat.label==="object"?Object.assign({},cat.label):{};
+  var index=[];
+  kept[j].forEach(function(c){index.push(c.code);if(labels[c.code]==null)labels[c.code]=c.label});
+  cat.index=index;cat.label=labels;dim.category=cat;out.dimension[id]=dim;
+ });
+ var newTotal=out.size.reduce(function(x,y){return x*y},1);
+ var oldVal=ds.value||[],getVal=function(i){return Array.isArray(oldVal)?oldVal[i]:oldVal[String(i)]};
+ var vals=[];
+ for(var flat=0;flat<newTotal;flat++){
+  var rem=flat,oldFlat=0;
+  for(var j=ids.length-1;j>=0;j--){
+   var ns=Number(out.size[j]||0),np=ns?rem%ns:0;rem=ns?Math.floor(rem/ns):0;
+   oldFlat+=Number(kept[j][np]&&kept[j][np].index||0)*oldStrides[j];
+  }
+  vals.push(getVal(oldFlat));
+ }
+ out.value=vals;
+ if(ds.status!=null){
+  var st=ds.status;
+  if(typeof st==="string")out.status=st;
+  else{
+   var getSt=function(i){return Array.isArray(st)?st[i]:st[String(i)]},sv=[];
+   for(var sf=0;sf<newTotal;sf++){
+    var srem=sf,so=0;
+    for(var sj=ids.length-1;sj>=0;sj--){
+     var ss=Number(out.size[sj]||0),sp=ss?srem%ss:0;srem=ss?Math.floor(srem/ss):0;
+     so+=Number(kept[sj][sp]&&kept[sj][sp].index||0)*oldStrides[sj];
+    }
+    sv.push(getSt(so));
+   }
+   out.status=Array.isArray(st)?sv:(function(){var o={};sv.forEach(function(v,i){if(v!=null)o[String(i)]=v});return o})();
+  }
+ }
+ return out
 }
 function resultRows(ds){var ids=ds.id||[],sizes=ds.size||[],dd=ids.map(function(id){return{id:id,label:ds.dimension&&ds.dimension[id]&&ds.dimension[id].label||id,cats:jsonstatCats(ds,id)}}),vals=ds.value||[],get=function(i){return Array.isArray(vals)?vals[i]:vals[String(i)]},total=sizes.reduce(function(x,y){return x*y},1),rows=[];for(var flat=0;flat<total;flat++){var rem=flat,row={};for(var j=ids.length-1;j>=0;j--){var size=Number(sizes[j]||0),idx=rem%size;rem=Math.floor(rem/size);var c=dd[j].cats.find(function(x){return x.index===idx});row[ids[j]]={code:c?c.code:"",label:c?c.label:""}}row.value=get(flat);rows.push(row)}return{dims:dd,rows:rows}}
 function decimals(ds){var found=[];function walk(x){if(!x||typeof x!=="object")return;if(Array.isArray(x)){x.forEach(walk);return}Object.keys(x).forEach(function(k){if(k.toLowerCase()==="unit"&&x[k]&&typeof x[k]==="object")Object.values(x[k]).forEach(function(v){var n=Number(v&&v.decimals);if(Number.isInteger(n))found.push(n)});walk(x[k])})}walk(ds);var u=[...new Set(found)];return u.length===1?u[0]:null}
