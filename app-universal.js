@@ -802,6 +802,97 @@ async function pxMetadata(){
  }
  raw=await fetchJson(pxUrl(state.pxPath));ds=pxToJsonStat(raw);state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||raw.label||state.selected.table)+"<span class=\"path\">"+esc(pxUrl(state.pxPath))+"</span>";$("query").disabled=false}
 function ineJsonStatUrl(tableId){return "https://servicios.ine.es/wstempus/jsstat/ES/DATASET/"+encodeURIComponent(String(tableId))}
+function ineDatosTablaUrl(tableId,query){
+  var u="https://servicios.ine.es/wstempus/jsCache/es/DATOS_TABLA/"+encodeURIComponent(String(tableId))+"?tip=AM";
+  return u+(query?"&"+query:"");
+}
+function ineTvCandidates(d){
+  var a=[String(d.id||"").trim(),String(d.label||"").trim(),String(d.id||"").trim().toUpperCase(),String(d.label||"").trim().toUpperCase(),String(d.label||"").trim().toLowerCase()];
+  return a.filter(function(x,i){return x&&a.indexOf(x)===i});
+}
+function inePeriodCode(row){
+  var y=String(row&&row.Anyo!=null?row.Anyo:"").trim(),p=String(row&&row.T3_Periodo!=null?row.T3_Periodo:"").trim().toUpperCase();
+  if(!y)return"";
+  if(!p||p==="A"||p==="ANUAL")return y;
+  var m=p.match(/^M(\\d{1,2})$/);if(m)return y+"M"+String(Number(m[1])).padStart(2,"0");
+  var q=p.match(/^(?:T|Q)(\\d)$/);if(q)return y+"Q"+q[1];
+  var s=p.match(/^S(\\d)$/);if(s)return y+"S"+s[1];
+  var b=p.match(/^B(\\d{1,2})$/);if(b)return y+"B"+String(Number(b[1])).padStart(2,"0");
+  return y+"-"+p.replace(/\\s+/g,"_");
+}
+function ineDatosTablaToJsonStat(raw,metadata){
+  var series=Array.isArray(raw)?raw:[];
+  if(!series.length)return null;
+  var baseDims=dims(metadata),timeDim=baseDims.find(function(d){return temporal(d)});
+  var nonTime=baseDims.filter(function(d){return !timeDim||d.id!==timeDim.id});
+  var timeMap=new Map(),rows=[];
+  function norm(x){return String(x==null?"":x).trim().toUpperCase()}
+  function metaFor(s){
+    var out={};(s.MetaData||[]).forEach(function(m){
+      var v=m&&m.T3_Variable;
+      var code=m&&m.Codigo;
+      if(m&&m.Variable){v=m.Variable.Nombre||m.Variable.Codigo||v;code=m.Codigo||m.Variable.Codigo||code}
+      if(v!=null)out[norm(v)]=String(code==null?"":code);
+    });return out;
+  }
+  series.forEach(function(s){
+    var sm=metaFor(s),data=Array.isArray(s.Data)?s.Data:[];
+    data.forEach(function(x){
+      var tc=inePeriodCode(x);if(!tc)return;
+      var key=[];
+      nonTime.forEach(function(d){
+        var code="";
+        Object.keys(sm).some(function(k){if(k===norm(d.label)||k===norm(d.id)){code=sm[k];return true}return false});
+        if(!code&&d.categories.length===1)code=d.categories[0].code;
+        key.push(code);
+      });
+      timeMap.set(tc,{code:tc,label:(x.T3_Periodo?String(x.T3_Periodo)+" ":"")+String(x.Anyo||tc)});
+      rows.push({key:key,time:tc,value:x.Valor});
+    });
+  });
+  if(!rows.length)return null;
+  var td=timeDim||{id:"time",label:"Temps",role:"time",categories:[]};
+  var timeCats=Array.from(timeMap.values()).sort(function(a,b){return String(a.code).localeCompare(String(b.code),"ca",{numeric:true})});
+  var outDims=nonTime.concat([{id:td.id,label:td.label,role:td.role,categories:timeCats.map(function(c,i){return{code:c.code,label:c.label,index:i}})}]);
+  var out={class:"dataset",id:outDims.map(function(d){return d.id}),size:outDims.map(function(d){return d.categories.length}),dimension:{}};
+  outDims.forEach(function(d){
+    var cat={index:d.categories.map(function(c){return c.code}),label:{}};
+    d.categories.forEach(function(c){cat.label[c.code]=c.label});
+    out.dimension[d.id]={label:d.label,category:cat};
+  });
+  var index=new Map();
+  outDims.forEach(function(d,j){var m=new Map();d.categories.forEach(function(c,i){m.set(String(c.code),i)});index.set(d.id,m)});
+  var total=out.size.reduce(function(a,b){return a*b},1),vals=new Array(total).fill(null),strides=[];
+  var st=1;for(var j=out.size.length-1;j>=0;j--){strides[j]=st;st*=out.size[j]};
+  rows.forEach(function(r){
+    var coords=[];
+    nonTime.forEach(function(d,j){coords.push(index.get(d.id).has(String(r.key[j]))?index.get(d.id).get(String(r.key[j])):0)});
+    coords.push(index.get(td.id).get(String(r.time)));
+    var flat=0;coords.forEach(function(v,j){flat+=v*strides[j]});vals[flat]=r.value;
+  });
+  out.value=vals;return out;
+}
+async function ineDatosTablaFiltered(tableId,filters){
+  var dsx=state.metadata,q={};
+  dims(dsx).forEach(function(d){
+    var vals=filters[d.id];if(!vals||!vals.length)return;
+    q[d.id]=vals;
+  });
+  var dimsList=dims(dsx).filter(function(d){return q[d.id]&&q[d.id].length});
+  var candidateSets=dimsList.map(ineTvCandidates),attempts=[0,1,2,3,4];
+  var lastErr=null;
+  for(var ai=0;ai<attempts.length;ai++){
+    var qp=new URLSearchParams();
+    dimsList.forEach(function(d,i){var cand=candidateSets[i]||[];var variable=cand[Math.min(ai,cand.length-1)]||d.id;(q[d.id]||[]).forEach(function(v){qp.append("tv",variable+":"+v)})});
+    var u=ineDatosTablaUrl(tableId,qp.toString());
+    try{
+      var raw=await fetchJson(u),converted=ineDatosTablaToJsonStat(raw,dsx);
+      if(converted)return{data:converted,url:u};
+    }catch(e){lastErr=e}
+  }
+  if(lastErr)throw lastErr;
+  return null;
+}
 async function ineMetadata(tableId){
  var u=ineJsonStatUrl(tableId);
  var ds=await fetchJson(u);state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(ds.label||tableId)+"<span class=\"path\">"+esc(u)+"</span>";$("query").disabled=false
@@ -942,18 +1033,9 @@ async function runQuery(){
    state.lastQueryUrl=up
   }
   else {
-   var qi=new URLSearchParams();
-   var sf=selectedFilters();
-   Object.keys(sf).forEach(function(k){sf[k].forEach(function(v){qi.append("tv",k+":"+v)})});
-   // Durant el manteniment de l'INE, DATASET funciona sense filtres però
-   // les peticions DATASET amb tv poden fallar per CORS/servidor. Descarreguem
-   // sempre el cub complet (que ja sabem que funciona) i fem el filtre
-   // localment sobre el JSON-stat. Això manté exactament les mateixes
-   // seleccions i evita dependre de proxies CORS.
-   var ui=ineJsonStatUrl(state.selected.table);
-   var fullDs=await fetchJson(ui);
-   ds=diceJsonStat(fullDs,sf);
-   state.lastQueryUrl=ineJsonStatUrl(state.selected.table)+(qi.toString()?"?"+qi.toString():"")
+   var sf=selectedFilters(),filtered=await ineDatosTablaFiltered(state.selected.table,sf);
+   if(!filtered)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
+   ds=filtered.data;state.lastQueryUrl=filtered.url;
   }
   if(token!==state.requestToken)return;state.lastData=ds;state.page=1;renderResults(ds);var n=Array.isArray(ds.value)?ds.value.length:Object.keys(ds.value||{}).length;$("resultCount").textContent=n.toLocaleString("ca-ES")+" valors retornats";$("exportCsv").disabled=false;$("exportXlsx").disabled=false;$("addToCart").disabled=false;status("")
  }catch(e){if(token===state.requestToken){$("results").innerHTML="<div class=\"error\">"+esc(e.message)+"</div>";status("Error","error")}}finally{busy(false);updateCells()}
