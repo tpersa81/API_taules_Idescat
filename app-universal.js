@@ -803,7 +803,7 @@ async function pxMetadata(){
  raw=await fetchJson(pxUrl(state.pxPath));ds=pxToJsonStat(raw);state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||raw.label||state.selected.table)+"<span class=\"path\">"+esc(pxUrl(state.pxPath))+"</span>";$("query").disabled=false}
 function ineJsonStatUrl(tableId){return "https://servicios.ine.es/wstempus/jsstat/ES/DATASET/"+encodeURIComponent(String(tableId))}
 function ineDatosTablaUrl(tableId,query){
-  var u="https://servicios.ine.es/wstempus/js/ES/DATOS_TABLA/"+encodeURIComponent(String(tableId))+"";
+  var u="https://servicios.ine.es/wstempus/jsCache/ES/DATOS_TABLA/"+encodeURIComponent(String(tableId))+"";
   return u+(query?"?"+query:"");
 }
 function ineTvCandidates(d){
@@ -878,6 +878,7 @@ async function ineDatosTablaFiltered(tableId,filters){
  var dimsList=dims(dsx).filter(function(d){return q[d.id]&&q[d.id].length});
  if(!dimsList.length)return null;
  var qp=new URLSearchParams();
+ qp.append("tip","AM");
  dimsList.forEach(function(d){
   var variable=String(d.id||'').trim().toLowerCase();
   if(!/^[a-z][a-z0-9_]*$/.test(variable))variable=String(d.label||d.id||'').trim().toLowerCase().replace(/[^a-z0-9_]/g,'');
