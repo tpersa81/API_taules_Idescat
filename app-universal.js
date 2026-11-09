@@ -1123,6 +1123,13 @@ async function ineResolveFilters(filters){
     var vc=String(f(x,"Codigo","codigo","Code","code")||"");
     return vc===sc||vc===suffix||String(f(x,"Id","id"))===sc;
    });
+   // En algunes dimensions JSON-stat de Tempus3, el codi de categoria
+   // incorpora el grup de la taula (p. ex. «5_0»). Per a la variable global
+   // Índices y Tasas (83), el tram final és el codi/Id real del valor.
+   if(!val && opCode==="IPRI" && vid==="83" && /^\\d+_\\d+$/.test(sc)){
+    var globalValueId=sc.slice(sc.lastIndexOf("_")+1);
+    val={Id:globalValueId,Codigo:globalValueId,Nombre:globalValueId};
+   }
    if(!val)throw new Error("No s'ha trobat el valor INE «"+sc+"» de la variable «"+String(d.label||d.id)+"».");
    var valueId=String(f(val,"Id","id")).trim();
    if(!valueId)throw new Error("El valor INE «"+sc+"» no té identificador.");
