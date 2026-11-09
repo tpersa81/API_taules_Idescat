@@ -872,7 +872,56 @@ function ineDatosTablaToJsonStat(raw,metadata){
   });
   out.value=vals;return out;
 }
-async function ineDatosTablaFiltered(tableId,filters){
+async function ineFilterJsonStat(ds,filters){
+ var ids=Array.isArray(ds.id)?ds.id.slice():[];
+ var oldDims=ids.map(function(id){return ds.dimension&&ds.dimension[id]||{}});
+ var oldSizes=Array.isArray(ds.size)?ds.size.map(Number):ids.map(function(id){return jsonstatCats(ds,id).length});
+ var oldCats=ids.map(function(id){return jsonstatCats(ds,id)});
+ var keep=ids.map(function(id,j){
+  var vals=filters&&filters[id];
+  var wanted=vals&&vals.length?new Set(vals.map(String)):null;
+  var cats=oldCats[j];
+  return wanted?cats.filter(function(cat){return wanted.has(String(cat.code))}):cats.slice();
+ });
+ var out=JSON.parse(JSON.stringify(ds));
+ out.id=ids;
+ out.size=keep.map(function(c){return c.length});
+ out.dimension={};
+ ids.forEach(function(id,j){
+  var od=oldDims[j],cats=keep[j],catIndex={};
+  cats.forEach(function(cat,i){catIndex[cat.code]=i});
+  out.dimension[id]={
+   label:od.label,
+   category:{
+    index:catIndex,
+    label:{}
+   }
+  };
+  cats.forEach(function(cat){out.dimension[id].category.label[cat.code]=cat.label});
+  if(od.role)out.dimension[id].role=od.role;
+  if(od.extension)out.dimension[id].extension=od.extension;
+ });
+ var total=out.size.reduce(function(a,b){return a*Number(b)},1);
+ var vals=Array.isArray(ds.value)?ds.value:[];
+ var oldStrides=[],newStrides=[],s=1;
+ for(var j=ids.length-1;j>=0;j--){oldStrides[j]=s;s*=oldSizes[j]}
+ s=1;
+ for(var k=ids.length-1;k>=0;k--){newStrides[k]=s;s*=out.size[k]}
+ out.value=new Array(total);
+ if(Array.isArray(ds.status))out.status=new Array(total);
+ for(var flat=0;flat<total;flat++){
+  var rem=flat,oldFlat=0;
+  for(var j=0;j<ids.length;j++){
+   var coord=Math.floor(rem/newStrides[j]);rem=rem%newStrides[j];
+   var oldIndex=oldCats[j].findIndex(function(cat){return String(cat.code)===String(keep[j][coord]&&keep[j][coord].code)});
+   oldFlat+=oldIndex*oldStrides[j];
+  }
+  out.value[flat]=vals[oldFlat];
+  if(Array.isArray(ds.status))out.status[flat]=ds.status[oldFlat];
+ }
+ return out;
+}
+function ineDatosTablaFiltered(tableId,filters){
  var dsx=state.metadata,q={};
  dims(dsx).forEach(function(d){var vals=filters[d.id];if(vals&&vals.length)q[d.id]=vals});
  var dimsList=dims(dsx).filter(function(d){return q[d.id]&&q[d.id].length});
@@ -1034,8 +1083,8 @@ async function runQuery(){
     var iu=ineJsonStatUrl(state.selected.table);
     ds=await fetchJson(iu);state.lastQueryUrl=iu
    }else{
-    var filtered=await ineDatosTablaFiltered(state.selected.table,sf);
-    ds=filtered.data;state.lastQueryUrl=filtered.url;
+    ds=ineFilterJsonStat(state.metadata,sf);
+    state.lastQueryUrl=ineJsonStatUrl(state.selected.table)+" (filtre local)";
    }
   }
   if(token!==state.requestToken)return;state.lastData=ds;state.page=1;renderResults(ds);var n=Array.isArray(ds.value)?ds.value.length:Object.keys(ds.value||{}).length;$("resultCount").textContent=n.toLocaleString("ca-ES")+" valors retornats";$("exportCsv").disabled=false;$("exportXlsx").disabled=false;$("addToCart").disabled=false;status("")
