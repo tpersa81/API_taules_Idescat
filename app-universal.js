@@ -1065,7 +1065,9 @@ async function ineResolveFilters(filters){
    var id=String(f(x,"Id","id","Codigo","Code")||"").trim();
    var name=ineNorm(f(x,"Nombre","nombre","Name","Descripcion","Description")||"");
    var code=ineNorm(f(x,"Codigo","codigo","Code","code")||"");
-   return id===String(d.id) || name===dn || code===dn || code===ineNorm(d.id);
+   return id===String(d.id) || name===dn || code===dn || code===ineNorm(d.id) ||
+          name.replace(/[^A-Z0-9]/g,"")===dn.replace(/[^A-Z0-9]/g,"") ||
+          code.replace(/[^A-Z0-9]/g,"")===dn.replace(/[^A-Z0-9]/g,"");
   });
   if(!v)throw new Error("No s'ha pogut identificar la variable INE «"+String(d.label||d.id)+"».");
   var vid=String(f(v,"Id","id")).trim();
