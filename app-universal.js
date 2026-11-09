@@ -1085,8 +1085,11 @@ async function ineResolveFilters(filters){
   // La metadata JSON-stat de la taula 61525 pot exposar-la simplement
   // com «Clases», de manera que no depenem de la coincidència textual
   // amb el catàleg de variables.
-  var v=(opCode==="IPRI"&&dn.replace(/[^A-Z0-9]/g,"")==="CLASES")
+  var dnKey=dn.replace(/[^A-Z0-9]/g,"");
+  var v=(opCode==="IPRI"&&dnKey==="CLASES")
       ? {Id:394,Nombre:"CLASES",Codigo:""}
+      : (opCode==="IPRI"&&dnKey==="INDICESYTASAS")
+      ? {Id:83,Nombre:"Índices y Tasas",Codigo:""}
       : vars.find(function(x){
    var id=String(f(x,"Id","id")).trim();
    var name=ineNorm(f(x,"Nombre","nombre","Name","Descripcion","Description")||"");
