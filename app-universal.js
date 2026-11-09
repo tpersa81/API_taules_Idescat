@@ -803,8 +803,8 @@ async function pxMetadata(){
  raw=await fetchJson(pxUrl(state.pxPath));ds=pxToJsonStat(raw);state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||raw.label||state.selected.table)+"<span class=\"path\">"+esc(pxUrl(state.pxPath))+"</span>";$("query").disabled=false}
 function ineJsonStatUrl(tableId){return "https://servicios.ine.es/wstempus/jsstat/ES/DATASET/"+encodeURIComponent(String(tableId))}
 function ineDatosTablaUrl(tableId,query){
-  var u="https://servicios.ine.es/wstempus/jsCache/es/DATOS_TABLA/"+encodeURIComponent(String(tableId))+"?tip=AM";
-  return u+(query?"&"+query:"");
+  var u="https://servicios.ine.es/wstempus/js/ES/DATOS_TABLA/"+encodeURIComponent(String(tableId))+"";
+  return u+(query?"?"+query:"");
 }
 function ineTvCandidates(d){
   var a=[String(d.id||"").trim(),String(d.label||"").trim(),String(d.id||"").trim().toUpperCase(),String(d.label||"").trim().toUpperCase(),String(d.label||"").trim().toLowerCase()];
@@ -873,25 +873,20 @@ function ineDatosTablaToJsonStat(raw,metadata){
   out.value=vals;return out;
 }
 async function ineDatosTablaFiltered(tableId,filters){
-  var dsx=state.metadata,q={};
-  dims(dsx).forEach(function(d){
-    var vals=filters[d.id];if(!vals||!vals.length)return;
-    q[d.id]=vals;
-  });
-  var dimsList=dims(dsx).filter(function(d){return q[d.id]&&q[d.id].length});
-  var candidateSets=dimsList.map(ineTvCandidates),attempts=[0,1,2,3,4];
-  var lastErr=null;
-  for(var ai=0;ai<attempts.length;ai++){
-    var qp=new URLSearchParams();
-    dimsList.forEach(function(d,i){var cand=candidateSets[i]||[];var variable=cand[Math.min(ai,cand.length-1)]||d.id;(q[d.id]||[]).forEach(function(v){qp.append("tv",variable+":"+v)})});
-    var u=ineDatosTablaUrl(tableId,qp.toString());
-    try{
-      var raw=await fetchJson(u),converted=ineDatosTablaToJsonStat(raw,dsx);
-      if(converted)return{data:converted,url:u};
-    }catch(e){lastErr=e}
-  }
-  if(lastErr)throw lastErr;
-  return null;
+ var dsx=state.metadata,q={};
+ dims(dsx).forEach(function(d){var vals=filters[d.id];if(vals&&vals.length)q[d.id]=vals});
+ var dimsList=dims(dsx).filter(function(d){return q[d.id]&&q[d.id].length});
+ if(!dimsList.length)return null;
+ var qp=new URLSearchParams();
+ dimsList.forEach(function(d){
+  var variable=String(d.id||'').trim().toLowerCase();
+  if(!/^[a-z][a-z0-9_]*$/.test(variable))variable=String(d.label||d.id||'').trim().toLowerCase().replace(/[^a-z0-9_]/g,'');
+  (q[d.id]||[]).forEach(function(v){qp.append('tv',variable+':'+String(v))});
+ });
+ var u=ineDatosTablaUrl(tableId,qp.toString());
+ var raw=await fetchJson(u),converted=ineDatosTablaToJsonStat(raw,dsx);
+ if(!converted)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
+ return{data:converted,url:u};
 }
 async function ineMetadata(tableId){
  var u=ineJsonStatUrl(tableId);
@@ -1033,9 +1028,14 @@ async function runQuery(){
    state.lastQueryUrl=up
   }
   else {
-   var sf=selectedFilters(),filtered=await ineDatosTablaFiltered(state.selected.table,sf);
-   if(!filtered)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
-   ds=filtered.data;state.lastQueryUrl=filtered.url;
+   var sf=selectedFilters();
+   if(Object.keys(sf).length===0){
+    var iu=ineJsonStatUrl(state.selected.table);
+    ds=await fetchJson(iu);state.lastQueryUrl=iu
+   }else{
+    var filtered=await ineDatosTablaFiltered(state.selected.table,sf);
+    ds=filtered.data;state.lastQueryUrl=filtered.url;
+   }
   }
   if(token!==state.requestToken)return;state.lastData=ds;state.page=1;renderResults(ds);var n=Array.isArray(ds.value)?ds.value.length:Object.keys(ds.value||{}).length;$("resultCount").textContent=n.toLocaleString("ca-ES")+" valors retornats";$("exportCsv").disabled=false;$("exportXlsx").disabled=false;$("addToCart").disabled=false;status("")
  }catch(e){if(token===state.requestToken){$("results").innerHTML="<div class=\"error\">"+esc(e.message)+"</div>";status("Error","error")}}finally{busy(false);updateCells()}
