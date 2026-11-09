@@ -811,7 +811,9 @@ async function pxMetadata(){
  raw=await fetchJson(pxUrl(state.pxPath));ds=pxToJsonStat(raw);state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||raw.label||state.selected.table)+"<span class=\"path\">"+esc(pxUrl(state.pxPath))+"</span>";$("query").disabled=false}
 function ineJsonStatUrl(tableId){return "https://servicios.ine.es/wstempus/jsstat/ES/DATASET/"+encodeURIComponent(String(tableId))}
 function ineDatosTablaUrl(tableId,query){
-  var u="https://servicios.ine.es/wstempus/jsCache/ES/DATOS_TABLA/"+encodeURIComponent(String(tableId))+"";
+  // Per a les consultes filtrades Tempus3 utilitzem DATOS_TABLA, que és
+  // l'endpoint documentat per l'INE per al paràmetre tv.
+  var u="https://servicios.ine.es/wstempus/js/ES/DATOS_TABLA/"+encodeURIComponent(String(tableId));
   return u+(query?"?"+query:"");
 }
 function ineTvCandidates(d){
@@ -930,17 +932,12 @@ async function ineFilterJsonStat(ds,filters){
  return out;
 }
 async function ineDatosTablaFiltered(tableId,filters){
- var dsx=state.metadata,q={};
- dims(dsx).forEach(function(d){var vals=filters[d.id];if(vals&&vals.length)q[d.id]=vals});
- var dimsList=dims(dsx).filter(function(d){return q[d.id]&&q[d.id].length});
- if(!dimsList.length)return null;
+ var dsx=state.metadata;
+ var iq=await ineResolveFilters(filters||{});
+ if(!iq.toString())return null;
  var qp=new URLSearchParams();
  qp.append("tip","AM");
- dimsList.forEach(function(d){
-  var variable=String(d.id||'').trim().toLowerCase();
-  if(!/^[a-z][a-z0-9_]*$/.test(variable))variable=String(d.label||d.id||'').trim().toLowerCase().replace(/[^a-z0-9_]/g,'');
-  (q[d.id]||[]).forEach(function(v){qp.append('tv',variable+':'+String(v))});
- });
+ iq.forEach(function(value,key){qp.append(key,value)});
  var u=ineDatosTablaUrl(tableId,qp.toString());
  var raw=await fetchJson(u),converted=ineDatosTablaToJsonStat(raw,dsx);
  if(!converted)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
@@ -1153,9 +1150,15 @@ async function runQuery(){
    state.lastQueryUrl=up
   }
   else {
-   var sf=selectedFilters(),iu=ineJsonStatUrl(state.selected.table),iq=await ineResolveFilters(sf);
-   var iuq=iq.toString()?iu+"?"+iq.toString():iu;
-   ds=await fetchJson(iuq);state.lastQueryUrl=iuq
+   var sf=selectedFilters();
+   var hasIneFilters=Object.keys(sf).some(function(k){return sf[k]&&sf[k].length});
+   if(hasIneFilters){
+    var ir=await ineDatosTablaFiltered(state.selected.table,sf);
+    ds=ir.data;state.lastQueryUrl=ir.url;
+   }else{
+    var iu=ineJsonStatUrl(state.selected.table);
+    ds=await fetchJson(iu);state.lastQueryUrl=iu;
+   }
   }
   if(token!==state.requestToken)return;state.lastData=ds;state.page=1;renderResults(ds);var n=Array.isArray(ds.value)?ds.value.length:Object.keys(ds.value||{}).length;$("resultCount").textContent=n.toLocaleString("ca-ES")+" valors retornats";$("exportCsv").disabled=false;$("exportXlsx").disabled=false;$("addToCart").disabled=false;status("")
  }catch(e){if(token===state.requestToken){$("results").innerHTML="<div class=\"error\">"+esc(e.message)+"</div>";status("Error","error")}}finally{busy(false);updateCells()}
