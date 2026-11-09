@@ -14,7 +14,7 @@ async function fetchJson(url,opt){opt=opt||{};var r;try{r=await fetch(url,opt)}c
     var proxyUrl="https://cors.tools/proxy?url="+encodeURIComponent(url);
     r=await fetch(proxyUrl,opt);
    }catch(e2){throw new Error("No s'ha pogut connectar amb l'API. "+(e2&&e2.message||"Failed to fetch")+" · "+url)}
-  }else if(state.provider==="ine"&&/^https:\/\/servicios\\.ine\\.es\//i.test(url)){
+  }else if(state.provider==="ine"&&/^https:\/\/servicios\.ine\.es\//i.test(url)){
    // INE pot retornar una resposta d'error sense cap capçalera CORS quan la
    // consulta DATASET porta filtres tv. Reintentem la mateixa petició GET
    // mitjançant un proxy de lectura per poder obtenir també el cos real de
@@ -1046,7 +1046,7 @@ function selectedFilters(){var q={};dims(state.metadata).forEach(function(d){var
 function updateCells(){var n=1;state.filters.forEach(function(s){n*=s.size});var missing=Array.from(state.filters.values()).some(function(s){return !s.size});var cellLimit=state.provider==="idescat"?MAX_CELLS:(state.provider==="pxweb"&&state.pxPreset==="finland"?100000:(state.provider==="pxweb"&&state.pxPreset==="sweden"?150000:Infinity));var tooMany=n>cellLimit;var bad=missing||tooMany;$("cellInfo").hidden=false;var icon=bad?"✕":"✓";var limitText=Number.isFinite(cellLimit)?cellLimit.toLocaleString("ca-ES"):"—";var msg=missing?"Cal seleccionar valors a totes les dimensions.":tooMany?"Cal filtrar la taula (màxim "+limitText+" cel·les)":"Es pot continuar."; $("cellInfo").innerHTML="<span class=\"status-icon "+(bad?"bad":"ok")+"\" aria-hidden=\"true\">"+icon+"</span> <strong>Nombre de cel·les de la taula filtrada:</strong> "+n.toLocaleString("ca-ES")+" · <span class=\""+(bad?"bad":"ok")+"\">"+msg+"</span>";document.querySelectorAll(".filter").forEach(function(x){x.querySelector(".selected-count").textContent=(state.filters.get(x.dataset.dim)||new Set()).size.toLocaleString("ca-ES")+" seleccionades"});$("query").disabled=bad||!state.metadata}
 function buildEurostatParams(){var p=new URLSearchParams();p.set("format","JSON");p.set("lang","EN");var q=selectedFilters();Object.keys(q).forEach(function(k){q[k].forEach(function(v){p.append(k,v)})});return p}
 function ineNorm(s){
- return String(s==null?"":s).normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").trim().toUpperCase();
+ return String(s==null?"":s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase();
 }
 async function ineOperationCode(op){
  var key="OP|"+String(op||"").trim(),cached=state.ineVarCache.get(key);
@@ -1072,7 +1072,13 @@ async function ineResolveFilters(filters){
   var d=dsDims[di],wanted=filters[d.id];
   if(!wanted||!wanted.length)continue;
   var dn=ineNorm(d.label||d.id);
-  var v=vars.find(function(x){
+  // En Tempus3 la variable CLASES de l'operació IPRI és la 394.
+  // La metadata JSON-stat de la taula 61525 pot exposar-la simplement
+  // com «Clases», de manera que no depenem de la coincidència textual
+  // amb el catàleg de variables.
+  var v=(opCode==="IPRI"&&dn.replace(/[^A-Z0-9]/g,"")==="CLASES")
+      ? {Id:394,Nombre:"CLASES",Codigo:""}
+      : vars.find(function(x){
    var id=String(f(x,"Id","id")).trim();
    var name=ineNorm(f(x,"Nombre","nombre","Name","Descripcion","Description")||"");
    var code=ineNorm(f(x,"Codigo","codigo","Code","code")||"");
@@ -1083,10 +1089,7 @@ async function ineResolveFilters(filters){
   // JSON-stat de l'INE pot exposar «Clases» mentre Tempus3 publica
   // «CLASES». Si la correspondència textual falla, usem el codi/nom
   // conegut de la variable de la taula a partir dels valors disponibles.
-  if(!v && dn.replace(/[^A-Z0-9]/g,"")==="CLASES"){
-   v=vars.find(function(x){return ineNorm(f(x,"Nombre","nombre","Name")||"").replace(/[^A-Z0-9]/g,"")==="CLASES"});
-   if(!v) v={Id:394,Nombre:"CLASES",Codigo:""};
-  }
+
   if(!v)throw new Error("No s'ha pogut identificar la variable INE «"+String(d.label||d.id)+"».");
   var vid=String(f(v,"Id","id")).trim();
   if(!vid)throw new Error("La variable INE «"+String(d.label||d.id)+"» no té identificador.");
