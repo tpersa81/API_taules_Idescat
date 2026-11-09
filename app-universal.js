@@ -1126,7 +1126,7 @@ async function ineResolveFilters(filters){
    // En algunes dimensions JSON-stat de Tempus3, el codi de categoria
    // incorpora el grup de la taula (p. ex. «5_0»). Per a la variable global
    // Índices y Tasas (83), el tram final és el codi/Id real del valor.
-   if(!val && opCode==="IPRI" && vid==="83" && /^\\d+_\\d+$/.test(sc)){
+   if(!val && opCode==="IPRI" && vid==="83" && /^\d+_\d+$/.test(sc)){
     var globalValueId=sc.slice(sc.lastIndexOf("_")+1);
     val={Id:globalValueId,Codigo:globalValueId,Nombre:globalValueId};
    }
