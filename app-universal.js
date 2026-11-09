@@ -937,7 +937,11 @@ async function ineDatosTablaFiltered(tableId,filters){
  dims(state.metadata).forEach(function(d){
   var wanted=allFilters[d.id];
   if(!wanted||!wanted.length)return;
-  if(temporal(d))localFilters[d.id]=wanted;
+  // «Índices y Tasas» (83) pot aparèixer en la metadata de la
+  // sèrie però no és una variable filtrable de la taula 61525 via tv.
+  // En aquest cas filtrem sobre el JSON-stat retornat.
+  var dKey=ineNorm(d.label||d.id).replace(/[^A-Z0-9]/g,"");
+  if(temporal(d)||dKey==="INDICESYTASAS")localFilters[d.id]=wanted;
   else apiFilters[d.id]=wanted;
  });
  var iq=await ineResolveFilters(apiFilters);
