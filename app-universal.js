@@ -1100,7 +1100,7 @@ async function ineOperationCode(op){
  state.ineVarCache.set(key,code);
  return code;
 }
-async function ineResolveFilters(filters){
+async async function ineResolveFilters(filters){
  var tableId=String(state.selected.table||"").trim();
  if(!tableId)throw new Error("No s'ha pogut identificar la taula INE.");
  var op=String(state.selected.stat||"").trim();
@@ -1137,11 +1137,10 @@ async function ineResolveFilters(filters){
   var vid=String(f(v,"Id","id")).trim();
   if(!vid)throw new Error("La variable INE «"+String(d.label||d.id)+"» no té identificador.");
 
-  // Per a taules Tempus3, INE documenta que tv utilitza els IDs
-  // numèrics de la variable i del valor. Els valors que formen una taula
-  // poden provenir d'un grup específic de la taula; per això no n'hi ha
-  // prou amb VALORES_VARIABLEOPERACION. Resolem primer GRUPOS_TABLA +
-  // VALORES_GRUPOSTABLA, que és també la font oficial dels codis de filtre.
+  // En una taula Tempus3 normal, tv NO utilitza els IDs numèrics.
+  // Els IDs numèrics només s'utilitzen amb el sufix ~id en taules tpx.
+  // Per a aquesta taula, per tant, necessitem el nom/codi de la variable
+  // i el Codigo del valor (p. ex. sexo:1 per a Hombres).
   var candidateValues=[];
   for(var gi=0;gi<groups.length;gi++){
    var gid=String(f(groups[gi],"Id","id")).trim();
@@ -1156,8 +1155,6 @@ async function ineResolveFilters(filters){
    if(gv&&gv.length)candidateValues=candidateValues.concat(gv);
   }
 
-  // Fallback per a operacions/taules que no exposen grups de manera
-  // completa: recuperem els valors generals de la variable.
   if(!candidateValues.length){
    var valuesKey="VALS|"+opCode+"|"+vid,values=state.ineVarCache.get(valuesKey);
    if(!values){
@@ -1169,6 +1166,9 @@ async function ineResolveFilters(filters){
    candidateValues=values;
   }
 
+  // Una dimensió JSON-stat pot agrupar diversos variables Tempus3
+  // (especialment Edad). Per això el valor seleccionat també determina
+  // la variable real mitjançant FK_Variable.
   wanted.forEach(function(code){
    var sc=String(code),suffix=sc.indexOf("_")>=0?sc.slice(sc.lastIndexOf("_")+1):sc;
    var cat=d.categories&&d.categories.find(function(c){return String(c.code)===sc});
@@ -1181,11 +1181,18 @@ async function ineResolveFilters(filters){
     return vc===sc||vc===suffix||String(f(x,"Id","id"))===sc||(catLabel&&vn===catLabel);
    });
    if(!val)throw new Error("No s'ha trobat el valor INE «"+sc+"» de la variable «"+String(d.label||d.id)+"».");
-   var valueId=String(f(val,"Id","id")).trim();
-   if(!valueId)throw new Error("El valor INE «"+sc+"» no té identificador.");
-   // Format documentat per DATOS_TABLA de les taules Tempus3:
-   // tv=id_variable:id_valor, utilitzant els IDs numèrics.
-   out.append("tv",vid+":"+valueId);
+   var valueCode=String(f(val,"Codigo","codigo","Code","code")||"").trim();
+   var variableCode=String(f(v,"Codigo","codigo","Code","code")||"").trim();
+   // Si la variable no té Codigo, la sintaxi Tempus3 utilitza el nom
+   // normalitzat de la variable (p. ex. sexo).
+   var variableTv=variableCode||String(f(v,"Nombre","nombre","Name")||d.id||"").trim();
+   variableTv=ineNorm(variableTv).toLowerCase().replace(/[^a-z0-9]+/g,"");
+   if(!variableTv)variableTv=String(d.id||"").trim();
+   // Alguns valors, com Total, tenen Codigo buit. En aquests casos el
+   // filtre amb tv=variable: buit significa "tots", i no permet seleccionar
+   // només aquest valor. Per això, més endavant es reforça el filtre
+   // localment a partir de MetaData.
+   if(valueCode)out.append("tv",variableTv+":"+valueCode);
   });
  }
  return out;
