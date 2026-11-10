@@ -945,6 +945,31 @@ async function ineDatosTablaFiltered(tableId,filters){
  var u=ineDatosTablaUrl(tableId,iq.toString());
  var raw=await fetchJson(u);
  if(!raw)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
+ // DATOS_TABLA hauria d'aplicar els filtres Tempus3, però no totes les
+ // taules/variants de l'INE els processen de manera homogènia. Filtrem també
+ // les sèries originals pels IDs Tempus3, abans de convertir-les a JSON-stat.
+ var tvs=iq.getAll("tv").map(function(tv){
+  var p=String(tv).split(":");
+  return{variable:String(p[0]||"").trim(),value:String(p.slice(1).join(":")||"").trim()};
+ });
+ if(tvs.length&&Array.isArray(raw)){
+  var groupsTv={};
+  tvs.forEach(function(t){
+   if(!groupsTv[t.variable])groupsTv[t.variable]=[];
+   groupsTv[t.variable].push(t.value);
+  });
+  raw=raw.filter(function(s){
+   var md=Array.isArray(s&&s.MetaData)?s.MetaData:[];
+   return Object.keys(groupsTv).every(function(vid){
+    return md.some(function(m){
+     var mv=String(m&&m.Id!=null?m.Id:"").trim();
+     var fv=String(m&&m.FK_Variable!=null?m.FK_Variable:"").trim();
+     return fv===vid&&groupsTv[vid].indexOf(mv)>=0;
+    });
+   });
+  });
+ }
+ if(!raw.length)throw new Error("L'INE no ha retornat sèries per als filtres seleccionats.");
  var filteredDs=ineDatosTablaToJsonStat(raw,state.metadata);
  if(!filteredDs)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
  if(Object.keys(localFilters).length)filteredDs=diceJsonStat(filteredDs,localFilters);
