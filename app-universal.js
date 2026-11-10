@@ -4,42 +4,38 @@ const state={provider:"idescat",pxPreset:"finland",stats:[],metadata:null,lastDa
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]});
 async function fetchJson(url,opt){opt=opt||{};var r;try{r=await fetch(url,opt)}catch(e){
-  // Statistics Iceland no exposa CORS per a les peticions de la seva API.
-  // Reintentem la mateixa petició a través de cors.tools, que admet també POST.
   if(state.provider==="pxweb"&&((state.pxPreset==="iceland"&&/^https:\/\/px\.hagstofa\.is\//i.test(url))||(state.pxPreset==="finland"&&/^https:\/\/pxdata\.stat\.fi\//i.test(url)))){
-   try{
-    // Statistics Iceland i Statistics Finland no permeten les peticions POST
-    // directes des de GitHub Pages per CORS. cors.tools admet també POST i
-    // reenvia el body i els headers de la petició original.
-    var proxyUrl="https://cors.tools/proxy?url="+encodeURIComponent(url);
-    r=await fetch(proxyUrl,opt);
-   }catch(e2){throw new Error("No s'ha pogut connectar amb l'API. "+(e2&&e2.message||"Failed to fetch")+" · "+url)}
+   try{r=await fetch("https://cors.tools/proxy?url="+encodeURIComponent(url),opt)}
+   catch(e2){throw new Error("No s'ha pogut connectar amb l'API. "+(e2&&e2.message||"Failed to fetch")+" · "+url)}
   }else if(state.provider==="ine"&&/^https:\/\/servicios\.ine\.es\//i.test(url)){
-   // Si INE no exposa CORS, provem diversos proxies GET.
    var ineProxyOk=false,ineProxyErr=null;
    var ineProxies=[
     "https://api.allorigins.win/raw?url="+encodeURIComponent(url),
     "https://corsproxy.io/?url="+encodeURIComponent(url),
     "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(url)
    ];
-   for(var ip=0;ip<ineProxies.length&&!ineProxyOk;ip++){
-    try{
-     var pr=await fetch(ineProxies[ip],{cache:"no-store"});
-     if(pr.ok){r=pr;ineProxyOk=true}
-     else ineProxyErr=new Error("HTTP "+pr.status);
-    }catch(e2){ineProxyErr=e2}
-   }
+   for(var ip=0;ip<ineProxies.length&&!ineProxyOk;ip++){try{var pr=await fetch(ineProxies[ip],{cache:"no-store"});if(pr.ok){r=pr;ineProxyOk=true}else ineProxyErr=new Error("HTTP "+pr.status)}catch(e2){ineProxyErr=e2}}
    if(!ineProxyOk)throw new Error("No s'ha pogut connectar amb l'API. "+(ineProxyErr&&ineProxyErr.message||"Failed to fetch")+" · "+url)
   }else throw new Error("No s'ha pogut connectar amb l'API. "+(e&&e.message||"Failed to fetch")+" · "+url)
-}var text="";try{text=await r.text()}catch(e){throw new Error("No s'ha pogut llegir la resposta de l'API (HTTP "+r.status+").")}var d=null;try{d=text?JSON.parse(text):null}catch(e){if(!r.ok)throw new Error("Error HTTP "+r.status+": "+text.slice(0,300));throw new Error("Resposta no vàlida de l'API (HTTP "+r.status+").")}if(!r.ok||d&&(d.class==="error"||d.error||d.errors)){
-  var detail=d&&(d.detail||d.label||d.message||d.error||d.errors||d.title);
-  if(detail&&typeof detail==="object"){
-   if(Array.isArray(detail))detail=detail.map(function(x){return x&&typeof x==="object"?String(x.message||x.detail||x.error||JSON.stringify(x)):String(x)}).join(" · ");
-   else detail=detail.message||detail.detail||detail.error||JSON.stringify(detail);
-  }
-  throw new Error(String(detail||"Error HTTP "+r.status+"."));
- }
- return d}
+}
+if(state.provider==="ine"&&/^https:\/\/servicios\.ine\.es\//i.test(url)&&!r.ok){
+  var ineProxyOk2=false,ineProxyErr2=null;
+  var ineProxies2=[
+   "https://api.allorigins.win/raw?url="+encodeURIComponent(url),
+   "https://corsproxy.io/?url="+encodeURIComponent(url),
+   "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(url)
+  ];
+  for(var ip2=0;ip2<ineProxies2.length&&!ineProxyOk2;ip2++){try{var pr2=await fetch(ineProxies2[ip2],{cache:"no-store"});if(pr2.ok){r=pr2;ineProxyOk2=true}else ineProxyErr2=new Error("HTTP "+pr2.status)}catch(e3){ineProxyErr2=e3}}
+  if(!ineProxyOk2)throw new Error("No s'ha pogut connectar amb l'API. "+(ineProxyErr2&&ineProxyErr2.message||"HTTP "+r.status)+" · "+url)
+}
+var text="";try{text=await r.text()}catch(e){throw new Error("No s'ha pogut llegir la resposta de l'API (HTTP "+r.status+").")}
+var d=null;try{d=text?JSON.parse(text):null}catch(e){if(!r.ok)throw new Error("Error HTTP "+r.status+": "+text.slice(0,300));throw new Error("Resposta no vàlida de l'API (HTTP "+r.status+").")}
+if(!r.ok||d&&(d.class==="error"||d.error||d.errors)){
+ var detail=d&&(d.detail||d.label||d.message||d.error||d.errors||d.title);
+ if(detail&&typeof detail==="object"){if(Array.isArray(detail))detail=detail.map(function(x){return x&&typeof x==="object"?String(x.message||x.detail||x.error||JSON.stringify(x)):String(x)}).join(" · ");else detail=detail.message||detail.detail||detail.error||JSON.stringify(detail)}
+ throw new Error(String(detail||"Error HTTP "+r.status+"."));
+}
+return d}
 function a(d){if(Array.isArray(d))return d;if(d&&Array.isArray(d.data))return d.data;if(d&&Array.isArray(d.items))return d.items;if(d&&Array.isArray(d.result))return d.result;return[]}
 function f(o){for(var i=1;i<arguments.length;i++){var k=arguments[i];if(o&&o[k]!=null)return o[k]}return""}
 function fill(sel,items,ph){if(!sel)return;var old=sel.value;sel.innerHTML="";if(ph!==null)sel.append(new Option(ph||"— Selecciona —",""));(items||[]).forEach(function(x){sel.append(new Option(x.label||x.value,x.value))});if([].slice.call(sel.options).some(function(o){return o.value===old}))sel.value=old}
