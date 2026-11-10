@@ -1103,7 +1103,7 @@ async function ineOperationCode(op){
  state.ineVarCache.set(key,code);
  return code;
 }
-async async function ineResolveFilters(filters){
+async function ineResolveFilters(filters){
  var tableId=String(state.selected.table||"").trim();
  if(!tableId)throw new Error("No s'ha pogut identificar la taula INE.");
  var op=String(state.selected.stat||"").trim();
