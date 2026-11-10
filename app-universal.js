@@ -924,6 +924,91 @@ async function ineFilterJsonStat(ds,filters){
  }
  return out;
 }
+async function ineResolveTableFilters(tableId,filters){
+ var tid=String(tableId||"").trim();
+ if(!tid)return null;
+ var wantedDims=dims(state.metadata).filter(function(d){return filters[d.id]&&filters[d.id].length});
+ if(!wantedDims.length)return new URLSearchParams();
+ var cacheKey="TABLEVALUES|"+tid,rows=state.ineVarCache.get(cacheKey);
+ if(!rows){
+  var opCode=await ineOperationCode(state.selected.stat);
+  var varsKey="VARS|"+opCode,vars=state.ineVarCache.get(varsKey);
+  if(!vars){
+   vars=a(await fetchJson(provider().base+"/ES/VARIABLES_OPERACION/"+encodeURIComponent(opCode)));
+   state.ineVarCache.set(varsKey,vars);
+  }
+  var groups=a(await fetchJson(provider().base+"/ES/GRUPOS_TABLA/"+encodeURIComponent(tid)));
+  rows=[];
+  for(var gi=0;gi<groups.length;gi++){
+   var gid=String(f(groups[gi],"Id","id")).trim();
+   if(!gid)continue;
+   var vals=a(await fetchJson(provider().base+"/ES/VALORES_GRUPOSTABLA/"+encodeURIComponent(tid)+"/"+encodeURIComponent(gid)+"?det=1"));
+   vals.forEach(function(v){
+    var vid=String(f(v,"FK_Variable","Fk_Variable","IdVariable","VariableId","variableId")||"").trim();
+    var vx=vars.find(function(x){return String(f(x,"Id","id")).trim()===vid});
+    rows.push({
+     groupId:gid,
+     variableId:vid,
+     variableName:ineNorm(f(vx||{},"Nombre","nombre","Name","Descripcion","Description")||f(v,"Variable","variable","T3_Variable")||""),
+     valueId:String(f(v,"Id","id")).trim(),
+     valueCode:String(f(v,"Codigo","codigo","Code","code")||"").trim(),
+     valueName:ineNorm(f(v,"Nombre","nombre","Name","Descripcion","Description")||"")
+    });
+   });
+   // Els grups acostumen a correspondre a una dimensió. No cal continuar
+   // consultant l'API quan ja hem trobat tots els valors seleccionables.
+   var complete=wantedDims.every(function(d){
+    return (filters[d.id]||[]).every(function(code){
+     var sc=String(code),suffix=sc.indexOf("_")>=0?sc.slice(sc.lastIndexOf("_")+1):sc;
+     var cat=(d.categories||[]).find(function(c){return String(c.code)===sc});
+     var cl=ineNorm(cat&&cat.label||"");
+     return rows.some(function(r){
+      return r.valueCode===sc||r.valueCode===suffix||r.valueId===sc||
+             (cl&&r.valueName===cl);
+     });
+    });
+   });
+   if(complete)break;
+  }
+  state.ineVarCache.set(cacheKey,rows);
+ }
+ var out=new URLSearchParams(),missing=[];
+ wantedDims.forEach(function(d){
+  var dn=ineNorm(d.label||d.id),dnKey=dn.replace(/[^A-Z0-9]/g,"");
+  (filters[d.id]||[]).forEach(function(code){
+   var sc=String(code),suffix=sc.indexOf("_")>=0?sc.slice(sc.lastIndexOf("_")+1):sc;
+   var cat=(d.categories||[]).find(function(c){return String(c.code)===sc});
+   var cl=ineNorm(cat&&cat.label||"");
+   var candidates=rows.filter(function(r){
+    return r.valueCode===sc||r.valueCode===suffix||r.valueId===sc||
+           (cl&&r.valueName===cl)||
+           (cl&&r.valueName.replace(/[^A-Z0-9]/g,"")===cl.replace(/[^A-Z0-9]/g,""));
+   });
+   if(!candidates.length){
+    missing.push(String(d.label||d.id)+" («"+sc+"»)");
+    return;
+   }
+   // Si el codi/nom coincideix en més d'una variable, prioritzem la que
+   // correspon a la dimensió JSON-stat. Si no hi ha coincidència textual,
+   // el valor de la taula continua sent una identificació suficient.
+   var best=candidates.find(function(r){
+    var vk=String(r.variableId||"");
+    var vn=String(r.variableName||"");
+    var vkNorm=vn.replace(/[^A-Z0-9]/g,"");
+    return vk===String(d.id)||vn===dn||vkNorm===dnKey||
+           vkNorm.indexOf(dnKey)>=0||dnKey.indexOf(vkNorm)>=0;
+   })||candidates[0];
+   if(!best.variableId||!best.valueId){
+    missing.push(String(d.label||d.id)+" («"+sc+"»)");
+    return;
+   }
+   out.append("tv",best.variableId+":"+best.valueId);
+  });
+ });
+ if(missing.length)throw new Error("No s'han pogut resoldre els filtres de la taula INE: "+missing.join(", ")+".");
+ return out;
+}
+
 async function ineDatosTablaFiltered(tableId,filters){
  var allFilters=filters||{},apiFilters={},localFilters={};
  // «Periodo» (i altres dimensions temporals) no és una variable Tempus3 de
@@ -940,7 +1025,7 @@ async function ineDatosTablaFiltered(tableId,filters){
   if(temporal(d)||dKey==="INDICESYTASAS")localFilters[d.id]=wanted;
   else apiFilters[d.id]=wanted;
  });
- var iq=await ineResolveFilters(apiFilters);
+ var iq=await ineResolveTableFilters(tableId,apiFilters);
  var u=ineJsonStatUrl(tableId)+(iq.toString()?"?"+iq.toString():"");
  var raw=await fetchJson(u);
  if(!raw)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
