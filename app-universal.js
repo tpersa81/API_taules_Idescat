@@ -1078,11 +1078,16 @@ async function ineDatosTablaFiltered(tableId,filters){
   else apiFilters[d.id]=wanted;
  });
  var iq=await ineResolveTableFilters(tableId,apiFilters);
- var u=ineJsonStatUrl(tableId)+(iq.toString()?"?"+iq.toString():"");
+ // jsstat/DATASET és adequat per obtenir JSON-stat sense filtres, però
+ // l'endpoint documentat per INE per aplicar tv és DATOS_TABLA.
+ // DATOS_TABLA retorna Tempus III; el convertim al JSON-stat intern de l'app.
+ var u=ineDatosTablaUrl(tableId,iq.toString());
  var raw=await fetchJson(u);
  if(!raw)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
- if(Object.keys(localFilters).length)raw=diceJsonStat(raw,localFilters);
- return{data:raw,url:u};
+ var filteredDs=ineDatosTablaToJsonStat(raw,state.metadata);
+ if(!filteredDs)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
+ if(Object.keys(localFilters).length)filteredDs=diceJsonStat(filteredDs,localFilters);
+ return{data:filteredDs,url:u};
 }
 async function ineMetadata(tableId){
  var u=ineJsonStatUrl(tableId);
