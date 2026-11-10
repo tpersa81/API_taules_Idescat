@@ -1146,8 +1146,12 @@ async function ineResolveFilters(filters){
    // variable i el Codigo del valor (p. ex. sexo:1, ...:Y-LT25).
    // El format «18~id:452~id» és propi de les taules tpx amb identificadors
    // Tempus3, i en una taula Tempus3 com la 14506 no retorna les sèries.
-   var variableCode=String(f(v,"Codigo","codigo","Code","code")||"").trim();
-   if(!variableCode)variableCode=String(f(v,"Nombre","nombre","Name","Descripcion","Description")||d.label||d.id)
+   // En les taules Tempus3, el codi de variable que accepta DATOS_TABLA
+   // coincideix amb el codi de la dimensió de la taula (p. ex. «sexo»,
+   // «comunidadesyciudadesautonomas», «edad»). No prenem Codigo de
+   // VARIABLES_OPERACION perquè pot ser buit o no coincidir amb el filtre.
+   var variableCode=String(d.id||"").trim();
+   if(!variableCode)variableCode=String(f(v,"Codigo","codigo","Code","code")||f(v,"Nombre","nombre","Name","Descripcion","Description")||d.label||"")
      .normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").replace(/[^A-Za-z0-9]+/g,"").toLowerCase();
    var valueCode=String(f(val,"Codigo","codigo","Code","code")||"").trim();
    if(valueCode)out.append("tv",variableCode+":"+valueCode);
