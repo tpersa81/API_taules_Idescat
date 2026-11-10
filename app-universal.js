@@ -824,263 +824,94 @@ function inePeriodCode(row){
   return y+"-"+p.replace(/\\s+/g,"_");
 }
 function ineDatosTablaToJsonStat(raw,metadata){
-  var series=Array.isArray(raw)?raw:[];
-  if(!series.length)return null;
-  var baseDims=dims(metadata),timeDim=baseDims.find(function(d){return temporal(d)});
-  var nonTime=baseDims.filter(function(d){return !timeDim||d.id!==timeDim.id});
-  var timeMap=new Map(),rows=[];
-  function norm(x){return String(x==null?"":x).trim().toUpperCase()}
-  function metaFor(s){
-    var out={};(s.MetaData||[]).forEach(function(m){
-      var v=m&&m.T3_Variable;
-      var code=m&&m.Codigo;
-      if(m&&m.Variable){v=m.Variable.Nombre||m.Variable.Codigo||v;code=m.Codigo||m.Variable.Codigo||code}
-      if(v!=null)out[norm(v)]=String(code==null?"":code);
-    });return out;
-  }
-  series.forEach(function(s){
-    var sm=metaFor(s),data=Array.isArray(s.Data)?s.Data:[];
-    data.forEach(function(x){
-      var tc=inePeriodCode(x);if(!tc)return;
-      var key=[];
-      nonTime.forEach(function(d){
-        var code="";
-        Object.keys(sm).some(function(k){if(k===norm(d.label)||k===norm(d.id)){code=sm[k];return true}return false});
-        if(!code&&d.categories.length===1)code=d.categories[0].code;
-        key.push(code);
-      });
-      timeMap.set(tc,{code:tc,label:(x.T3_Periodo?String(x.T3_Periodo)+" ":"")+String(x.Anyo||tc)});
-      rows.push({key:key,time:tc,value:x.Valor});
-    });
+ var series=Array.isArray(raw)?raw:[];
+ if(!series.length)return null;
+ var baseDims=dims(metadata),timeDim=baseDims.find(function(d){return temporal(d)});
+ var nonTime=baseDims.filter(function(d){return !timeDim||d.id!==timeDim.id});
+ var timeMap=new Map(),rows=[];
+ function norm(x){return String(x==null?"":x).normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").trim().toUpperCase()}
+ function metaFor(s){return Array.isArray(s.MetaData)?s.MetaData:[]}
+ function findMetaForDim(md,d){
+  var dn=norm(d.label||d.id),did=norm(d.id);
+  var exact=md.find(function(m){var v=norm(m&&m.T3_Variable);return v===dn||v===did});
+  if(exact)return exact;
+  var key=dn.replace(/[^A-Z0-9]/g,"");
+  return md.find(function(m){var v=norm(m&&m.T3_Variable).replace(/[^A-Z0-9]/g,"");return v===key})||null;
+ }
+ function categoryFor(d,m){
+  if(!m)return null;
+  var name=norm(m.Nombre||"");
+  var code=String(m.Codigo==null?"":m.Codigo).trim();
+  var id=String(m.Id==null?"":m.Id).trim();
+  var cats=d.categories||[];
+  var hit=cats.find(function(c){return norm(c.label)===name});
+  if(hit)return hit;
+  hit=cats.find(function(c){
+   var cc=String(c.code||"");
+   return cc===code||cc===id||
+     (code&&cc.slice(cc.lastIndexOf("_")+1)===code)||
+     (id&&cc.slice(cc.lastIndexOf("_")+1)===id);
   });
-  if(!rows.length)return null;
-  var td=timeDim||{id:"time",label:"Temps",role:"time",categories:[]};
-  var timeCats=Array.from(timeMap.values()).sort(function(a,b){return String(a.code).localeCompare(String(b.code),"ca",{numeric:true})});
-  var outDims=nonTime.concat([{id:td.id,label:td.label,role:td.role,categories:timeCats.map(function(c,i){return{code:c.code,label:c.label,index:i}})}]);
-  var out={class:"dataset",id:outDims.map(function(d){return d.id}),size:outDims.map(function(d){return d.categories.length}),dimension:{}};
-  outDims.forEach(function(d){
-    var cat={index:d.categories.map(function(c){return c.code}),label:{}};
-    d.categories.forEach(function(c){cat.label[c.code]=c.label});
-    out.dimension[d.id]={label:d.label,category:cat};
+  return hit||null;
+ }
+ series.forEach(function(s){
+  var md=metaFor(s),data=Array.isArray(s.Data)?s.Data:[];
+  data.forEach(function(x){
+   var tc=inePeriodCode(x);if(!tc)return;
+   var key=[];
+   nonTime.forEach(function(d){
+    var m=findMetaForDim(md,d),cat=categoryFor(d,m);
+    key.push(cat?String(cat.code):"");
+   });
+   timeMap.set(tc,{code:tc,label:(x.T3_Periodo?String(x.T3_Periodo)+" ":"")+String(x.Anyo||tc)});
+   rows.push({key:key,time:tc,value:x.Valor});
   });
-  var index=new Map();
-  outDims.forEach(function(d,j){var m=new Map();d.categories.forEach(function(c,i){m.set(String(c.code),i)});index.set(d.id,m)});
-  var total=out.size.reduce(function(a,b){return a*b},1),vals=new Array(total).fill(null),strides=[];
-  var st=1;for(var j=out.size.length-1;j>=0;j--){strides[j]=st;st*=out.size[j]};
-  rows.forEach(function(r){
-    var coords=[];
-    nonTime.forEach(function(d,j){coords.push(index.get(d.id).has(String(r.key[j]))?index.get(d.id).get(String(r.key[j])):0)});
-    coords.push(index.get(td.id).get(String(r.time)));
-    var flat=0;coords.forEach(function(v,j){flat+=v*strides[j]});vals[flat]=r.value;
-  });
-  out.value=vals;return out;
-}
-async function ineFilterJsonStat(ds,filters){
- var ids=Array.isArray(ds.id)?ds.id.slice():[];
- var oldDims=ids.map(function(id){return ds.dimension&&ds.dimension[id]||{}});
- var oldSizes=Array.isArray(ds.size)?ds.size.map(Number):ids.map(function(id){return jsonstatCats(ds,id).length});
- var oldCats=ids.map(function(id){return jsonstatCats(ds,id)});
- var keep=ids.map(function(id,j){
-  var vals=filters&&filters[id];
-  var wanted=vals&&vals.length?new Set(vals.map(String)):null;
-  var cats=oldCats[j];
-  return wanted?cats.filter(function(cat){return wanted.has(String(cat.code))}):cats.slice();
  });
- var out=JSON.parse(JSON.stringify(ds));
- out.id=ids;
- out.size=keep.map(function(c){return c.length});
- out.dimension={};
- ids.forEach(function(id,j){
-  var od=oldDims[j],cats=keep[j],catIndex={};
-  cats.forEach(function(cat,i){catIndex[cat.code]=i});
-  out.dimension[id]={
-   label:od.label,
-   category:{
-    index:catIndex,
-    label:{}
-   }
-  };
-  cats.forEach(function(cat){out.dimension[id].category.label[cat.code]=cat.label});
-  if(od.role)out.dimension[id].role=od.role;
-  if(od.extension)out.dimension[id].extension=od.extension;
+ if(!rows.length)return null;
+ var td=timeDim||{id:"time",label:"Temps",role:"time",categories:[]};
+ var timeCats=Array.from(timeMap.values()).sort(function(a,b){return String(a.code).localeCompare(String(b.code),"ca",{numeric:true})});
+ var outDims=nonTime.concat([{id:td.id,label:td.label,role:td.role,categories:timeCats.map(function(c,i){return{code:c.code,label:c.label,index:i}})}]);
+ var out={class:"dataset",id:outDims.map(function(d){return d.id}),size:outDims.map(function(d){return d.categories.length}),dimension:{}};
+ outDims.forEach(function(d){
+  var cat={index:d.categories.map(function(c){return c.code}),label:{}};
+  d.categories.forEach(function(c){cat.label[c.code]=c.label});
+  out.dimension[d.id]={label:d.label,category:cat};
  });
- var total=out.size.reduce(function(a,b){return a*Number(b)},1);
- var vals=Array.isArray(ds.value)?ds.value:[];
- var oldStrides=[],newStrides=[],s=1;
- for(var j=ids.length-1;j>=0;j--){oldStrides[j]=s;s*=oldSizes[j]}
- s=1;
- for(var k=ids.length-1;k>=0;k--){newStrides[k]=s;s*=out.size[k]}
- out.value=new Array(total);
- if(Array.isArray(ds.status))out.status=new Array(total);
- for(var flat=0;flat<total;flat++){
-  var rem=flat,oldFlat=0;
-  for(var j=0;j<ids.length;j++){
-   var coord=Math.floor(rem/newStrides[j]);rem=rem%newStrides[j];
-   var oldIndex=oldCats[j].findIndex(function(cat){return String(cat.code)===String(keep[j][coord]&&keep[j][coord].code)});
-   oldFlat+=oldIndex*oldStrides[j];
-  }
-  out.value[flat]=vals[oldFlat];
-  if(Array.isArray(ds.status))out.status[flat]=ds.status[oldFlat];
- }
- return out;
-}
-async function ineResolveTableFilters(tableId,filters){
- var tid=String(tableId||"").trim();
- if(!tid)return null;
- var wantedDims=dims(state.metadata).filter(function(d){return filters[d.id]&&filters[d.id].length});
- if(!wantedDims.length)return new URLSearchParams();
- var opCode=await ineOperationCode(state.selected.stat);
- var varsKey="VARS|"+opCode,vars=state.ineVarCache.get(varsKey);
- if(!vars){
-  vars=a(await fetchJson(provider().base+"/ES/VARIABLES_OPERACION/"+encodeURIComponent(opCode)));
-  state.ineVarCache.set(varsKey,vars);
- }
-
- // Per a les taules INE, els codis JSON-stat poden ser sintètics
- // (p. ex. «sexo_1»), mentre que Tempus3 identifica el valor real
- // amb el codi oficial («1») i el seu Id numèric (p. ex. 452).
- // Resolem primer cada dimensió contra la seva variable de l'operació
- // i només després fem servir els valors específics de la taula com a
- // fallback. Això evita dependre de quin grup de la taula conté el valor.
- var tableRows=state.ineVarCache.get("TABLEVALUES|"+tid)||[];
- var tableRowsLoaded=state.ineVarCache.has("TABLEVALUES|"+tid);
- var out=new URLSearchParams(),missing=[];
-
- async function loadTableRows(){
-  if(tableRowsLoaded)return tableRows;
-  tableRowsLoaded=true;
-  tableRows=[];
-  try{
-   var groups=a(await fetchJson(provider().base+"/ES/GRUPOS_TABLA/"+encodeURIComponent(tid)));
-   for(var gi=0;gi<groups.length;gi++){
-    var gid=String(f(groups[gi],"Id","id")).trim();
-    if(!gid)continue;
-    try{
-     var vals=a(await fetchJson(provider().base+"/ES/VALORES_GRUPOSTABLA/"+encodeURIComponent(tid)+"/"+encodeURIComponent(gid)+"?det=1"));
-     vals.forEach(function(v){
-      var vid=String(f(v,"FK_Variable","Fk_Variable","IdVariable","VariableId","variableId")||"").trim();
-      tableRows.push({
-       groupId:gid,
-       variableId:vid,
-       variableName:ineNorm(f(v,"Variable","variable","T3_Variable")||""),
-       valueId:String(f(v,"Id","id")).trim(),
-       valueCode:String(f(v,"Codigo","codigo","Code","code")||"").trim(),
-       valueName:ineNorm(f(v,"Nombre","nombre","Name","Descripcion","Description")||"")
-      });
-     });
-    }catch(e){}
-   }
-  }catch(e){}
-  state.ineVarCache.set("TABLEVALUES|"+tid,tableRows);
-  return tableRows;
- }
-
- function variableFor(d){
-  var dn=ineNorm(d.label||d.id),dnKey=dn.replace(/[^A-Z0-9]/g,"");
-  if(opCode==="IPRI"&&dnKey==="CLASES")return{Id:394,Nombre:"CLASES",Codigo:""};
-  if(opCode==="IPRI"&&dnKey==="INDICESYTASAS")return{Id:83,Nombre:"Índices y Tasas",Codigo:""};
-  return vars.find(function(x){
-   var id=String(f(x,"Id","id")).trim();
-   var name=ineNorm(f(x,"Nombre","nombre","Name","Descripcion","Description")||"");
-   var code=ineNorm(f(x,"Codigo","codigo","Code","code")||"");
-   return id===String(d.id).trim()||name===dn||code===dn||
-          name.replace(/[^A-Z0-9]/g,"")===dnKey||
-          code.replace(/[^A-Z0-9]/g,"")===dnKey;
-  })||null;
- }
-
- function candidateFor(list,d,code){
-  var sc=String(code),suffix=sc.indexOf("_")>=0?sc.slice(sc.lastIndexOf("_")+1):sc;
-  var scN=ineNorm(sc),suffixN=ineNorm(suffix);
-  var cat=(d.categories||[]).find(function(c){return String(c.code)===sc});
-  var cl=ineNorm(cat&&cat.label||"");
-  return list.find(function(r){
-   var rc=String(r.valueCode||""),rcN=ineNorm(rc);
-   var rs=rc.indexOf("_")>=0?rc.slice(rc.lastIndexOf("_")+1):rc;
-   var rsN=ineNorm(rs);
-   return rc===sc||rc===suffix||r.valueId===sc||
-          rcN===scN||rcN===suffixN||rsN===scN||rsN===suffixN||
-          (cl&&r.valueName===cl)||
-          (cl&&r.valueName.replace(/[^A-Z0-9]/g,"")===cl.replace(/[^A-Z0-9]/g,""));
-  })||null;
- }
-
- for(var di=0;di<wantedDims.length;di++){
-  var d=wantedDims[di],v=variableFor(d);
-  if(!v){
-   missing.push(String(d.label||d.id)+" («"+(filters[d.id]||[]).join(", ")+"»)");
-   continue;
-  }
-  var vid=String(f(v,"Id","id")).trim();
-  if(!vid){
-   missing.push(String(d.label||d.id)+" («"+(filters[d.id]||[]).join(", ")+"»)");
-   continue;
-  }
-
-  var valuesKey="VALS|"+opCode+"|"+vid,values=state.ineVarCache.get(valuesKey);
-  if(!values){
-   try{
-    values=a(await fetchJson(provider().base+"/ES/VALORES_VARIABLEOPERACION/"+encodeURIComponent(vid)+"/"+encodeURIComponent(opCode)));
-   }catch(e){values=[]}
-   if(!values.length&&opCode==="IPRI"&&vid==="83"){
-    try{values=a(await fetchJson(provider().base+"/ES/VALORES_VARIABLE/83?det=1"))}catch(e){values=[]}
-   }
-   state.ineVarCache.set(valuesKey,values);
-  }
-  var normalizedValues=values.map(function(x){
-   return{
-    valueId:String(f(x,"Id","id")).trim(),
-    valueCode:String(f(x,"Codigo","codigo","Code","code")||"").trim(),
-    valueName:ineNorm(f(x,"Nombre","nombre","Name","Descripcion","Description")||"")
-   };
+ var index=new Map();
+ outDims.forEach(function(d,j){var m=new Map();d.categories.forEach(function(c,i){m.set(String(c.code),i)});index.set(d.id,m)});
+ var total=out.size.reduce(function(a,b){return a*b},1),vals=new Array(total).fill(null),strides=[];
+ var st=1;for(var j=out.size.length-1;j>=0;j--){strides[j]=st;st*=out.size[j]};
+ rows.forEach(function(r){
+  var coords=[];
+  nonTime.forEach(function(d,j){
+   var m=index.get(d.id),code=String(r.key[j]||"");
+   coords.push(m&&m.has(code)?m.get(code):0);
   });
-
-  for(var ci=0;ci<(filters[d.id]||[]).length;ci++){
-   var code=filters[d.id][ci],val=candidateFor(normalizedValues,d,code);
-   if(!val){
-    var rows=await loadTableRows();
-    var candidates=rows.filter(function(r){return String(r.variableId)===vid});
-    val=candidateFor(candidates,d,code);
-    if(!val){
-     // Si el valor no porta codi oficial però coincideix amb l'etiqueta
-     // visible, candidateFor ja ho ha comprovat. En IPRI 83, alguns codis
-     // JSON-stat tenen la forma «grup_valor».
-     if(opCode==="IPRI"&&vid==="83"&&/^\\d+_\\d+$/.test(String(code))){
-      var globalValueId=String(code).slice(String(code).lastIndexOf("_")+1);
-      val={valueId:globalValueId,valueCode:globalValueId,valueName:globalValueId};
-     }
-    }
-   }
-   if(!val||!val.valueId){
-    missing.push(String(d.label||d.id)+" («"+String(code)+"»)");
-    continue;
-   }
-   out.append("tv",vid+"~id:"+val.valueId+"~id");
-  }
- }
- if(missing.length)throw new Error("No s'han pogut resoldre els filtres de la taula INE: "+missing.join(", ")+".");
- return out;
+  var tm=index.get(td.id),ti=tm&&tm.get(String(r.time));
+  if(ti==null)return;
+  coords.push(ti);
+  var flat=0;coords.forEach(function(v,j){flat+=v*strides[j]});
+  vals[flat]=r.value;
+ });
+ out.value=vals;return out;
 }
 async function ineDatosTablaFiltered(tableId,filters){
  var allFilters=filters||{},apiFilters={},localFilters={};
- // «Periodo» (i altres dimensions temporals) no és una variable Tempus3 de
- // l'operació: forma part de les observacions de les sèries. Per tant no es
- // pot enviar com tv=id_variable:id_valor. Apliquem aquests filtres després
- // de rebre el JSON-stat, mantenint els filtres de variables a l'API.
  dims(state.metadata).forEach(function(d){
   var wanted=allFilters[d.id];
   if(!wanted||!wanted.length)return;
-  // «Índices y Tasas» (83) pot aparèixer en la metadata de la
-  // sèrie però no és una variable filtrable de la taula 61525 via tv.
-  // En aquest cas filtrem sobre el JSON-stat retornat.
   var dKey=ineNorm(d.label||d.id).replace(/[^A-Z0-9]/g,"");
-  if(temporal(d)||dKey==="INDICESYTASAS")localFilters[d.id]=wanted;
-  else apiFilters[d.id]=wanted;
+  // Els filtres temporals i els que no són variables Tempus3 es resolen
+  // localment. La resta també es conserva a localFilters com a garantia:
+  // algunes taules EPA són tpx i poden ignorar el format numèric ~id.
+  if(temporal(d)||dKey==="INDICESYTASAS"){
+   localFilters[d.id]=wanted;
+  }else{
+   apiFilters[d.id]=wanted;
+   localFilters[d.id]=wanted;
+  }
  });
  var iq=await ineResolveTableFilters(tableId,apiFilters);
- // jsstat/DATASET és adequat per obtenir JSON-stat sense filtres, però
- // l'endpoint documentat per INE per aplicar tv és DATOS_TABLA.
- // DATOS_TABLA retorna Tempus III; el convertim al JSON-stat intern de l'app.
  var u=ineDatosTablaUrl(tableId,iq.toString());
  var raw=await fetchJson(u);
  if(!raw)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
