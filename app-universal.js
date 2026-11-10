@@ -805,6 +805,31 @@ async function pxMetadata(){
  }
  raw=await fetchJson(pxUrl(state.pxPath));ds=pxToJsonStat(raw);state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||raw.label||state.selected.table)+"<span class=\"path\">"+esc(pxUrl(state.pxPath))+"</span>";$("query").disabled=false}
 function ineJsonStatUrl(tableId){return "https://servicios.ine.es/wstempus/jsstat/ES/DATASET/"+encodeURIComponent(String(tableId))}
+function ineNormalizeMetadataCodes(ds){
+ if(!ds||!ds.dimension)return ds;
+ var out=Object.assign({},ds),dims2=Object.assign({},ds.dimension);
+ (ds.id||Object.keys(ds.dimension)).forEach(function(id){
+  var dim=ds.dimension[id];
+  if(!dim||!dim.category)return;
+  var cat=Object.assign({},dim.category),index=cat.index;
+  var labels=cat.label&&typeof cat.label==="object"?Object.assign({},cat.label):{};
+  var codes=Array.isArray(index)?index.slice():index&&typeof index==="object"
+    ?Object.keys(index).sort(function(a,b){return Number(index[a])-Number(index[b])})
+    :Object.keys(labels);
+  var newIndex=[],newLabels={};
+  codes.forEach(function(code){
+   var sc=String(code),raw=sc,p=sc.indexOf("_");
+   if(p>=0)raw=sc.slice(p+1);
+   newIndex.push(raw);
+   if(labels[sc]!=null)newLabels[raw]=labels[sc];
+  });
+  cat.index=newIndex;
+  cat.label=newLabels;
+  var nd=Object.assign({},dim);nd.category=cat;dims2[id]=nd;
+ });
+ out.dimension=dims2;
+ return out;
+}
 function ineDatosTablaUrl(tableId,query){
   var u="https://servicios.ine.es/wstempus/js/ES/DATOS_TABLA/"+encodeURIComponent(String(tableId));
   return u+(query?"?"+query:"");
@@ -922,7 +947,13 @@ async function ineDatosTablaFiltered(tableId,filters){
 }
 async function ineMetadata(tableId){
  var u=ineJsonStatUrl(tableId);
- var ds=await fetchJson(u);state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(ds.label||tableId)+"<span class=\"path\">"+esc(u)+"</span>";$("query").disabled=false
+ var ds=await fetchJson(u);
+ ds=ineNormalizeMetadataCodes(ds);
+ state.metadata=ds;
+ renderMetadata(ds);
+ $("tableInfo").hidden=false;
+ $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(ds.label||tableId)+"<span class=\"path\">"+esc(u)+"</span>";
+ $("query").disabled=false
 }
 function idesPath(){
  var parts=[state.selected.stat,state.selected.node,state.selected.table,state.selected.geo].filter(function(x){return x!==""&&x!=null});
