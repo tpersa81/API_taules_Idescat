@@ -930,8 +930,14 @@ async function ineDatosTablaFiltered(tableId,filters){
   if(temporal(d)||dKey==="INDICESYTASAS")localFilters[d.id]=wanted;
   else apiFilters[d.id]=wanted;
  });
- var iq=await ineResolveFilters(apiFilters);
- var u=ineDatosTablaUrl(tableId,iq.toString());
+ // Per a les taules Tempus3 de l'INE no depenem del filtre tv en la
+ // petició inicial. Algunes combinacions de tv provoquen errors de CORS
+ // o respostes inconsistents des del navegador. Com que DATOS_TABLA sense
+ // filtre funciona i retorna la metadata de cada sèrie, fem el filtratge
+ // de les sèries localment. Això també evita que un error de la URL filtrada
+ // faci desaparèixer les estadístiques de l'INE.
+ var iq=new URLSearchParams();
+ var u=ineDatosTablaUrl(tableId,"");
  var raw=await fetchJson(u);
  if(!raw)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
 
