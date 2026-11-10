@@ -1119,9 +1119,13 @@ async function ineResolveFilters(filters){
   }
   wanted.forEach(function(code){
    var sc=String(code),suffix=sc.indexOf("_")>=0?sc.slice(sc.lastIndexOf("_")+1):sc;
+   var cat=d.categories&&d.categories.find(function(c){return String(c.code)===sc});
+   var catLabel=ineNorm(cat&&cat.label||"");
    var val=values.find(function(x){
     var vc=String(f(x,"Codigo","codigo","Code","code")||"");
-    return vc===sc||vc===suffix||String(f(x,"Id","id"))===sc;
+    var vn=ineNorm(f(x,"Nombre","nombre","Name","Descripcion","Description")||"");
+    return vc===sc||vc===suffix||String(f(x,"Id","id"))===sc||
+           (catLabel&&vn===catLabel);
    });
    // En algunes dimensions JSON-stat de Tempus3, el codi de categoria
    // incorpora el grup de la taula (p. ex. «5_0»). Per a la variable global
