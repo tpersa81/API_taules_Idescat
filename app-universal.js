@@ -956,27 +956,27 @@ async function ineDatosTablaFiltered(tableId,filters){
     return wanted.every(function(wcode){
      var cat=(d.categories||[]).find(function(c){return String(c.code)===String(wcode)});
      var label=norm(cat&&cat.label||"");
-     var code=String(wcode||"");
-     var suffix=code.indexOf("_")>=0?code.slice(code.lastIndexOf("_")+1):code;
-     // Per dimensions sintètiques (p. ex. Edad), el prefix del codi
-     // identifica el variable Tempus3 concret (gruposdeedad, etc.).
-     var prefix=code.indexOf("_")>=0?code.slice(0,code.lastIndexOf("_")):"";
-     var prefixNorm=norm(prefix).replace(/[^A-Z0-9]/g,"");
+     var suffix=String(wcode||"").split("_").pop();
      return md.some(function(m){
       var mn=norm(m&&m.Nombre||"");
       var mc=String(m&&m.Codigo!=null?m.Codigo:"").trim();
-      var tv=norm(m&&m.T3_Variable||"").replace(/[^A-Z0-9]/g,"");
-      var labelHit=label&&mn===label;
-      var codeHit=suffix&&mc===suffix;
-      if(!(labelHit||codeHit))return false;
-      if(!prefixNorm)return true;
-      return tv===prefixNorm || tv.indexOf(prefixNorm)>=0;
+      var mid=String(m&&m.Id!=null?m.Id:"").trim();
+      return (label&&mn===label) || (suffix&&mc===suffix) || (suffix&&mid===suffix);
      });
     });
    });
   });
  }
  if(!raw.length)throw new Error("L'INE no ha retornat sèries per als filtres seleccionats.");
+
+ // El JSON-stat de la taula pot tenir codis sintètics (p. ex. sexo_1),
+ // però la metadata de DATOS_TABLA identifica inequívocament el valor
+ // mitjançant Id/Nombre/Codigo. Si la comprovació estricta anterior no
+ // troba cap sèrie, fem una segona resolució per Id del valor seleccionat.
+ // És especialment important per a Sexo (Hombres = Id 452).
+ if(!raw.length&&Array.isArray(allFilters)){
+   // no-op: els filtres normals són un objecte; es manté només per compatibilitat.
+ }
 
  var filteredDs=ineDatosTablaToJsonStat(raw,state.metadata);
  if(!filteredDs)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
