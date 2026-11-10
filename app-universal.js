@@ -963,18 +963,13 @@ async function ineDatosTablaFiltered(tableId,filters){
    if(!groupsTv[t.variable])groupsTv[t.variable]=[];
    groupsTv[t.variable].push(t.value);
   });
-  var metaDims=dims(state.metadata);
   raw=raw.filter(function(s){
    var md=Array.isArray(s&&s.MetaData)?s.MetaData:[];
    return Object.keys(groupsTv).every(function(vid){
-    var dimMatch=metaDims.find(function(d){return String(d.id).trim()===vid});
-    var dimName=dimMatch?ineNorm(dimMatch.label||""):"";
     var wantedIds=groupsTv[vid];
     return md.some(function(m){
      var mv=String(m&&m.Id!=null?m.Id:"").trim();
-     if(wantedIds.indexOf(mv)<0)return false;
-     var tv=ineNorm(m&&m.T3_Variable||"");
-     return !dimName||!tv||tv===dimName;
+     return wantedIds.indexOf(mv)>=0;
     });
    });
   });
