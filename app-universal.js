@@ -922,58 +922,62 @@ function ineDatosTablaToJsonStat(raw,metadata){
  out.value=vals;return out;
 }
 async function ineDatosTablaFiltered(tableId,filters){
- var allFilters=filters||{},apiFilters={},localFilters={};
- dims(state.metadata).forEach(function(d){
-  var wanted=allFilters[d.id];
-  if(!wanted||!wanted.length)return;
-  var dKey=ineNorm(d.label||d.id).replace(/[^A-Z0-9]/g,"");
-  if(temporal(d)||dKey==="INDICESYTASAS")localFilters[d.id]=wanted;
-  else apiFilters[d.id]=wanted;
+ var allFilters=filters||{},localFilters={},selected=dims(state.metadata).filter(function(d){
+  return allFilters[d.id]&&allFilters[d.id].length;
  });
- // Per a les taules Tempus3 de l'INE no depenem del filtre tv en la
- // petició inicial. Algunes combinacions de tv provoquen errors de CORS
- // o respostes inconsistents des del navegador. Com que DATOS_TABLA sense
- // filtre funciona i retorna la metadata de cada sèrie, fem el filtratge
- // de les sèries localment. Això també evita que un error de la URL filtrada
- // faci desaparèixer les estadístiques de l'INE.
- var iq=new URLSearchParams();
+ selected.forEach(function(d){
+  var dKey=ineNorm(d.label||d.id).replace(/[^A-Z0-9]/g,"");
+  if(temporal(d)||dKey==="INDICESYTASAS")localFilters[d.id]=allFilters[d.id];
+ });
  var u=ineDatosTablaUrl(tableId,"");
  var raw=await fetchJson(u);
- if(!raw)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
+ if(!Array.isArray(raw)||!raw.length)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
 
- // Tempus3 normal: DATOS_TABLA pot retornar més sèries de les esperades.
- // Apliquem una segona comprovació sobre la metadata de cada sèrie, però
- // utilitzant els codis/etiquetes reals del JSON-stat, no els IDs numèrics.
- // Això evita el problema observat a 14506, on tv=18:452 no és una sintaxi
- // vàlida per a una taula Tempus3 normal.
- var selectedDims=dims(state.metadata).filter(function(d){return apiFilters[d.id]&&apiFilters[d.id].length});
- if(selectedDims.length&&Array.isArray(raw)){
-  function norm(x){return ineNorm(x==null?"":x)}
+ // Filtratge INE: no intentem reconstruir la variable Tempus3 a partir
+ // del codi intern JSON-stat. Cada sèrie de DATOS_TABLA porta la seva
+ // pròpia metadata i aquesta és la font d'autoritat per seleccionar-la.
+ if(selected.length){
   raw=raw.filter(function(s){
    var md=Array.isArray(s&&s.MetaData)?s.MetaData:[];
-   return selectedDims.every(function(d){
-    var wanted=apiFilters[d.id]||[];
+   return selected.every(function(d){
+    var wanted=allFilters[d.id]||[];
+    var cats=d.categories||[];
     return wanted.some(function(wcode){
-     var cat=(d.categories||[]).find(function(c){return String(c.code)===String(wcode)});
-     var label=norm(cat&&cat.label||"");
-     var suffix=String(wcode||"").split("_").pop();
+     var cat=cats.find(function(c){return String(c.code)===String(wcode)});
+     var label=ineNorm(cat&&cat.label||"");
+     var code=String(wcode==null?"":wcode).trim();
+     var suffix=code.indexOf("_")>=0?code.slice(code.lastIndexOf("_")+1):code;
      return md.some(function(m){
-      var mn=norm(m&&m.Nombre||"");
+      var mn=ineNorm(m&&m.Nombre||"");
       var mc=String(m&&m.Codigo!=null?m.Codigo:"").trim();
-      var mid=String(m&&m.Id!=null?m.Id:"").trim();
-      return (label&&mn===label) || (suffix&&mc===suffix) || (suffix&&mid===suffix);
+      var mi=String(m&&m.Id!=null?m.Id:"").trim();
+      return (label&&mn===label) ||
+             (suffix&&mc===suffix) ||
+             (suffix&&mi===suffix) ||
+             (code&&mc===code) ||
+             (code&&mi===code);
      });
     });
    });
   });
  }
+ if(!raw.length){
+  // Si no hi ha coincidència per codi, no descartem la taula: resolem
+  // el filtre per etiqueta, que és estable entre JSON-stat i DATOS_TABLA.
+  raw=await fetchJson(u);
+  if(!Array.isArray(raw)||!raw.length)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
+  raw=raw.filter(function(s){
+   var md=Array.isArray(s&&s.MetaData)?s.MetaData:[];
+   return selected.every(function(d){
+    var wanted=allFilters[d.id]||[],cats=d.categories||[];
+    return wanted.some(function(wcode){
+     var cat=cats.find(function(c){return String(c.code)===String(wcode)});
+     var label=ineNorm(cat&&cat.label||"");
+     return label&&md.some(function(m){return ineNorm(m&&m.Nombre||"")===label});
+    });
+   });
+ }
  if(!raw.length)throw new Error("L'INE no ha retornat sèries per als filtres seleccionats.");
-
- // El JSON-stat de la taula pot tenir codis sintètics (p. ex. sexo_1),
- // però la metadata de DATOS_TABLA identifica inequívocament el valor
- // mitjançant Id/Nombre/Codigo. Si la comprovació estricta anterior no
- // troba cap sèrie, fem una segona resolució per Id del valor seleccionat.
- // És especialment important per a Sexo (Hombres = Id 452).
 
  var filteredDs=ineDatosTablaToJsonStat(raw,state.metadata);
  if(!filteredDs)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
