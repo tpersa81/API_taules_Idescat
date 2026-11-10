@@ -1040,7 +1040,7 @@ async function ineOperationCode(op){
  state.ineVarCache.set(key,code);
  return code;
 }
-async async function ineResolveFilters(filters){
+async function ineResolveFilters(filters){
  var op=String(state.selected.stat||"").trim();
  if(!op)throw new Error("No s'ha pogut identificar l'operació INE.");
  var opCode=await ineOperationCode(op);
