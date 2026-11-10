@@ -963,7 +963,8 @@ async function ineResolveTableFilters(tableId,filters){
      var cat=(d.categories||[]).find(function(c){return String(c.code)===sc});
      var cl=ineNorm(cat&&cat.label||"");
      return rows.some(function(r){
-      return r.valueCode===sc||r.valueCode===suffix||r.valueId===sc||
+      var rc=String(r.valueCode||""),rcN=ineNorm(rc),rs=rc.indexOf("_")>=0?rc.slice(rc.lastIndexOf("_")+1):rc;
+      return rc===sc||rc===suffix||r.valueId===sc||rcN===ineNorm(sc)||rcN===ineNorm(suffix)||ineNorm(rs)===ineNorm(sc)||ineNorm(rs)===ineNorm(suffix)||
              (cl&&r.valueName===cl);
      });
     });
@@ -977,10 +978,13 @@ async function ineResolveTableFilters(tableId,filters){
   var dn=ineNorm(d.label||d.id),dnKey=dn.replace(/[^A-Z0-9]/g,"");
   (filters[d.id]||[]).forEach(function(code){
    var sc=String(code),suffix=sc.indexOf("_")>=0?sc.slice(sc.lastIndexOf("_")+1):sc;
+   var scN=ineNorm(sc),suffixN=ineNorm(suffix);
    var cat=(d.categories||[]).find(function(c){return String(c.code)===sc});
    var cl=ineNorm(cat&&cat.label||"");
    var candidates=rows.filter(function(r){
-    return r.valueCode===sc||r.valueCode===suffix||r.valueId===sc||
+    var rc=String(r.valueCode||""),rcN=ineNorm(rc),rs=rc.indexOf("_")>=0?rc.slice(rc.lastIndexOf("_")+1):rc;
+    var rsN=ineNorm(rs);
+    return rc===sc||rc===suffix||r.valueId===sc||rcN===scN||rcN===suffixN||rsN===scN||rsN===suffixN||
            (cl&&r.valueName===cl)||
            (cl&&r.valueName.replace(/[^A-Z0-9]/g,"")===cl.replace(/[^A-Z0-9]/g,""));
    });
@@ -1002,7 +1006,7 @@ async function ineResolveTableFilters(tableId,filters){
     missing.push(String(d.label||d.id)+" («"+sc+"»)");
     return;
    }
-   out.append("tv",best.variableId+":"+best.valueId);
+   out.append("tv",best.variableId+"~id:"+best.valueId+"~id");
   });
  });
  if(missing.length)throw new Error("No s'han pogut resoldre els filtres de la taula INE: "+missing.join(", ")+".");
@@ -1222,7 +1226,7 @@ async function ineResolveFilters(filters){
    if(!val)throw new Error("No s'ha trobat el valor INE «"+sc+"» de la variable «"+String(d.label||d.id)+"».");
    var valueId=String(f(val,"Id","id")).trim();
    if(!valueId)throw new Error("El valor INE «"+sc+"» no té identificador.");
-   out.append("tv",vid+":"+valueId);
+   out.append("tv",vid+"~id:"+valueId+"~id");
   });
  }
  return out;
