@@ -927,54 +927,48 @@ async function ineDatosTablaFiltered(tableId,filters){
   var wanted=allFilters[d.id];
   if(!wanted||!wanted.length)return;
   var dKey=ineNorm(d.label||d.id).replace(/[^A-Z0-9]/g,"");
-  // Els filtres temporals i els que no són variables Tempus3 es resolen
-  // localment. La resta també es conserva a localFilters com a garantia:
-  // algunes taules EPA són tpx i poden ignorar el format numèric ~id.
   if(temporal(d)||dKey==="INDICESYTASAS"){
    localFilters[d.id]=wanted;
   }else{
-   // Els filtres Tempus3 enviats a DATOS_TABLA ja han estat aplicats per
-   // l'API. No els tornem a aplicar sobre el JSON-stat resultant:
-   // després d'un filtre, DATOS_TABLA pot retornar només les categories
-   // efectivament presents a les sèries, i fer un segon "dice" amb la
-   // metadata original pot convertir els valors en null o desplaçar-los.
    apiFilters[d.id]=wanted;
   }
  });
  var iq=await ineResolveFilters(apiFilters);
- var u=ineDatosTablaUrl(tableId,iq.toString());
+ var query=iq.toString();
+ var u=ineDatosTablaUrl(tableId,query);
  var raw=await fetchJson(u);
  if(!raw)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
- // DATOS_TABLA hauria d'aplicar els filtres Tempus3, però no totes les
- // taules/variants de l'INE els processen de manera homogènia. Filtrem també
- // les sèries originals pels IDs Tempus3, abans de convertir-les a JSON-stat.
- var tvs=iq.getAll("tv").map(function(tv){
-  var p=String(tv).split(":");
-  return{variable:String(p[0]||"").trim(),value:String(p.slice(1).join(":")||"").trim()};
- });
- if(tvs.length&&Array.isArray(raw)){
-  // Els IDs dels valors Tempus3 són identificadors globals del valor
-  // (p. ex. Sexo/Hombres = Id 452). No depenem de FK_Variable:
-  // en DATOS_TABLA aquesta propietat pot no venir a MetaData.
-  // Per tant, la sèrie compleix el filtre quan conté el mateix Id de
-  // valor seleccionat. T3_Variable es comprova només com a reforç.
-  var groupsTv={};
-  tvs.forEach(function(t){
-   if(!groupsTv[t.variable])groupsTv[t.variable]=[];
-   groupsTv[t.variable].push(t.value);
-  });
+
+ // DATOS_TABLA no és prou fiable per determinar quines sèries han
+ // sobreviscut al filtre en algunes taules Tempus3. Per això utilitzem
+ // SERIES_TABLA com a font autoritativa de la intersecció de filtres:
+ // l'API documenta que accepta tv=id_variable:id_valor i retorna els
+ // identificadors de les sèries que compleixen aquests criteris.
+ // Això és especialment important a la taula 14506: el JSON-stat
+ // /jsstat/DATASET/14506 defineix Sexo amb els codis sexo_ambossexos,
+ // sexo_1 i sexo_6; ineResolveFilters converteix sexo_1 (Hombres) en
+ // l'ID Tempus3 452 i SERIES_TABLA determina les sèries corresponents.
+ var seriesRaw=[];
+ if(iq.toString()){
+  var skey="SERIES|"+tableId+"|"+query,scached=state.ineVarCache.get(skey);
+  if(scached){
+   seriesRaw=scached;
+  }else{
+   var su="https://servicios.ine.es/wstempus/js/ES/SERIES_TABLA/"+encodeURIComponent(String(tableId))+"?det=1&"+query;
+   seriesRaw=a(await fetchJson(su));
+   state.ineVarCache.set(skey,seriesRaw);
+  }
+  if(!seriesRaw.length)throw new Error("L'INE no ha trobat sèries per als filtres seleccionats.");
+  var allowed=new Set(seriesRaw.map(function(s){
+   return String(f(s,"COD","Cod","Codigo","codigo","Id","id")).trim();
+  }).filter(Boolean));
   raw=raw.filter(function(s){
-   var md=Array.isArray(s&&s.MetaData)?s.MetaData:[];
-   return Object.keys(groupsTv).every(function(vid){
-    var wantedIds=groupsTv[vid];
-    return md.some(function(m){
-     var mv=String(m&&m.Id!=null?m.Id:"").trim();
-     return wantedIds.indexOf(mv)>=0;
-    });
-   });
+   var code=String(f(s,"COD","Cod","Codigo","codigo","Id","id")).trim();
+   return code&&allowed.has(code);
   });
  }
  if(!raw.length)throw new Error("L'INE no ha retornat sèries per als filtres seleccionats.");
+
  var filteredDs=ineDatosTablaToJsonStat(raw,state.metadata);
  if(!filteredDs)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
  if(Object.keys(localFilters).length)filteredDs=diceJsonStat(filteredDs,localFilters);
