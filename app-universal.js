@@ -1142,7 +1142,16 @@ async function ineResolveFilters(filters){
    if(!val)throw new Error("No s'ha trobat el valor INE «"+sc+"» de la variable «"+String(d.label||d.id)+"».");
    var valueId=String(f(val,"Id","id")).trim();
    if(!valueId)throw new Error("El valor INE «"+sc+"» no té identificador.");
-   out.append("tv",vid+"~id:"+valueId+"~id");
+   // DATOS_TABLA per a taules Tempus3 filtra amb el codi textual de la
+   // variable i el Codigo del valor (p. ex. sexo:1, ...:Y-LT25).
+   // El format «18~id:452~id» és propi de les taules tpx amb identificadors
+   // Tempus3, i en una taula Tempus3 com la 14506 no retorna les sèries.
+   var variableCode=String(f(v,"Codigo","codigo","Code","code")||"").trim();
+   if(!variableCode)variableCode=String(f(v,"Nombre","nombre","Name","Descripcion","Description")||d.label||d.id)
+     .normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").replace(/[^A-Za-z0-9]+/g,"").toLowerCase();
+   var valueCode=String(f(val,"Codigo","codigo","Code","code")||"").trim();
+   if(valueCode)out.append("tv",variableCode+":"+valueCode);
+   else out.append("tv",vid+"~id:"+valueId+"~id");
   });
  }
  return out;
