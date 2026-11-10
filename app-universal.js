@@ -87,7 +87,7 @@ async function loadStats(){
  setProviderUI();state.stats=[];state.selected.stat="";fill($("stat"),[]);$("stat").disabled=true;
  var c=provider(),out=[];
  if(state.provider==="idescat")out=collection(await fetchJson(c.base+"?lang=ca")).map(function(x){return{value:x.id,label:x.id+" · "+x.label}});
- else if(state.provider==="ine"){var d=await fetchJson(c.base+"/ES/OPERACIONES_DISPONIBLES?det=1");out=a(d).map(function(x){var id=String(f(x,"Id","id")).trim(),code=String(f(x,"Codigo","codigo","Code","code")||"").trim();return{value:id,code:code,label:id+" · "+String(f(x,"Nombre","nombre","Name","Descripcion","Description")||id)}}).filter(function(x){return x.value})}
+ else if(state.provider==="ine"){var d;try{d=await fetchJson(c.base+"/ES/OPERACIONES_DISPONIBLES?page=1")}catch(ineListErr){d=await fetchJson(c.base+"/ES/OPERACIONES_DISPONIBLES?det=1")}out=a(d).map(function(x){var id=String(f(x,"Id","id")).trim(),code=String(f(x,"Codigo","codigo","Code","code")||"").trim();return{value:id,code:code,label:id+" · "+String(f(x,"Nombre","nombre","Name","Descripcion","Description")||id)}}).filter(function(x){return x.value})}
  else if(state.provider==="eurostat"){await loadEurostatTOC();out=state.eurostatRoots.map(function(x){return{value:x.code,label:x.label}})}
  else if(state.pxPreset==="sweden"){out=a(await fetchJson(c.base)).map(function(x){return{id:String(f(x,"id","code","dbid","path")),label:String(f(x,"text","label","name","title")||f(x,"id","code","dbid","path")),type:String(f(x,"type","class"))}}).filter(function(x){return x.id}).map(function(x){return{value:x.id,label:x.id+" · "+x.label}})}
  else if(state.pxPreset==="finland"){
