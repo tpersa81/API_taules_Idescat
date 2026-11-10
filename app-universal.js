@@ -926,10 +926,55 @@ function ineDatosTablaToJsonStat(raw,metadata){
  });
  out.value=vals;return out;
 }
+function ineShowMetaDebug(tableId,raw,filters){
+ var arr=Array.isArray(raw)?raw:[];
+ function fmt(s){
+  var md=Array.isArray(s&&s.MetaData)?s.MetaData:[];
+  return md.map(function(m){
+   return "Id="+(m.Id==null?"":m.Id)+" | T3_Variable="+(m.T3_Variable==null?"":m.T3_Variable)+" | Nombre="+(m.Nombre==null?"":m.Nombre)+" | Codigo="+(m.Codigo==null?"":m.Codigo)+" | FK_Variable="+(m.FK_Variable==null?"":m.FK_Variable);
+  }).join("\n");
+ }
+ function find(name){
+  return arr.find(function(s){
+   return Array.isArray(s&&s.MetaData)&&s.MetaData.some(function(m){return String(m.Nombre||"").trim()===name});
+  });
+ }
+ var h=find("Hombres"),a=find("Ambos sexos"),mu=find("Mujeres");
+ var first=arr[0];
+ var text=[
+  "INE DEBUG · DATOS_TABLA/"+tableId,
+  "Sèries rebudes: "+arr.length,
+  "Filtres seleccionats: "+JSON.stringify(filters||{}),
+  "",
+  "PRIMERA SÈRIE",
+  fmt(first),
+  "",
+  "PRIMERA SÈRIE HOMBRES",
+  fmt(h),
+  "",
+  "PRIMERA SÈRIE AMBOS SEXOS",
+  fmt(a),
+  "",
+  "PRIMERA SÈRIE MUJERES",
+  fmt(mu)
+ ].join("\n");
+ console.log(text);
+ var box=document.getElementById("ineDebug");
+ if(!box){
+  box=document.createElement("details");
+  box.id="ineDebug";
+  box.style.marginTop="12px";
+  box.innerHTML="<summary>Diagnòstic temporal INE · MetaData</summary><pre></pre>";
+  var results=document.getElementById("results");
+  if(results)results.parentNode.insertBefore(box,results);
+ }
+ box.querySelector("pre").textContent=text;
+}
 async function ineDatosTablaFiltered(tableId,filters){
  var allFilters=filters||{};
  var u=ineDatosTablaUrl(tableId,"");
  var raw=await fetchJson(u);
+ ineShowMetaDebug(tableId,raw,allFilters);
  if(!Array.isArray(raw)||!raw.length)throw new Error("L'INE no ha retornat dades.");
  var ds=ineDatosTablaToJsonStat(raw,state.metadata);
  if(!ds)throw new Error("L'INE no ha pogut convertir les dades de la taula.");
