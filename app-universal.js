@@ -944,7 +944,7 @@ async function ineDatosTablaFiltered(tableId,filters){
   if(temporal(d)||dKey==="INDICESYTASAS")localFilters[d.id]=wanted;
   else apiFilters[d.id]=wanted;
  });
- var iq=await ineResolveFilters(apiFilters);
+ if(INE_PARALLEL_TABLE_META){try{var tm=await ineResolveFiltersTableMeta(tableId,apiFilters);console.info("[INE table-meta]","taula",tableId,"grups",tm.groups,"valors",tm.values,tm.report); }catch(metaErr){console.warn("[INE table-meta] no disponible:",metaErr&&metaErr.message||metaErr)}}\n var iq=await ineResolveFilters(apiFilters);
  var u=ineJsonStatUrl(tableId)+(iq.toString()?"?"+iq.toString():"");
  var raw=await fetchJson(u);
  if(!raw)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
