@@ -1071,6 +1071,56 @@ async function ineOperationCode(op){
  state.ineVarCache.set(key,code);
  return code;
 }
+const INE_PARALLEL_TABLE_META=true;
+function ineTableMetaNorm(x){return ineNorm(x).replace(/[^A-Z0-9]/g,"")}
+async function ineResolveFiltersTableMeta(tableId,filters){
+ var groups=a(await fetchJson(provider().base+"/ES/GRUPOS_TABLA/"+encodeURIComponent(tableId)));
+ var groupList=Array.isArray(groups)?groups:(groups&&Array.isArray(groups.data)?groups.data:[]);
+ var all=[];
+ for(var gi=0;gi<groupList.length;gi++){
+  var g=groupList[gi],gid=f(g,"Id","id");
+  if(gid==null||String(gid)==="")continue;
+  var vals=a(await fetchJson(provider().base+"/ES/VALORES_GRUPOSTABLA/"+encodeURIComponent(tableId)+"/"+encodeURIComponent(gid)));
+  vals.forEach(function(v){all.push(Object.assign({GroupId:gid,GroupName:f(g,"Nombre","nombre")||""},v))});
+ }
+ var out=new URLSearchParams(),report=[],dsDims=dims(state.metadata);
+ for(var di=0;di<dsDims.length;di++){
+  var d=dsDims[di],wanted=filters[d.id];
+  if(!wanted||!wanted.length)continue;
+  var dn=ineNorm(d.label||d.id),dnKey=ineTableMetaNorm(dn);
+  var candidates=all.filter(function(v){
+   var vn=ineNorm(f(v,"Variable.Nombre","Variable_Nombre","NombreVariable","Variable","Nombre_Variable")||"");
+   var vc=ineNorm(f(v,"Variable.Codigo","Variable_Codigo","CodigoVariable","VariableCode")||"");
+   var vi=String(f(v,"Variable.Id","Variable_Id","FK_Variable","Fk_Variable","VariableId")||"").trim();
+   return vi===String(d.id).trim()||vn===dn||vc===dn||ineTableMetaNorm(vn)===dnKey||ineTableMetaNorm(vc)===dnKey;
+  });
+  var varsById={};
+  candidates.forEach(function(v){
+   var vi=String(f(v,"Variable.Id","Variable_Id","FK_Variable","Fk_Variable","VariableId")||"").trim();
+   if(vi)varsById[vi]=v;
+  });
+  var variableIds=Object.keys(varsById);
+  if(!variableIds.length){
+   report.push({dimension:d.label||d.id,ok:false,reason:"variable-no-trobada"});
+   continue;
+  }
+  var vid=variableIds[0],used=[];
+  wanted.forEach(function(code){
+   var sc=String(code),suffix=sc.indexOf("_")>=0?sc.slice(sc.lastIndexOf("_")+1):sc;
+   var val=candidates.find(function(v){
+    var vc=String(f(v,"Codigo","codigo","Value.Codigo","Value_Codigo")||"");
+    var vi=String(f(v,"Variable.Id","Variable_Id","FK_Variable","Fk_Variable","VariableId")||"").trim();
+    return vi===vid&&(vc===sc||vc===suffix||String(f(v,"Id","id"))===sc||String(f(v,"Id","id"))===suffix||ineNorm(f(v,"Nombre","nombre")||"")===ineNorm(sc));
+   });
+   if(val){
+    var valueId=String(f(val,"Id","id")||"").trim();
+    if(valueId){out.append("tv",vid+":"+valueId);used.push({selected:sc,valueId:valueId,name:f(val,"Nombre","nombre")||"",code:f(val,"Codigo","codigo")||""})}
+   }
+  });
+  report.push({dimension:d.label||d.id,ok:used.length===wanted.length,variableId:vid,selected:wanted,matched:used});
+ }
+ return{query:out,report:report,groups:groupList.length,values:all.length};
+}
 async function ineResolveFilters(filters){
  var op=String(state.selected.stat||"").trim();
  if(!op)throw new Error("No s'ha pogut identificar l'operació INE.");
