@@ -953,27 +953,28 @@ async function ineDatosTablaFiltered(tableId,filters){
   return{variable:String(p[0]||"").trim(),value:String(p.slice(1).join(":")||"").trim()};
  });
  if(tvs.length&&Array.isArray(raw)){
+  // Els IDs dels valors Tempus3 són identificadors globals del valor
+  // (p. ex. Sexo/Hombres = Id 452). No depenem de FK_Variable:
+  // en DATOS_TABLA aquesta propietat pot no venir a MetaData.
+  // Per tant, la sèrie compleix el filtre quan conté el mateix Id de
+  // valor seleccionat. T3_Variable es comprova només com a reforç.
   var groupsTv={};
   tvs.forEach(function(t){
    if(!groupsTv[t.variable])groupsTv[t.variable]=[];
    groupsTv[t.variable].push(t.value);
   });
+  var metaDims=dims(state.metadata);
   raw=raw.filter(function(s){
    var md=Array.isArray(s&&s.MetaData)?s.MetaData:[];
    return Object.keys(groupsTv).every(function(vid){
-    var variableNames=[];
-    var dimMatch=dims(state.metadata).find(function(d){
-     return String(d.id).trim()===vid;
-    });
-    if(dimMatch){
-     variableNames=[String(dimMatch.id||""),String(dimMatch.label||"")].map(ineNorm);
-    }
+    var dimMatch=metaDims.find(function(d){return String(d.id).trim()===vid});
+    var dimName=dimMatch?ineNorm(dimMatch.label||""):"";
+    var wantedIds=groupsTv[vid];
     return md.some(function(m){
      var mv=String(m&&m.Id!=null?m.Id:"").trim();
-     var fv=String(m&&m.FK_Variable!=null?m.FK_Variable:"").trim();
+     if(wantedIds.indexOf(mv)<0)return false;
      var tv=ineNorm(m&&m.T3_Variable||"");
-     var variableMatch=(fv===vid)||(variableNames.length&&variableNames.indexOf(tv)>=0);
-     return variableMatch&&groupsTv[vid].indexOf(mv)>=0;
+     return !dimName||!tv||tv===dimName;
     });
    });
   });
