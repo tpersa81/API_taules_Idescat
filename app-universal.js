@@ -870,14 +870,15 @@ function ineDatosTablaToJsonStat(raw,metadata){
   var id=String(m.Id==null?"":m.Id).trim();
   var cats=d.categories||[];
   var hit=cats.find(function(c){return norm(c.label)===name});
-  if(hit)return hit;
-  hit=cats.find(function(c){
-   var cc=String(c.code||"");
-   return cc===code||cc===id||
-     (code&&cc.slice(cc.lastIndexOf("_")+1)===code)||
-     (id&&cc.slice(cc.lastIndexOf("_")+1)===id);
+  if(!hit)hit=cats.find(function(c){
+   var cc=String(c.code||""),suffix=cc.indexOf("_")>=0?cc.slice(cc.lastIndexOf("_")+1):cc;
+   return cc===code||cc===id||suffix===code||suffix===id;
   });
-  return hit||null;
+  if(!hit)return null;
+  // El codi que utilitzem a la taula final ha de ser el Codigo Tempus3,
+  // no el codi sintètic que el JSON-stat de l'INE utilitza per identificar
+  // la dimensió (p. ex. sexo_1 o gruposdeedad_Y25T54).
+  return {code:code||String(hit.code||""),label:hit.label,index:hit.index};
  }
  series.forEach(function(s){
   var md=metaFor(s),data=Array.isArray(s.Data)?s.Data:[];
@@ -1186,7 +1187,9 @@ async function runQuery(){
     ds=ir.data;state.lastQueryUrl=ir.url;
    }else{
     var iu=ineJsonStatUrl(state.selected.table);
-    ds=await fetchJson(iu);state.lastQueryUrl=iu;
+    ds=await fetchJson(iu);
+    ds=ineNormalizeMetadataCodes(ds);
+    state.lastQueryUrl=iu;
    }
   }
   if(token!==state.requestToken)return;state.lastData=ds;state.page=1;renderResults(ds);var n=Array.isArray(ds.value)?ds.value.length:Object.keys(ds.value||{}).length;$("resultCount").textContent=n.toLocaleString("ca-ES")+" valors retornats";$("exportCsv").disabled=false;$("exportXlsx").disabled=false;$("addToCart").disabled=false;status("")
