@@ -148,8 +148,7 @@ async function loadEurostatTOC(){
   }
   if(txt){
    d=[];
-   txt.split(/\r?
-/).forEach(function(line){
+   txt.split(/\r?\n/).forEach(function(line){
     if(!line.trim())return;
     var p=line.split("\t");
     if(p.length<3)return;
@@ -945,7 +944,6 @@ async function ineDatosTablaFiltered(tableId,filters){
   if(temporal(d)||dKey==="INDICESYTASAS")localFilters[d.id]=wanted;
   else apiFilters[d.id]=wanted;
  });
- if(INE_PARALLEL_TABLE_META){try{var tm=await ineResolveFiltersTableMeta(tableId,apiFilters);console.info("[INE table-meta]","taula",tableId,"grups",tm.groups,"valors",tm.values,tm.report); }catch(metaErr){console.warn("[INE table-meta] no disponible:",metaErr&&metaErr.message||metaErr)}}
  var iq=await ineResolveFilters(apiFilters);
  var u=ineJsonStatUrl(tableId)+(iq.toString()?"?"+iq.toString():"");
  var raw=await fetchJson(u);
@@ -1072,56 +1070,6 @@ async function ineOperationCode(op){
  if(!code)throw new Error("No s'ha pogut identificar el codi de l'operació INE «"+String(op)+"».");
  state.ineVarCache.set(key,code);
  return code;
-}
-const INE_PARALLEL_TABLE_META=true;
-function ineTableMetaNorm(x){return ineNorm(x).replace(/[^A-Z0-9]/g,"")}
-async function ineResolveFiltersTableMeta(tableId,filters){
- var groups=a(await fetchJson(provider().base+"/ES/GRUPOS_TABLA/"+encodeURIComponent(tableId)));
- var groupList=Array.isArray(groups)?groups:(groups&&Array.isArray(groups.data)?groups.data:[]);
- var all=[];
- for(var gi=0;gi<groupList.length;gi++){
-  var g=groupList[gi],gid=f(g,"Id","id");
-  if(gid==null||String(gid)==="")continue;
-  var vals=a(await fetchJson(provider().base+"/ES/VALORES_GRUPOSTABLA/"+encodeURIComponent(tableId)+"/"+encodeURIComponent(gid)));
-  vals.forEach(function(v){all.push(Object.assign({GroupId:gid,GroupName:f(g,"Nombre","nombre")||""},v))});
- }
- var out=new URLSearchParams(),report=[],dsDims=dims(state.metadata);
- for(var di=0;di<dsDims.length;di++){
-  var d=dsDims[di],wanted=filters[d.id];
-  if(!wanted||!wanted.length)continue;
-  var dn=ineNorm(d.label||d.id),dnKey=ineTableMetaNorm(dn);
-  var candidates=all.filter(function(v){
-   var vn=ineNorm(f(v,"Variable.Nombre","Variable_Nombre","NombreVariable","Variable","Nombre_Variable")||"");
-   var vc=ineNorm(f(v,"Variable.Codigo","Variable_Codigo","CodigoVariable","VariableCode")||"");
-   var vi=String(f(v,"Variable.Id","Variable_Id","FK_Variable","Fk_Variable","VariableId")||"").trim();
-   return vi===String(d.id).trim()||vn===dn||vc===dn||ineTableMetaNorm(vn)===dnKey||ineTableMetaNorm(vc)===dnKey;
-  });
-  var varsById={};
-  candidates.forEach(function(v){
-   var vi=String(f(v,"Variable.Id","Variable_Id","FK_Variable","Fk_Variable","VariableId")||"").trim();
-   if(vi)varsById[vi]=v;
-  });
-  var variableIds=Object.keys(varsById);
-  if(!variableIds.length){
-   report.push({dimension:d.label||d.id,ok:false,reason:"variable-no-trobada"});
-   continue;
-  }
-  var vid=variableIds[0],used=[];
-  wanted.forEach(function(code){
-   var sc=String(code),suffix=sc.indexOf("_")>=0?sc.slice(sc.lastIndexOf("_")+1):sc;
-   var val=candidates.find(function(v){
-    var vc=String(f(v,"Codigo","codigo","Value.Codigo","Value_Codigo")||"");
-    var vi=String(f(v,"Variable.Id","Variable_Id","FK_Variable","Fk_Variable","VariableId")||"").trim();
-    return vi===vid&&(vc===sc||vc===suffix||String(f(v,"Id","id"))===sc||String(f(v,"Id","id"))===suffix||ineNorm(f(v,"Nombre","nombre")||"")===ineNorm(sc));
-   });
-   if(val){
-    var valueId=String(f(val,"Id","id")||"").trim();
-    if(valueId){out.append("tv",vid+":"+valueId);used.push({selected:sc,valueId:valueId,name:f(val,"Nombre","nombre")||"",code:f(val,"Codigo","codigo")||""})}
-   }
-  });
-  report.push({dimension:d.label||d.id,ok:used.length===wanted.length,variableId:vid,selected:wanted,matched:used});
- }
- return{query:out,report:report,groups:groupList.length,values:all.length};
 }
 async function ineResolveFilters(filters){
  var op=String(state.selected.stat||"").trim();
@@ -1294,8 +1242,7 @@ function resultRows(ds){var ids=ds.id||[],sizes=ds.size||[],dd=ids.map(function(
 function decimals(ds){var found=[];function walk(x){if(!x||typeof x!=="object")return;if(Array.isArray(x)){x.forEach(walk);return}Object.keys(x).forEach(function(k){if(k.toLowerCase()==="unit"&&x[k]&&typeof x[k]==="object")Object.values(x[k]).forEach(function(v){var n=Number(v&&v.decimals);if(Number.isInteger(n))found.push(n)});walk(x[k])})}walk(ds);var u=[...new Set(found)];return u.length===1?u[0]:null}
 function fmt(v,d){if(v==null||v==="")return"";var n=typeof v==="number"?v:Number(v);if(!Number.isFinite(n))return v;return n.toLocaleString("ca-ES",{minimumFractionDigits:d==null?0:d,maximumFractionDigits:d==null?20:d})}
 function renderResults(ds){state.pivot={rows:[],columns:[]};var z=resultRows(ds),rows=z.rows,dd=z.dims,start=(state.page-1)*state.pageSize,end=Math.min(start+state.pageSize,rows.length),page=rows.slice(start,end),h="<div class=\"result-meta\">"+rows.length.toLocaleString("ca-ES")+" files · mostrant "+(rows.length?start+1:0)+"–"+end+"</div><div class=\"table-wrap\"><table class=\"data-table\"><thead><tr>"+dd.map(function(d){return"<th>"+esc(d.id+"_Codi")+"</th><th>"+esc(d.id+"_Etiqueta")+"</th>"}).join("")+"<th>Valor</th></tr></thead><tbody>";page.forEach(function(r){h+="<tr>";dd.forEach(function(d){h+="<td>"+esc(r[d.id].code)+"</td><td>"+esc(r[d.id].label)+"</td>"});h+='<td class="num">'+esc(fmt(r.value,decimals(ds)))+"</td></tr>"});h+="</tbody></table></div>";$("results").innerHTML=h;renderPivotBuilder()}
-function exportCSV(){if(!state.lastData)return;var z=resultRows(state.lastData),h=z.dims.map(function(d){return[d.id+"_Codi",d.id+"_Etiqueta"]}).reduce(function(x,y){return x.concat(y)},[]).concat(["Valor"]),lines=[h].concat(z.rows.map(function(r){return z.dims.map(function(d){return[r[d.id].code,r[d.id].label]}).reduce(function(x,y){return x.concat(y)},[]).concat([r.value==null?"":r.value])})).map(function(row){return row.map(function(v){return'"'+String(v).replace(/"/g,'""')+'"'}).join(";")});var b=new Blob(["\uFEFF"+lines.join("\r
-")],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=state.provider+"_consulta.csv";a.click()}
+function exportCSV(){if(!state.lastData)return;var z=resultRows(state.lastData),h=z.dims.map(function(d){return[d.id+"_Codi",d.id+"_Etiqueta"]}).reduce(function(x,y){return x.concat(y)},[]).concat(["Valor"]),lines=[h].concat(z.rows.map(function(r){return z.dims.map(function(d){return[r[d.id].code,r[d.id].label]}).reduce(function(x,y){return x.concat(y)},[]).concat([r.value==null?"":r.value])})).map(function(row){return row.map(function(v){return'"'+String(v).replace(/"/g,'""')+'"'}).join(";")});var b=new Blob(["\uFEFF"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=state.provider+"_consulta.csv";a.click()}
 function exportXLSX(){if(!state.lastData||typeof XLSX==="undefined")return;var z=resultRows(state.lastData),info=exportInfo(),headers=z.dims.map(function(d){return[d.id+"_Codi",d.id+"_Etiqueta"]}).reduce(function(a,b){return a.concat(b)},[]).concat(["Valor"]),out=[[info.tableName],[info.source],["URL: "+info.queryUrl],["Data de consulta: "+info.exportDate],[],headers];z.rows.forEach(function(r){out.push(z.dims.map(function(d){return[r[d.id].code,r[d.id].label]}).reduce(function(a,b){return a.concat(b)},[]).concat([r.value==null?"":r.value]))});var wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(out);ws["!autofilter"]={ref:XLSX.utils.encode_range({s:{r:5,c:0},e:{r:out.length-1,c:headers.length-1}})};ws["!merges"]=[];if(ws.A1)ws.A1.s={font:{bold:true}};XLSX.utils.book_append_sheet(wb,ws,"Dades");var po=pivotExport();if(po){var pw=XLSX.utils.aoa_to_sheet(po),hr=4;if(po.length>hr)pw["!autofilter"]={ref:XLSX.utils.encode_range({s:{r:hr,c:0},e:{r:po.length-1,c:(po[hr]||[]).length-1}})};pw["!merges"]=[];if(pw.A1)pw.A1.s={font:{bold:true}};XLSX.utils.book_append_sheet(wb,pw,"Taula construïda")}XLSX.writeFile(wb,state.provider+"_"+state.selected.table+"_"+state.selected.geo+".xlsx")}
 
 function pivotLabel(d){return String(d&&d.label||d&&d.id||'')}
