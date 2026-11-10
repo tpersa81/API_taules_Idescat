@@ -855,30 +855,29 @@ function ineDatosTablaToJsonStat(raw,metadata){
  var nonTime=baseDims.filter(function(d){return !timeDim||d.id!==timeDim.id});
  var timeMap=new Map(),rows=[];
  function norm(x){return String(x==null?"":x).normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").trim().toUpperCase()}
- function metaFor(s){return Array.isArray(s.MetaData)?s.MetaData:[]}
- function findMetaForDim(md,d){
-  var dn=norm(d.label||d.id),did=norm(d.id);
-  var exact=md.find(function(m){var v=norm(m&&m.T3_Variable);return v===dn||v===did});
-  if(exact)return exact;
-  var key=dn.replace(/[^A-Z0-9]/g,"");
-  return md.find(function(m){var v=norm(m&&m.T3_Variable).replace(/[^A-Z0-9]/g,"");return v===key})||null;
- }
- function categoryFor(d,m){
+ function metaFor(s){return Array.isArray(s&&s.MetaData)?s.MetaData:[]}
+ function categoryMatch(d,m){
   if(!m)return null;
-  var name=norm(m.Nombre||"");
-  var code=String(m.Codigo==null?"":m.Codigo).trim();
-  var id=String(m.Id==null?"":m.Id).trim();
-  var cats=d.categories||[];
-  var hit=cats.find(function(c){return norm(c.label)===name});
-  if(!hit)hit=cats.find(function(c){
-   var cc=String(c.code||""),suffix=cc.indexOf("_")>=0?cc.slice(cc.lastIndexOf("_")+1):cc;
-   return cc===code||cc===id||suffix===code||suffix===id;
+  var name=norm(m.Nombre||""),code=String(m.Codigo==null?"":m.Codigo).trim(),id=String(m.Id==null?"":m.Id).trim();
+  var tv=norm(m.T3_Variable||"");
+  var dn=norm(d.label||d.id),dk=dn.replace(/[^A-Z0-9]/g,"");
+  var best=null,bestScore=-1;
+  (d.categories||[]).forEach(function(cat){
+   var cc=String(cat.code==null?"":cat.code),suffix=cc.indexOf("_")>=0?cc.slice(cc.lastIndexOf("_")+1):cc;
+   var score=0;
+   if(name&&norm(cat.label)===name)score=100;
+   else if(code&&cc===code)score=90;
+   else if(id&&cc===id)score=80;
+   else if(code&&suffix===code)score=70;
+   else if(id&&suffix===id)score=60;
+   if(score>0){
+    var ck=norm(cat.label||"").replace(/[^A-Z0-9]/g,"");
+    if(tv&&((tv===dn)||(tv===dk)))score+=10;
+    if(ck===dk)score+=2;
+    if(score>bestScore){bestScore=score;best=cat}
+   }
   });
-  if(!hit)return null;
-  // El codi que utilitzem a la taula final ha de ser el Codigo Tempus3,
-  // no el codi sintètic que el JSON-stat de l'INE utilitza per identificar
-  // la dimensió (p. ex. sexo_1 o gruposdeedad_Y25T54).
-  return {code:code||String(hit.code||""),label:hit.label,index:hit.index};
+  return best;
  }
  series.forEach(function(s){
   var md=metaFor(s),data=Array.isArray(s.Data)?s.Data:[];
@@ -886,8 +885,15 @@ function ineDatosTablaToJsonStat(raw,metadata){
    var tc=inePeriodCode(x);if(!tc)return;
    var key=[];
    nonTime.forEach(function(d){
-    var m=findMetaForDim(md,d),cat=categoryFor(d,m);
-    key.push(cat?String(cat.code):"");
+    var best=null;
+    md.forEach(function(m){
+     var hit=categoryMatch(d,m);
+     if(!hit)return;
+     var name=norm(m.Nombre||""),code=String(m.Codigo==null?"":m.Codigo).trim(),id=String(m.Id==null?"":m.Id).trim();
+     var score=(norm(hit.label)===name?100:0)+(String(hit.code)===code?20:0)+(String(hit.code)===id?10:0);
+     if(!best||score>best.score)best={code:String(hit.code),score:score};
+    });
+    key.push(best?best.code:"");
    });
    timeMap.set(tc,{code:tc,label:(x.T3_Periodo?String(x.T3_Periodo)+" ":"")+String(x.Anyo||tc)});
    rows.push({key:key,time:tc,value:x.Valor});
@@ -904,7 +910,7 @@ function ineDatosTablaToJsonStat(raw,metadata){
   out.dimension[d.id]={label:d.label,category:cat};
  });
  var index=new Map();
- outDims.forEach(function(d,j){var m=new Map();d.categories.forEach(function(c,i){m.set(String(c.code),i)});index.set(d.id,m)});
+ outDims.forEach(function(d){var m=new Map();d.categories.forEach(function(c,i){m.set(String(c.code),i)});index.set(d.id,m)});
  var total=out.size.reduce(function(a,b){return a*b},1),vals=new Array(total).fill(null),strides=[];
  var st=1;for(var j=out.size.length-1;j>=0;j--){strides[j]=st;st*=out.size[j]};
  rows.forEach(function(r){
@@ -913,8 +919,7 @@ function ineDatosTablaToJsonStat(raw,metadata){
    var m=index.get(d.id),code=String(r.key[j]||"");
    coords.push(m&&m.has(code)?m.get(code):0);
   });
-  var tm=index.get(td.id),ti=tm&&tm.get(String(r.time));
-  if(ti==null)return;
+  var tm=index.get(td.id),ti=tm&&tm.get(String(r.time));if(ti==null)return;
   coords.push(ti);
   var flat=0;coords.forEach(function(v,j){flat+=v*strides[j]});
   vals[flat]=r.value;
@@ -922,67 +927,17 @@ function ineDatosTablaToJsonStat(raw,metadata){
  out.value=vals;return out;
 }
 async function ineDatosTablaFiltered(tableId,filters){
- var allFilters=filters||{},localFilters={},selected=dims(state.metadata).filter(function(d){
-  return allFilters[d.id]&&allFilters[d.id].length;
- });
- selected.forEach(function(d){
-  var dKey=ineNorm(d.label||d.id).replace(/[^A-Z0-9]/g,"");
-  if(temporal(d)||dKey==="INDICESYTASAS")localFilters[d.id]=allFilters[d.id];
- });
+ var allFilters=filters||{};
  var u=ineDatosTablaUrl(tableId,"");
  var raw=await fetchJson(u);
- if(!Array.isArray(raw)||!raw.length)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
-
- // Filtratge INE: no intentem reconstruir la variable Tempus3 a partir
- // del codi intern JSON-stat. Cada sèrie de DATOS_TABLA porta la seva
- // pròpia metadata i aquesta és la font d'autoritat per seleccionar-la.
- if(selected.length){
-  raw=raw.filter(function(s){
-   var md=Array.isArray(s&&s.MetaData)?s.MetaData:[];
-   return selected.every(function(d){
-    var wanted=allFilters[d.id]||[];
-    var cats=d.categories||[];
-    return wanted.some(function(wcode){
-     var cat=cats.find(function(c){return String(c.code)===String(wcode)});
-     var label=ineNorm(cat&&cat.label||"");
-     var code=String(wcode==null?"":wcode).trim();
-     var suffix=code.indexOf("_")>=0?code.slice(code.lastIndexOf("_")+1):code;
-     return md.some(function(m){
-      var mn=ineNorm(m&&m.Nombre||"");
-      var mc=String(m&&m.Codigo!=null?m.Codigo:"").trim();
-      var mi=String(m&&m.Id!=null?m.Id:"").trim();
-      return (label&&mn===label) ||
-             (suffix&&mc===suffix) ||
-             (suffix&&mi===suffix) ||
-             (code&&mc===code) ||
-             (code&&mi===code);
-     });
-    });
-   });
-  });
+ if(!Array.isArray(raw)||!raw.length)throw new Error("L'INE no ha retornat dades.");
+ var ds=ineDatosTablaToJsonStat(raw,state.metadata);
+ if(!ds)throw new Error("L'INE no ha pogut convertir les dades de la taula.");
+ ds=diceJsonStat(ds,allFilters);
+ if(!ds||!Array.isArray(ds.value)||!ds.value.some(function(v){return v!=null})){
+  throw new Error("L'INE no ha retornat sèries per als filtres seleccionats.");
  }
- if(!raw.length){
-  // Si no hi ha coincidència per codi, no descartem la taula: resolem
-  // el filtre per etiqueta, que és estable entre JSON-stat i DATOS_TABLA.
-  raw=await fetchJson(u);
-  if(!Array.isArray(raw)||!raw.length)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
-  raw=raw.filter(function(s){
-   var md=Array.isArray(s&&s.MetaData)?s.MetaData:[];
-   return selected.every(function(d){
-    var wanted=allFilters[d.id]||[],cats=d.categories||[];
-    return wanted.some(function(wcode){
-     var cat=cats.find(function(c){return String(c.code)===String(wcode)});
-     var label=ineNorm(cat&&cat.label||"");
-     return label&&md.some(function(m){return ineNorm(m&&m.Nombre||"")===label});
-    });
-   });
- }
- if(!raw.length)throw new Error("L'INE no ha retornat sèries per als filtres seleccionats.");
-
- var filteredDs=ineDatosTablaToJsonStat(raw,state.metadata);
- if(!filteredDs)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
- if(Object.keys(localFilters).length)filteredDs=diceJsonStat(filteredDs,localFilters);
- return{data:filteredDs,url:u};
+ return{data:ds,url:u};
 }
 async function ineMetadata(tableId){
  var u=ineJsonStatUrl(tableId);
