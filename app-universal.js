@@ -911,7 +911,7 @@ async function ineDatosTablaFiltered(tableId,filters){
    localFilters[d.id]=wanted;
   }
  });
- var iq=await ineResolveTableFilters(tableId,apiFilters);
+ var iq=await ineResolveFilters(apiFilters);
  var u=ineDatosTablaUrl(tableId,iq.toString());
  var raw=await fetchJson(u);
  if(!raw)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
@@ -1040,7 +1040,7 @@ async function ineOperationCode(op){
  state.ineVarCache.set(key,code);
  return code;
 }
-async function ineResolveFilters(filters){
+async async function ineResolveFilters(filters){
  var op=String(state.selected.stat||"").trim();
  if(!op)throw new Error("No s'ha pogut identificar l'operació INE.");
  var opCode=await ineOperationCode(op);
