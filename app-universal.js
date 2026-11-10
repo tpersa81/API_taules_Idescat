@@ -953,7 +953,7 @@ async function ineDatosTablaFiltered(tableId,filters){
    var md=Array.isArray(s&&s.MetaData)?s.MetaData:[];
    return selectedDims.every(function(d){
     var wanted=apiFilters[d.id]||[];
-    return wanted.every(function(wcode){
+    return wanted.some(function(wcode){
      var cat=(d.categories||[]).find(function(c){return String(c.code)===String(wcode)});
      var label=norm(cat&&cat.label||"");
      var suffix=String(wcode||"").split("_").pop();
@@ -974,9 +974,6 @@ async function ineDatosTablaFiltered(tableId,filters){
  // mitjançant Id/Nombre/Codigo. Si la comprovació estricta anterior no
  // troba cap sèrie, fem una segona resolució per Id del valor seleccionat.
  // És especialment important per a Sexo (Hombres = Id 452).
- if(!raw.length&&Array.isArray(allFilters)){
-   // no-op: els filtres normals són un objecte; es manté només per compatibilitat.
- }
 
  var filteredDs=ineDatosTablaToJsonStat(raw,state.metadata);
  if(!filteredDs)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
