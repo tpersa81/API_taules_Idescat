@@ -927,44 +927,47 @@ async function ineDatosTablaFiltered(tableId,filters){
   var wanted=allFilters[d.id];
   if(!wanted||!wanted.length)return;
   var dKey=ineNorm(d.label||d.id).replace(/[^A-Z0-9]/g,"");
-  if(temporal(d)||dKey==="INDICESYTASAS"){
-   localFilters[d.id]=wanted;
-  }else{
-   apiFilters[d.id]=wanted;
-  }
+  if(temporal(d)||dKey==="INDICESYTASAS")localFilters[d.id]=wanted;
+  else apiFilters[d.id]=wanted;
  });
  var iq=await ineResolveFilters(apiFilters);
- var query=iq.toString();
- var u=ineDatosTablaUrl(tableId,query);
+ var u=ineDatosTablaUrl(tableId,iq.toString());
  var raw=await fetchJson(u);
  if(!raw)throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
 
- // DATOS_TABLA no és prou fiable per determinar quines sèries han
- // sobreviscut al filtre en algunes taules Tempus3. Per això utilitzem
- // SERIES_TABLA com a font autoritativa de la intersecció de filtres:
- // l'API documenta que accepta tv=id_variable:id_valor i retorna els
- // identificadors de les sèries que compleixen aquests criteris.
- // Això és especialment important a la taula 14506: el JSON-stat
- // /jsstat/DATASET/14506 defineix Sexo amb els codis sexo_ambossexos,
- // sexo_1 i sexo_6; ineResolveFilters converteix sexo_1 (Hombres) en
- // l'ID Tempus3 452 i SERIES_TABLA determina les sèries corresponents.
- var seriesRaw=[];
- if(iq.toString()){
-  var skey="SERIES|"+tableId+"|"+query,scached=state.ineVarCache.get(skey);
-  if(scached){
-   seriesRaw=scached;
-  }else{
-   var su="https://servicios.ine.es/wstempus/js/ES/SERIES_TABLA/"+encodeURIComponent(String(tableId))+"?det=1&"+query;
-   seriesRaw=a(await fetchJson(su));
-   state.ineVarCache.set(skey,seriesRaw);
-  }
-  if(!seriesRaw.length)throw new Error("L'INE no ha trobat sèries per als filtres seleccionats.");
-  var allowed=new Set(seriesRaw.map(function(s){
-   return String(f(s,"COD","Cod","Codigo","codigo","Id","id")).trim();
-  }).filter(Boolean));
+ // Tempus3 normal: DATOS_TABLA pot retornar més sèries de les esperades.
+ // Apliquem una segona comprovació sobre la metadata de cada sèrie, però
+ // utilitzant els codis/etiquetes reals del JSON-stat, no els IDs numèrics.
+ // Això evita el problema observat a 14506, on tv=18:452 no és una sintaxi
+ // vàlida per a una taula Tempus3 normal.
+ var selectedDims=dims(state.metadata).filter(function(d){return apiFilters[d.id]&&apiFilters[d.id].length});
+ if(selectedDims.length&&Array.isArray(raw)){
+  function norm(x){return ineNorm(x==null?"":x)}
   raw=raw.filter(function(s){
-   var code=String(f(s,"COD","Cod","Codigo","codigo","Id","id")).trim();
-   return code&&allowed.has(code);
+   var md=Array.isArray(s&&s.MetaData)?s.MetaData:[];
+   return selectedDims.every(function(d){
+    var wanted=apiFilters[d.id]||[];
+    return wanted.every(function(wcode){
+     var cat=(d.categories||[]).find(function(c){return String(c.code)===String(wcode)});
+     var label=norm(cat&&cat.label||"");
+     var code=String(wcode||"");
+     var suffix=code.indexOf("_")>=0?code.slice(code.lastIndexOf("_")+1):code;
+     // Per dimensions sintètiques (p. ex. Edad), el prefix del codi
+     // identifica el variable Tempus3 concret (gruposdeedad, etc.).
+     var prefix=code.indexOf("_")>=0?code.slice(0,code.lastIndexOf("_")):"";
+     var prefixNorm=norm(prefix).replace(/[^A-Z0-9]/g,"");
+     return md.some(function(m){
+      var mn=norm(m&&m.Nombre||"");
+      var mc=String(m&&m.Codigo!=null?m.Codigo:"").trim();
+      var tv=norm(m&&m.T3_Variable||"").replace(/[^A-Z0-9]/g,"");
+      var labelHit=label&&mn===label;
+      var codeHit=suffix&&mc===suffix;
+      if(!(labelHit||codeHit))return false;
+      if(!prefixNorm)return true;
+      return tv===prefixNorm || tv.indexOf(prefixNorm)>=0;
+     });
+    });
+   });
   });
  }
  if(!raw.length)throw new Error("L'INE no ha retornat sèries per als filtres seleccionats.");
