@@ -933,8 +933,12 @@ async function ineDatosTablaFiltered(tableId,filters){
   if(temporal(d)||dKey==="INDICESYTASAS"){
    localFilters[d.id]=wanted;
   }else{
+   // Els filtres Tempus3 enviats a DATOS_TABLA ja han estat aplicats per
+   // l'API. No els tornem a aplicar sobre el JSON-stat resultant:
+   // després d'un filtre, DATOS_TABLA pot retornar només les categories
+   // efectivament presents a les sèries, i fer un segon "dice" amb la
+   // metadata original pot convertir els valors en null o desplaçar-los.
    apiFilters[d.id]=wanted;
-   localFilters[d.id]=wanted;
   }
  });
  var iq=await ineResolveFilters(apiFilters);
