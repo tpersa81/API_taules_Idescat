@@ -961,10 +961,19 @@ async function ineDatosTablaFiltered(tableId,filters){
   raw=raw.filter(function(s){
    var md=Array.isArray(s&&s.MetaData)?s.MetaData:[];
    return Object.keys(groupsTv).every(function(vid){
+    var variableNames=[];
+    var dimMatch=dims(state.metadata).find(function(d){
+     return String(d.id).trim()===vid;
+    });
+    if(dimMatch){
+     variableNames=[String(dimMatch.id||""),String(dimMatch.label||"")].map(ineNorm);
+    }
     return md.some(function(m){
      var mv=String(m&&m.Id!=null?m.Id:"").trim();
      var fv=String(m&&m.FK_Variable!=null?m.FK_Variable:"").trim();
-     return fv===vid&&groupsTv[vid].indexOf(mv)>=0;
+     var tv=ineNorm(m&&m.T3_Variable||"");
+     var variableMatch=(fv===vid)||(variableNames.length&&variableNames.indexOf(tv)>=0);
+     return variableMatch&&groupsTv[vid].indexOf(mv)>=0;
     });
    });
   });
