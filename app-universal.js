@@ -929,90 +929,138 @@ async function ineResolveTableFilters(tableId,filters){
  if(!tid)return null;
  var wantedDims=dims(state.metadata).filter(function(d){return filters[d.id]&&filters[d.id].length});
  if(!wantedDims.length)return new URLSearchParams();
- var cacheKey="TABLEVALUES|"+tid,rows=state.ineVarCache.get(cacheKey);
- if(!rows){
-  var opCode=await ineOperationCode(state.selected.stat);
-  var varsKey="VARS|"+opCode,vars=state.ineVarCache.get(varsKey);
-  if(!vars){
-   vars=a(await fetchJson(provider().base+"/ES/VARIABLES_OPERACION/"+encodeURIComponent(opCode)));
-   state.ineVarCache.set(varsKey,vars);
-  }
-  var groups=a(await fetchJson(provider().base+"/ES/GRUPOS_TABLA/"+encodeURIComponent(tid)));
-  rows=[];
-  for(var gi=0;gi<groups.length;gi++){
-   var gid=String(f(groups[gi],"Id","id")).trim();
-   if(!gid)continue;
-   var vals=a(await fetchJson(provider().base+"/ES/VALORES_GRUPOSTABLA/"+encodeURIComponent(tid)+"/"+encodeURIComponent(gid)+"?det=1"));
-   vals.forEach(function(v){
-    var vid=String(f(v,"FK_Variable","Fk_Variable","IdVariable","VariableId","variableId")||"").trim();
-    var vx=vars.find(function(x){return String(f(x,"Id","id")).trim()===vid});
-    rows.push({
-     groupId:gid,
-     variableId:vid,
-     variableName:ineNorm(f(vx||{},"Nombre","nombre","Name","Descripcion","Description")||f(v,"Variable","variable","T3_Variable")||""),
-     valueId:String(f(v,"Id","id")).trim(),
-     valueCode:String(f(v,"Codigo","codigo","Code","code")||"").trim(),
-     valueName:ineNorm(f(v,"Nombre","nombre","Name","Descripcion","Description")||"")
-    });
-   });
-   // Els grups acostumen a correspondre a una dimensió. No cal continuar
-   // consultant l'API quan ja hem trobat tots els valors seleccionables.
-   var complete=wantedDims.every(function(d){
-    return (filters[d.id]||[]).every(function(code){
-     var sc=String(code),suffix=sc.indexOf("_")>=0?sc.slice(sc.lastIndexOf("_")+1):sc;
-     var cat=(d.categories||[]).find(function(c){return String(c.code)===sc});
-     var cl=ineNorm(cat&&cat.label||"");
-     return rows.some(function(r){
-      var rc=String(r.valueCode||""),rcN=ineNorm(rc),rs=rc.indexOf("_")>=0?rc.slice(rc.lastIndexOf("_")+1):rc;
-      return rc===sc||rc===suffix||r.valueId===sc||rcN===ineNorm(sc)||rcN===ineNorm(suffix)||ineNorm(rs)===ineNorm(sc)||ineNorm(rs)===ineNorm(suffix)||
-             (cl&&r.valueName===cl);
-     });
-    });
-   });
-   if(complete)break;
-  }
-  state.ineVarCache.set(cacheKey,rows);
+ var opCode=await ineOperationCode(state.selected.stat);
+ var varsKey="VARS|"+opCode,vars=state.ineVarCache.get(varsKey);
+ if(!vars){
+  vars=a(await fetchJson(provider().base+"/ES/VARIABLES_OPERACION/"+encodeURIComponent(opCode)));
+  state.ineVarCache.set(varsKey,vars);
  }
+
+ // Per a les taules INE, els codis JSON-stat poden ser sintètics
+ // (p. ex. «sexo_1»), mentre que Tempus3 identifica el valor real
+ // amb el codi oficial («1») i el seu Id numèric (p. ex. 452).
+ // Resolem primer cada dimensió contra la seva variable de l'operació
+ // i només després fem servir els valors específics de la taula com a
+ // fallback. Això evita dependre de quin grup de la taula conté el valor.
+ var tableRows=state.ineVarCache.get("TABLEVALUES|"+tid)||[];
+ var tableRowsLoaded=state.ineVarCache.has("TABLEVALUES|"+tid);
  var out=new URLSearchParams(),missing=[];
- wantedDims.forEach(function(d){
+
+ async function loadTableRows(){
+  if(tableRowsLoaded)return tableRows;
+  tableRowsLoaded=true;
+  tableRows=[];
+  try{
+   var groups=a(await fetchJson(provider().base+"/ES/GRUPOS_TABLA/"+encodeURIComponent(tid)));
+   for(var gi=0;gi<groups.length;gi++){
+    var gid=String(f(groups[gi],"Id","id")).trim();
+    if(!gid)continue;
+    try{
+     var vals=a(await fetchJson(provider().base+"/ES/VALORES_GRUPOSTABLA/"+encodeURIComponent(tid)+"/"+encodeURIComponent(gid)+"?det=1"));
+     vals.forEach(function(v){
+      var vid=String(f(v,"FK_Variable","Fk_Variable","IdVariable","VariableId","variableId")||"").trim();
+      tableRows.push({
+       groupId:gid,
+       variableId:vid,
+       variableName:ineNorm(f(v,"Variable","variable","T3_Variable")||""),
+       valueId:String(f(v,"Id","id")).trim(),
+       valueCode:String(f(v,"Codigo","codigo","Code","code")||"").trim(),
+       valueName:ineNorm(f(v,"Nombre","nombre","Name","Descripcion","Description")||"")
+      });
+     });
+    }catch(e){}
+   }
+  }catch(e){}
+  state.ineVarCache.set("TABLEVALUES|"+tid,tableRows);
+  return tableRows;
+ }
+
+ function variableFor(d){
   var dn=ineNorm(d.label||d.id),dnKey=dn.replace(/[^A-Z0-9]/g,"");
-  (filters[d.id]||[]).forEach(function(code){
-   var sc=String(code),suffix=sc.indexOf("_")>=0?sc.slice(sc.lastIndexOf("_")+1):sc;
-   var scN=ineNorm(sc),suffixN=ineNorm(suffix);
-   var cat=(d.categories||[]).find(function(c){return String(c.code)===sc});
-   var cl=ineNorm(cat&&cat.label||"");
-   var candidates=rows.filter(function(r){
-    var rc=String(r.valueCode||""),rcN=ineNorm(rc),rs=rc.indexOf("_")>=0?rc.slice(rc.lastIndexOf("_")+1):rc;
-    var rsN=ineNorm(rs);
-    return rc===sc||rc===suffix||r.valueId===sc||rcN===scN||rcN===suffixN||rsN===scN||rsN===suffixN||
-           (cl&&r.valueName===cl)||
-           (cl&&r.valueName.replace(/[^A-Z0-9]/g,"")===cl.replace(/[^A-Z0-9]/g,""));
-   });
-   if(!candidates.length){
-    missing.push(String(d.label||d.id)+" («"+sc+"»)");
-    return;
+  if(opCode==="IPRI"&&dnKey==="CLASES")return{Id:394,Nombre:"CLASES",Codigo:""};
+  if(opCode==="IPRI"&&dnKey==="INDICESYTASAS")return{Id:83,Nombre:"Índices y Tasas",Codigo:""};
+  return vars.find(function(x){
+   var id=String(f(x,"Id","id")).trim();
+   var name=ineNorm(f(x,"Nombre","nombre","Name","Descripcion","Description")||"");
+   var code=ineNorm(f(x,"Codigo","codigo","Code","code")||"");
+   return id===String(d.id).trim()||name===dn||code===dn||
+          name.replace(/[^A-Z0-9]/g,"")===dnKey||
+          code.replace(/[^A-Z0-9]/g,"")===dnKey;
+  })||null;
+ }
+
+ function candidateFor(list,d,code){
+  var sc=String(code),suffix=sc.indexOf("_")>=0?sc.slice(sc.lastIndexOf("_")+1):sc;
+  var scN=ineNorm(sc),suffixN=ineNorm(suffix);
+  var cat=(d.categories||[]).find(function(c){return String(c.code)===sc});
+  var cl=ineNorm(cat&&cat.label||"");
+  return list.find(function(r){
+   var rc=String(r.valueCode||""),rcN=ineNorm(rc);
+   var rs=rc.indexOf("_")>=0?rc.slice(rc.lastIndexOf("_")+1):rc;
+   var rsN=ineNorm(rs);
+   return rc===sc||rc===suffix||r.valueId===sc||
+          rcN===scN||rcN===suffixN||rsN===scN||rsN===suffixN||
+          (cl&&r.valueName===cl)||
+          (cl&&r.valueName.replace(/[^A-Z0-9]/g,"")===cl.replace(/[^A-Z0-9]/g,""));
+  })||null;
+ }
+
+ for(var di=0;di<wantedDims.length;di++){
+  var d=wantedDims[di],v=variableFor(d);
+  if(!v){
+   missing.push(String(d.label||d.id)+" («"+(filters[d.id]||[]).join(", ")+"»)");
+   continue;
+  }
+  var vid=String(f(v,"Id","id")).trim();
+  if(!vid){
+   missing.push(String(d.label||d.id)+" («"+(filters[d.id]||[]).join(", ")+"»)");
+   continue;
+  }
+
+  var valuesKey="VALS|"+opCode+"|"+vid,values=state.ineVarCache.get(valuesKey);
+  if(!values){
+   try{
+    values=a(await fetchJson(provider().base+"/ES/VALORES_VARIABLEOPERACION/"+encodeURIComponent(vid)+"/"+encodeURIComponent(opCode)));
+   }catch(e){values=[]}
+   if(!values.length&&opCode==="IPRI"&&vid==="83"){
+    try{values=a(await fetchJson(provider().base+"/ES/VALORES_VARIABLE/83?det=1"))}catch(e){values=[]}
    }
-   // Si el codi/nom coincideix en més d'una variable, prioritzem la que
-   // correspon a la dimensió JSON-stat. Si no hi ha coincidència textual,
-   // el valor de la taula continua sent una identificació suficient.
-   var best=candidates.find(function(r){
-    var vk=String(r.variableId||"");
-    var vn=String(r.variableName||"");
-    var vkNorm=vn.replace(/[^A-Z0-9]/g,"");
-    return vk===String(d.id)||vn===dn||vkNorm===dnKey||
-           vkNorm.indexOf(dnKey)>=0||dnKey.indexOf(vkNorm)>=0;
-   })||candidates[0];
-   if(!best.variableId||!best.valueId){
-    missing.push(String(d.label||d.id)+" («"+sc+"»)");
-    return;
-   }
-   out.append("tv",best.variableId+"~id:"+best.valueId+"~id");
+   state.ineVarCache.set(valuesKey,values);
+  }
+  var normalizedValues=values.map(function(x){
+   return{
+    valueId:String(f(x,"Id","id")).trim(),
+    valueCode:String(f(x,"Codigo","codigo","Code","code")||"").trim(),
+    valueName:ineNorm(f(x,"Nombre","nombre","Name","Descripcion","Description")||"")
+   };
   });
- });
+
+  for(var ci=0;ci<(filters[d.id]||[]).length;ci++){
+   var code=filters[d.id][ci],val=candidateFor(normalizedValues,d,code);
+   if(!val){
+    var rows=await loadTableRows();
+    var candidates=rows.filter(function(r){return String(r.variableId)===vid});
+    val=candidateFor(candidates,d,code);
+    if(!val){
+     // Si el valor no porta codi oficial però coincideix amb l'etiqueta
+     // visible, candidateFor ja ho ha comprovat. En IPRI 83, alguns codis
+     // JSON-stat tenen la forma «grup_valor».
+     if(opCode==="IPRI"&&vid==="83"&&/^\\d+_\\d+$/.test(String(code))){
+      var globalValueId=String(code).slice(String(code).lastIndexOf("_")+1);
+      val={valueId:globalValueId,valueCode:globalValueId,valueName:globalValueId};
+     }
+    }
+   }
+   if(!val||!val.valueId){
+    missing.push(String(d.label||d.id)+" («"+String(code)+"»)");
+    continue;
+   }
+   out.append("tv",vid+"~id:"+val.valueId+"~id");
+  }
+ }
  if(missing.length)throw new Error("No s'han pogut resoldre els filtres de la taula INE: "+missing.join(", ")+".");
  return out;
 }
-
 async function ineDatosTablaFiltered(tableId,filters){
  var allFilters=filters||{},apiFilters={},localFilters={};
  // «Periodo» (i altres dimensions temporals) no és una variable Tempus3 de
