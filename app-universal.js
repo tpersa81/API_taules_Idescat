@@ -1073,6 +1073,8 @@ async function ineOperationCode(op){
  return code;
 }
 async function ineResolveFilters(filters){
+ var tableId=String(state.selected.table||"").trim();
+ if(!tableId)throw new Error("No s'ha pogut identificar la taula INE.");
  var op=String(state.selected.stat||"").trim();
  if(!op)throw new Error("No s'ha pogut identificar l'operació INE.");
  var opCode=await ineOperationCode(op);
@@ -1081,16 +1083,16 @@ async function ineResolveFilters(filters){
   vars=a(await fetchJson(provider().base+"/ES/VARIABLES_OPERACION/"+encodeURIComponent(opCode)));
   state.ineVarCache.set(varsKey,vars);
  }
+ var groupsKey="GROUPS|"+tableId,groups=state.ineVarCache.get(groupsKey);
+ if(!groups){
+  groups=a(await fetchJson(provider().base+"/ES/GRUPOS_TABLA/"+encodeURIComponent(tableId)));
+  state.ineVarCache.set(groupsKey,groups);
+ }
  var out=new URLSearchParams(),dsDims=dims(state.metadata);
  for(var di=0;di<dsDims.length;di++){
   var d=dsDims[di],wanted=filters[d.id];
   if(!wanted||!wanted.length)continue;
-  var dn=ineNorm(d.label||d.id);
-  // En Tempus3 la variable CLASES de l'operació IPRI és la 394.
-  // La metadata JSON-stat de la taula 61525 pot exposar-la simplement
-  // com «Clases», de manera que no depenem de la coincidència textual
-  // amb el catàleg de variables.
-  var dnKey=dn.replace(/[^A-Z0-9]/g,"");
+  var dn=ineNorm(d.label||d.id),dnKey=dn.replace(/[^A-Z0-9]/g,"");
   var v=(opCode==="IPRI"&&dnKey==="CLASES")
       ? {Id:394,Nombre:"CLASES",Codigo:""}
       : (opCode==="IPRI"&&dnKey==="INDICESYTASAS")
@@ -1100,62 +1102,62 @@ async function ineResolveFilters(filters){
    var name=ineNorm(f(x,"Nombre","nombre","Name","Descripcion","Description")||"");
    var code=ineNorm(f(x,"Codigo","codigo","Code","code")||"");
    return id===String(d.id).trim() || name===dn || code===dn ||
-          name.replace(/[^A-Z0-9]/g,"")===dn.replace(/[^A-Z0-9]/g,"") ||
-          code.replace(/[^A-Z0-9]/g,"")===dn.replace(/[^A-Z0-9]/g,"");
+          name.replace(/[^A-Z0-9]/g,"")===dnKey ||
+          code.replace(/[^A-Z0-9]/g,"")===dnKey;
   });
-  // JSON-stat de l'INE pot exposar «Clases» mentre Tempus3 publica
-  // «CLASES». Si la correspondència textual falla, usem el codi/nom
-  // conegut de la variable de la taula a partir dels valors disponibles.
-
   if(!v)throw new Error("No s'ha pogut identificar la variable INE «"+String(d.label||d.id)+"».");
   var vid=String(f(v,"Id","id")).trim();
   if(!vid)throw new Error("La variable INE «"+String(d.label||d.id)+"» no té identificador.");
-  var valuesKey="VALS|"+opCode+"|"+vid,values=state.ineVarCache.get(valuesKey);
-  if(!values){
-   values=a(await fetchJson(provider().base+"/ES/VALORES_VARIABLEOPERACION/"+encodeURIComponent(vid)+"/"+encodeURIComponent(opCode)));
-   // Algunes variables de les taules Tempus3 no apareixen a
-   // VARIABLES_OPERACION ni a VALORES_VARIABLEOPERACION, tot i ser variables
-   // globals del sistema. És el cas d'«Índices y Tasas» de l'IPRI (83).
-   // En aquest cas recuperem els valors globals de la variable.
-   if(!values.length && opCode==="IPRI" && vid==="83"){
-    values=a(await fetchJson(provider().base+"/ES/VALORES_VARIABLE/83?det=1"));
+
+  // Per a taules Tempus3, INE documenta que tv utilitza els IDs
+  // numèrics de la variable i del valor. Els valors que formen una taula
+  // poden provenir d'un grup específic de la taula; per això no n'hi ha
+  // prou amb VALORES_VARIABLEOPERACION. Resolem primer GRUPOS_TABLA +
+  // VALORES_GRUPOSTABLA, que és també la font oficial dels codis de filtre.
+  var candidateValues=[];
+  for(var gi=0;gi<groups.length;gi++){
+   var gid=String(f(groups[gi],"Id","id")).trim();
+   if(!gid)continue;
+   var gKey="GROUPVALS|"+tableId+"|"+gid,gv=state.ineVarCache.get(gKey);
+   if(!gv){
+    try{
+     gv=a(await fetchJson(provider().base+"/ES/VALORES_GRUPOSTABLA/"+encodeURIComponent(tableId)+"/"+encodeURIComponent(gid)+"?det=1"));
+     state.ineVarCache.set(gKey,gv);
+    }catch(e){}
    }
-   state.ineVarCache.set(valuesKey,values);
+   if(gv&&gv.length)candidateValues=candidateValues.concat(gv);
   }
+
+  // Fallback per a operacions/taules que no exposen grups de manera
+  // completa: recuperem els valors generals de la variable.
+  if(!candidateValues.length){
+   var valuesKey="VALS|"+opCode+"|"+vid,values=state.ineVarCache.get(valuesKey);
+   if(!values){
+    values=a(await fetchJson(provider().base+"/ES/VALORES_VARIABLEOPERACION/"+encodeURIComponent(vid)+"/"+encodeURIComponent(opCode)));
+    if(!values.length&&opCode==="IPRI"&&vid==="83")
+      values=a(await fetchJson(provider().base+"/ES/VALORES_VARIABLE/83?det=1"));
+    state.ineVarCache.set(valuesKey,values);
+   }
+   candidateValues=values;
+  }
+
   wanted.forEach(function(code){
    var sc=String(code),suffix=sc.indexOf("_")>=0?sc.slice(sc.lastIndexOf("_")+1):sc;
    var cat=d.categories&&d.categories.find(function(c){return String(c.code)===sc});
    var catLabel=ineNorm(cat&&cat.label||"");
-   var val=values.find(function(x){
-    var vc=String(f(x,"Codigo","codigo","Code","code")||"");
+   var val=candidateValues.find(function(x){
+    var fk=String(f(x,"FK_Variable","fk_variable","VariableId","variableId")||"").trim();
+    if(fk&&fk!==vid)return false;
+    var vc=String(f(x,"Codigo","codigo","Code","code")||"").trim();
     var vn=ineNorm(f(x,"Nombre","nombre","Name","Descripcion","Description")||"");
-    return vc===sc||vc===suffix||String(f(x,"Id","id"))===sc||
-           (catLabel&&vn===catLabel);
+    return vc===sc||vc===suffix||String(f(x,"Id","id"))===sc||(catLabel&&vn===catLabel);
    });
-   // En algunes dimensions JSON-stat de Tempus3, el codi de categoria
-   // incorpora el grup de la taula (p. ex. «5_0»). Per a la variable global
-   // Índices y Tasas (83), el tram final és el codi/Id real del valor.
-   if(!val && opCode==="IPRI" && vid==="83" && /^\d+_\d+$/.test(sc)){
-    var globalValueId=sc.slice(sc.lastIndexOf("_")+1);
-    val={Id:globalValueId,Codigo:globalValueId,Nombre:globalValueId};
-   }
    if(!val)throw new Error("No s'ha trobat el valor INE «"+sc+"» de la variable «"+String(d.label||d.id)+"».");
    var valueId=String(f(val,"Id","id")).trim();
    if(!valueId)throw new Error("El valor INE «"+sc+"» no té identificador.");
-   // DATOS_TABLA per a taules Tempus3 filtra amb el codi textual de la
-   // variable i el Codigo del valor (p. ex. sexo:1, ...:Y-LT25).
-   // El format «18~id:452~id» és propi de les taules tpx amb identificadors
-   // Tempus3, i en una taula Tempus3 com la 14506 no retorna les sèries.
-   // En les taules Tempus3, el codi de variable que accepta DATOS_TABLA
-   // coincideix amb el codi de la dimensió de la taula (p. ex. «sexo»,
-   // «comunidadesyciudadesautonomas», «edad»). No prenem Codigo de
-   // VARIABLES_OPERACION perquè pot ser buit o no coincidir amb el filtre.
-   var variableCode=String(d.id||"").trim();
-   if(!variableCode)variableCode=String(f(v,"Codigo","codigo","Code","code")||f(v,"Nombre","nombre","Name","Descripcion","Description")||d.label||"")
-     .normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").replace(/[^A-Za-z0-9]+/g,"").toLowerCase();
-   var valueCode=String(f(val,"Codigo","codigo","Code","code")||"").trim();
-   if(valueCode)out.append("tv",variableCode+":"+valueCode);
-   else out.append("tv",vid+"~id:"+valueId+"~id");
+   // Format documentat per DATOS_TABLA de les taules Tempus3:
+   // tv=id_variable:id_valor, utilitzant els IDs numèrics.
+   out.append("tv",vid+":"+valueId);
   });
  }
  return out;
