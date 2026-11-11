@@ -839,14 +839,47 @@ function ineTvCandidates(d){
   return a.filter(function(x,i){return x&&a.indexOf(x)===i});
 }
 function inePeriodCode(row){
-  var y=String(row&&row.Anyo!=null?row.Anyo:"").trim(),p=String(row&&row.T3_Periodo!=null?row.T3_Periodo:"").trim().toUpperCase();
-  if(!y)return"";
-  if(!p||p==="A"||p==="ANUAL")return y;
-  var m=p.match(/^M(\\d{1,2})$/);if(m)return y+"M"+String(Number(m[1])).padStart(2,"0");
-  var q=p.match(/^(?:T|Q)(\\d)$/);if(q)return y+"Q"+q[1];
-  var s=p.match(/^S(\\d)$/);if(s)return y+"S"+s[1];
-  var b=p.match(/^B(\\d{1,2})$/);if(b)return y+"B"+String(Number(b[1])).padStart(2,"0");
-  return y+"-"+p.replace(/\\s+/g,"_");
+  if(!row) return "";
+  var y = String(row.Anyo != null ? row.Anyo : "").trim();
+  if(!y) return "";
+
+  // Compatibilitat amb les dues formes de resposta de l'API
+  var p = "";
+  if(row.T3_Periodo != null){
+    p = String(row.T3_Periodo).trim().toUpperCase();
+  } else if(row.Periodo != null){
+    // det=2 + tip=AM → objecte { Codigo, Nombre }
+    if(typeof row.Periodo === "object"){
+      p = String(row.Periodo.Codigo || row.Periodo.Nombre || "").trim().toUpperCase();
+    } else {
+      p = String(row.Periodo).trim().toUpperCase();
+    }
+  }
+
+  if(!p || p === "A" || p === "ANUAL") return y;
+
+  // Mensual: M1, M01, 1, 01, M12...
+  var m = p.match(/^M?(\d{1,2})$/);
+  if(m) return y + "M" + String(Number(m[1])).padStart(2, "0");
+
+  // Trimestral: T1, Q1, I, II, III, IV, 1T...
+  if(p === "I" || p === "1" || p === "T1" || p === "Q1") return y + "T1";
+  if(p === "II" || p === "2" || p === "T2" || p === "Q2") return y + "T2";
+  if(p === "III" || p === "3" || p === "T3" || p === "Q3") return y + "T3";
+  if(p === "IV" || p === "4" || p === "T4" || p === "Q4") return y + "T4";
+  var q = p.match(/^(?:T|Q)(\d)$/);
+  if(q) return y + "T" + q[1];
+
+  // Semestral
+  var s = p.match(/^S(\d)$/);
+  if(s) return y + "S" + s[1];
+
+  // Bimestral
+  var b = p.match(/^B(\d{1,2})$/);
+  if(b) return y + "B" + String(Number(b[1])).padStart(2, "0");
+
+  // Fallback
+  return y + "-" + p.replace(/\s+/g, "_");
 }
 function ineDatosTablaToJsonStat(raw, metadata){
   var series = Array.isArray(raw) ? raw : [];
