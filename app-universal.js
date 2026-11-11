@@ -1031,6 +1031,41 @@ function ineShowMetaDebug(tableId,raw,filters){
  }
  box.querySelector("pre").textContent=text;
 }
+function ineShowFilterDebug(ds,filters,filtered){
+ var lines=["INE DEBUG · FILTRATGE JSON-STAT",""];
+ Object.keys(filters||{}).forEach(function(id){
+  var wanted=(filters[id]||[]).map(String),cats=jsonstatCats(ds,id);
+  var matches=cats.filter(function(c){return wanted.indexOf(String(c.code))>=0});
+  lines.push("DIMENSIÓ: "+id);
+  lines.push("  Sol·licitats: "+JSON.stringify(wanted));
+  lines.push("  Categories disponibles: "+cats.map(function(c){return String(c.code)+" = "+String(c.label)}).join(" | "));
+  lines.push("  Coincidències: "+(matches.length?matches.map(function(c){return String(c.code)+" = "+String(c.label)}).join(" | "):"cap"));
+  lines.push("");
+ });
+ lines.push("ABANS DEL FILTRE: "+(ds&&ds.size?ds.size.join(" × "):"—")+" = "+((ds&&ds.value)?ds.value.length:0)+" valors");
+ if(filtered){
+  lines.push("DESPRÉS DEL FILTRE: "+(filtered.size||[]).join(" × ")+" = "+(Array.isArray(filtered.value)?filtered.value.length:0)+" valors");
+  lines.push("Valors no nuls després del filtre: "+(Array.isArray(filtered.value)?filtered.value.filter(function(v){return v!=null}).length:0));
+  Object.keys(filters||{}).forEach(function(id){
+   var cats=jsonstatCats(filtered,id);
+   lines.push("  "+id+" → "+cats.map(function(c){return String(c.code)+" = "+String(c.label)}).join(" | "));
+  });
+ }
+ var text=lines.join("\n");
+ console.log(text);
+ var box=document.getElementById("ineDebug");
+ if(!box){
+  box=document.createElement("details");
+  box.id="ineDebug";
+  box.style.marginTop="12px";
+  box.innerHTML="<summary>Diagnòstic temporal INE · MetaData i filtratge</summary><pre></pre>";
+  var results=document.getElementById("results");
+  if(results)results.parentNode.insertBefore(box,results);
+ }else{
+  box.querySelector("summary").textContent="Diagnòstic temporal INE · MetaData i filtratge";
+ }
+ box.querySelector("pre").textContent=text;
+}
 async function ineDatosTablaFiltered(tableId,filters){
  var allFilters=filters||{};
  var u=ineDatosTablaUrl(tableId,"det=2&tip=AM");
@@ -1039,7 +1074,9 @@ async function ineDatosTablaFiltered(tableId,filters){
  if(!Array.isArray(raw)||!raw.length)throw new Error("L'INE no ha retornat dades.");
  var ds=ineDatosTablaToJsonStat(raw,state.metadata);
  if(!ds)throw new Error("L'INE no ha pogut convertir les dades de la taula.");
+ var beforeFilter=ds;
  ds=diceJsonStat(ds,allFilters);
+ ineShowFilterDebug(beforeFilter,allFilters,ds);
  if(!ds||!Array.isArray(ds.value)||!ds.value.some(function(v){return v!=null})){
   throw new Error("L'INE no ha retornat sèries per als filtres seleccionats.");
  }
