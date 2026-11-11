@@ -94,7 +94,9 @@ for node in soup.descendants:
     if not getattr(node, "strip", lambda: False)():
         continue
 
-    parent_a = node.find_parent("a")
+    parent_a = getattr(node, "parent", None)
+    while parent_a is not None and getattr(parent_a, "name", None) != "a":
+        parent_a = getattr(parent_a, "parent", None)
     if parent_a is not None and id(parent_a) in operation_lookup:
         continue
 
