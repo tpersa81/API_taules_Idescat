@@ -972,7 +972,7 @@ function ineShowMetaDebug(tableId,raw,filters){
 }
 async function ineDatosTablaFiltered(tableId,filters){
  var allFilters=filters||{};
- var u=ineDatosTablaUrl(tableId,"det=2");
+ var u=ineDatosTablaUrl(tableId,"det=2&tip=AM");
  var raw=await fetchJson(u);
  ineShowMetaDebug(tableId,raw,allFilters);
  if(!Array.isArray(raw)||!raw.length)throw new Error("L'INE no ha retornat dades.");
