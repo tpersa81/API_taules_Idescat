@@ -1,6 +1,6 @@
 
 const MAX_CELLS=20000;
-const state={provider:"idescat",pxPreset:"finland",stats:[],metadata:null,lastData:null,lastQueryUrl:"",finlandTableUrl:"",ineVarCache:new Map(),filters:new Map(),page:1,pageSize:100,requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],ineNav:null,ineNavLoaded:false,inePath:[],ineItems:new Map(),swedenV2Tables:null,swedenV2Table:false,swedenPath:[],eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[]};
+const state={provider:"idescat",pxPreset:"finland",stats:[],metadata:null,lastData:null,lastQueryUrl:"",finlandTableUrl:"",ineVarCache:new Map(),filters:new Map(),page:1,pageSize:100,requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],ineNav:null,ineNavLoaded:false,ineOperations:null,inePath:[],ineItems:new Map(),swedenV2Tables:null,swedenV2Table:false,swedenPath:[],eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[]};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]});
 async function fetchJson(url,opt){opt=opt||{};var r;try{r=await fetch(url,opt)}catch(e){
@@ -185,36 +185,55 @@ function ineTrimTitle(s){
 function ineAbsoluteUrl(href){
  try{return new URL(href,"https://www.ine.es/").href}catch(e){return String(href||"")}
 }
-async function ineOperationChildren(url){
- var html=await fetchText(url,{cache:"no-store"}),seen=new Set(),out=[];
- function addLink(text,href){
-  text=ineTrimTitle(text);href=ineAbsoluteUrl(href||"");
-  if(!text||text.length<2||!href||href.indexOf("https://www.ine.es/")!==0)return;
-  var u;
-  try{u=new URL(href)}catch(e){return}
-  var path=u.pathname.toLowerCase();
-  var isTable=path.indexOf("/jaxit3/tabla.htm")>=0||path.indexOf("/jaxi/tabla.htm")>=0||path.indexOf("/jaxit3/datos.htm")>=0||path.indexOf("/jaxi/datos.htm")>=0;
-  var tm=u.searchParams.get("t");
-  if(isTable&&!tm)return;
-  var isFolder=path.indexOf("/dynt3/inebase/")>=0||path.indexOf("/dyngs/inebase/")>=0;
-  if(!isTable&&!isFolder)return;
-  if(isFolder&&!u.searchParams.get("capsel")&&!u.searchParams.get("cid"))return;
-  var key=(isTable?"T:":"F:")+href;
-  if(seen.has(key))return;
-  seen.add(key);
-  if(isTable)out.push({id:String(tm),label:text,type:"table",href:href,tableId:String(tm)});
-  else out.push({id:href,label:text,type:"folder",href:href});
- }
- var doc=new DOMParser().parseFromString(html,"text/html");
- Array.from(doc.querySelectorAll("a[href]")).forEach(function(a){
-  addLink(a.textContent,a.getAttribute("href"));
+async function loadIneOperations(){
+ if(Array.isArray(state.ineOperations)&&state.ineOperations.length)return;
+ var d=await fetchJson("https://servicios.ine.es/wstempus/jsCache/ES/OPERACIONES_DISPONIBLES?det=2");
+ state.ineOperations=a(d);
+ if(!state.ineOperations.length)throw new Error("INE: no s'han trobat operacions disponibles a Tempus3.");
+}
+function ineNormalizeUrl(url){
+ try{
+  var u=new URL(ineAbsoluteUrl(url));
+  return u.pathname.toLowerCase()+"?"+Array.from(u.searchParams.entries()).filter(function(x){return x[0]!=="menu"}).sort(function(x,y){return x[0].localeCompare(y[0])||x[1].localeCompare(y[1])}).map(function(x){return x[0]+"="+x[1]}).join("&");
+ }catch(e){return String(url||"").toLowerCase()}
+}
+function ineFindOperation(op){
+ var ops=Array.isArray(state.ineOperations)?state.ineOperations:[];
+ var target=ineNormalizeUrl(op&&op.href);
+ var hit=ops.find(function(x){return x&&x.Url&&ineNormalizeUrl(x.Url)===target});
+ if(hit)return hit;
+ var name=String(op&&op.label||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().replace(/\\(.*?\\)/g," ").replace(/[^a-z0-9]+/g," ").trim();
+ var words=name.split(/\\s+/).filter(function(w){return w.length>=4});
+ var best=null,bestScore=0;
+ ops.forEach(function(x){
+  var n=String(x&&x.Nombre||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().replace(/\\(.*?\\)/g," ").replace(/[^a-z0-9]+/g," ").trim();
+  var nw=n.split(/\\s+/).filter(function(w){return w.length>=4});
+  var score=words.reduce(function(z,w){return z+(nw.indexOf(w)>=0?1:0)},0);
+  if(score>bestScore){bestScore=score;best=x}
  });
- // r.jina.ai pot retornar la pàgina en Markdown en lloc d'HTML.
- // En aquest cas els enllaços no apareixen com a <a>, sinó com:
- // [text](https://www.ine.es/...)
- var md=/\[([^\]]+)\]\((https?:\/\/www\.ine\.es\/[^)]+)\)/g,m;
- while((m=md.exec(html))!==null)addLink(m[1],m[2]);
- return out;
+ return bestScore>=Math.max(2,Math.ceil(words.length*.6))?best:null;
+}
+function ineOperationCode(op){
+ return String(op&& (op.Codigo||op.Id)||"").trim();
+}
+async function ineLoadTables(op){
+ await loadIneOperations();
+ var apiOp=ineFindOperation(op);
+ if(!apiOp)throw new Error("INE: no s'ha pogut identificar l'operació a Tempus3.");
+ var code=ineOperationCode(apiOp);
+ if(!code)throw new Error("INE: l'operació identificada no té codi Tempus3.");
+ var d=await fetchJson("https://servicios.ine.es/wstempus/js/ES/TABLAS_OPERACION/"+encodeURIComponent(code)+"?det=2");
+ var rows=a(d),seen=new Set(),out=[];
+ rows.forEach(function(x){
+  var id=String(f(x,"Id","id","Codigo","codigo")).trim();
+  var name=String(f(x,"Nombre","nombre","Name","name","Titulo","titulo")||id).trim();
+  if(!id||seen.has(id))return;
+  seen.add(id);
+  out.push({id:id,label:id+" · "+name,type:"table",tableId:id});
+ });
+ if(!out.length)throw new Error("INE: l'operació no té taules disponibles a Tempus3.");
+ out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});
+ return {operation:apiOp,items:out};
 }
 function ineLevelLabel(index){return index===0?"Grup temàtic":index===1?"Tema":index===2?"Estadística":"Nivell "+(index-2)}
 async function ineSelectRoot(){
@@ -233,34 +252,12 @@ async function ineSelectLevel(index,val){
   var group=state.inePath[0],ops=ineNavOperations(group,item.id);ineAddLevel(ops,2,ineLevelLabel(2));return;
  }
  if(index===2){
-  var op=item,stat=(state.stats||[]).find(function(x){return ineNorm(x.name||"")===ineNorm(op.label)});
-  state.selected.stat=stat?stat.value:"";
+  var op=item,match=await ineLoadTables(op);
+  state.selected.stat=String(match.operation.Id||match.operation.Codigo||"");
   state.inePath[2]=op.id;
-  if(!op.href)throw new Error("No s'ha trobat l'operació INE.");
-  // Després de seleccionar l'Estadística, l'INE sempre entra directament
-  // a la pàgina "Resultados"; no mostrem "Resultados" com un nivell més.
-  // Cada operació té el seu propi cid i idp. Els conservem explícitament
-  // i només canviem el paràmetre menu a "resultados".
-  var resultsUrl="";
-  try{
-   var ou=new URL(op.href);
-   ou.searchParams.set("menu","resultados");
-   if(!ou.searchParams.get("idp")){
-    throw new Error("L'operació INE no conté el paràmetre idp.");
-   }
-   resultsUrl=ou.href;
-  }catch(e){
-   throw new Error("No s'ha pogut construir la URL de Resultados de l'operació INE.");
-  }
-  var children=await ineOperationChildren(resultsUrl);
-  // Algunes pàgines d'INEbase carreguen els continguts de Resultados
-  // dinàmicament. En aquest cas, utilitzem la pàgina de l'operació com a
-  // font de navegació, mantenint Resultados com a destinació conceptual.
-  if(!children.length&&op.href!==resultsUrl)children=await ineOperationChildren(op.href);
   state.selected.node="";state.selected.table="";state.metadata=null;state.filters.clear();
   $("filters").innerHTML="";$("query").disabled=true;$("tableInfo").hidden=true;
-  if(!children.length)throw new Error("L'operació INE no conté nivells de navegació o taules accessibles.");
-  ineAddLevel(children,3,ineLevelLabel(3));
+  ineAddLevel(match.items,3,"Taula");
   return;
  }
  if(item.type==="table"){
@@ -269,9 +266,6 @@ async function ineSelectLevel(index,val){
   await ineMetadata(item.tableId);
   return;
  }
- var children=await ineOperationChildren(item.href);
- if(!children.length)throw new Error("Aquest nivell no conté més elements navegables.");
- ineAddLevel(children,index+1,ineLevelLabel(index+1));
 }
 function collection(d){
  if(d&&d.class==="collection"){
