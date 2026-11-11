@@ -313,7 +313,7 @@ async function loadIneNavigation(){
  if(!byName.has(epaKey))byName.set(epaKey,{name:"Encuesta de población activa",href:"https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176918&idp=1254735976595&menu=resultados",paths:[{group:"Mercado laboral",topic:"Actividad, ocupación y paro"}]});
  state.ineNavigation=state.stats.map(function(st){
    var x=byName.get(ineNavNorm(st.name||""));
-   return{xValue:st.value,value:st.value,code:st.code,name:st.name,href:x&&x.href||"",paths:x&&x.paths&&x.paths.length?x.paths:[{group:"Otros",topic:"Otros"}]};
+   return{xValue:st.value,value:st.value,code:st.code,name:st.name,href:(x&&x.href||"").replace(/([?&])menu=ultiDatos/i,"$1menu=resultados"),paths:x&&x.paths&&x.paths.length?x.paths:[{group:"Otros",topic:"Otros"}]};
  });
  return state.ineNavigation;
 }
@@ -394,7 +394,7 @@ function ineMatchTables(raw,opPage){
    var exact=rows.filter(function(r){return String(r.value)===String(p.jaxiId)});
    if(!exact.length)exact=rows.filter(function(r){return ineNavNorm(r.name)===pn});
    return exact.map(function(r){return{value:r.value,name:r.name,label:r.label,level1:p.level1||p.territory||"Altres",level2:p.level2||"Altres resultats",level3:p.level3||r.name,jaxiId:p.jaxiId}});
- }).flat().filter(function(x,i,a){return a.findIndex(function(y){return y.value===x.value&&y.territory===x.territory})===i;});
+ }).flat().filter(function(x,i,a){return a.findIndex(function(y){return y.value===x.value&&y.level1===x.level1&&y.level2===x.level2&&y.level3===x.level3})===i;});
 }
 function ineFillLevel(selectId,rows,field){
  var vals=[...new Set((rows||[]).map(function(x){return x[field]}).filter(Boolean))];
