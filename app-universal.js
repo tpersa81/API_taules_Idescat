@@ -972,7 +972,13 @@ function ineShowMetaDebug(tableId,raw,filters){
 }
 async function ineDatosTablaFiltered(tableId,filters){
  var allFilters=filters||{};
- var u=ineDatosTablaUrl(tableId,"det=2&tip=AM");
+ var query="det=2&tip=AM";
+ if(Object.keys(allFilters).length){
+  var tv=await ineResolveFilters(allFilters);
+  var tvs=tv.toString();
+  if(tvs)query+="&"+tvs;
+ }
+ var u=ineDatosTablaUrl(tableId,query);
  var raw=await fetchJson(u);
  ineShowMetaDebug(tableId,raw,allFilters);
  if(!Array.isArray(raw)||!raw.length)throw new Error("L'INE no ha retornat dades.");
