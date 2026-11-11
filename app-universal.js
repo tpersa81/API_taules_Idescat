@@ -826,19 +826,30 @@ function ineNormalizeMetadataCodes(ds){
 
     var newIndex = [];
     var newLabels = {};
+    var used = new Set();
 
     codes.forEach(function(code){
       var sc = String(code);
-      // 1) treu prefix tipus PROV_ / CCAA_ / NAC_
+
+      // Intenta codi net: treu prefix i ~sufix
       var raw = sc;
       var p = sc.indexOf("_");
       if(p >= 0) raw = sc.slice(p + 1);
-      // 2) treu sufix ~xx (artefacte del jsstat de l'INE)
       var t = raw.indexOf("~");
       if(t >= 0) raw = raw.slice(0, t);
 
-      newIndex.push(raw);
-      if(labels[sc] != null) newLabels[raw] = labels[sc];
+      // Si el codi net ja està usat (08 de CCAA vs 08 de PROV),
+      // manté una forma discriminada
+      var finalCode = raw;
+      if(used.has(finalCode)){
+        // Ex: PROV_08~32 → "PROV:08", CCAA_08 → "CCAA:08"
+        var prefix = p >= 0 ? sc.slice(0, p) : "X";
+        finalCode = prefix + ":" + raw;
+      }
+      used.add(finalCode);
+
+      newIndex.push(finalCode);
+      if(labels[sc] != null) newLabels[finalCode] = labels[sc];
     });
 
     cat.index = newIndex;
@@ -1164,7 +1175,7 @@ async function ineResolveFilters(filters){
   var tableId = String(state.selected.table || "").trim();
   if(!tableId) throw new Error("No s'ha pogut identificar la taula INE.");
 
-  // 1. Grups de la taula
+  // ── 1. Grups de la taula ──────────────────────────────────────────
   var groupsKey = "GROUPS|" + tableId;
   var groups = state.ineVarCache.get(groupsKey);
   if(!groups){
@@ -1174,7 +1185,7 @@ async function ineResolveFilters(filters){
     state.ineVarCache.set(groupsKey, groups);
   }
 
-  // 2. Tots els valors de tots els grups (amb det=1 per tenir Variable.Id)
+  // ── 2. Tots els valors de tots els grups (det=1 → Variable.Id) ───
   var allValues = [];
   for(var gi = 0; gi < groups.length; gi++){
     var gid = String(f(groups[gi], "Id", "id")).trim();
@@ -1197,43 +1208,109 @@ async function ineResolveFilters(filters){
     if(gv && gv.length) allValues = allValues.concat(gv);
   }
 
+  // ── helpers locals ────────────────────────────────────────────────
+  function cleanCode(code){
+    var sc = String(code == null ? "" : code);
+    // PROV_08~32 → 08 ; CCAA_09~24 → 09 ; sexo_1 → 1
+    var p = sc.indexOf("_");
+    var raw = p >= 0 ? sc.slice(p + 1) : sc;
+    var t = raw.indexOf("~");
+    if(t >= 0) raw = raw.slice(0, t);
+    return raw;
+  }
+
+  function codePrefix(code){
+    // "PROV_08~32" → "PROV" ; "CCAA_08" → "CCAA" ; "08" → ""
+    var sc = String(code == null ? "" : code);
+    var p = sc.indexOf("_");
+    return p >= 0 ? sc.slice(0, p).toUpperCase() : "";
+  }
+
+  function valueVarCode(x){
+    return String(
+      (x.Variable && (x.Variable.Codigo || x.Variable.codigo || x.Variable.Code)) ||
+      f(x, "CodigoVariable", "codigo_variable") ||
+      ""
+    ).trim().toUpperCase();
+  }
+
+  function valueVarId(x){
+    return String(
+      (x.Variable && (x.Variable.Id || x.Variable.id)) ||
+      f(x, "FK_Variable", "fk_variable") ||
+      ""
+    ).trim();
+  }
+
+  function valueId(x){
+    return String(f(x, "Id", "id") || "").trim();
+  }
+
+  function valueCodigo(x){
+    return String(f(x, "Codigo", "codigo", "Code", "code") || "").trim();
+  }
+
+  function valueNombre(x){
+    return ineNorm(f(x, "Nombre", "nombre", "Name", "Descripcion", "Description") || "");
+  }
+
+  // ── 3. Construcció dels tv ────────────────────────────────────────
   var out = new URLSearchParams();
   var dsDims = dims(state.metadata);
 
   for(var di = 0; di < dsDims.length; di++){
     var d = dsDims[di];
-
-    // El temps no es filtra amb tv
-    if(temporal(d)) continue;
+    if(temporal(d)) continue; // el temps no va amb tv
 
     var wanted = filters[d.id];
     if(!wanted || !wanted.length) continue;
 
     wanted.forEach(function(code){
       var sc = String(code);
-
-      // Neteja de prefixos i sufixos del jsstat (PROV_08~32 → 08)
-      var suffix = sc.indexOf("_") >= 0 ? sc.slice(sc.lastIndexOf("_") + 1) : sc;
-      var clean = suffix.indexOf("~") >= 0 ? suffix.slice(0, suffix.indexOf("~")) : suffix;
-
-      var cat = (d.categories || []).find(function(c){
-        return String(c.code) === sc;
-      });
+      var cleaned = cleanCode(sc);
+      var prefix = codePrefix(sc); // PROV / CCAA / NAC / ""
+      var cat = (d.categories || []).find(function(c){ return String(c.code) === sc; });
       var catLabel = ineNorm(cat && cat.label || "");
 
-      // Busquem el valor a qualsevol grup
-      var val = allValues.find(function(x){
-        var vc = String(f(x, "Codigo", "codigo", "Code", "code") || "").trim();
-        var vn = ineNorm(f(x, "Nombre", "nombre", "Name", "Descripcion", "Description") || "");
-        var xid = String(f(x, "Id", "id")).trim();
+      // Scoring: com més alt, millor coincidència
+      var best = null;
+      var bestScore = -1;
 
-        return vc === sc || vc === suffix || vc === clean ||
-               xid === sc || xid === suffix || xid === clean ||
-               (catLabel && vn === catLabel) ||
-               (catLabel && vn.replace(/[^A-Z0-9]/g, "") === catLabel.replace(/[^A-Z0-9]/g, ""));
-      });
+      for(var vi = 0; vi < allValues.length; vi++){
+        var x = allValues[vi];
+        var vn = valueNombre(x);
+        var vc = valueCodigo(x);
+        var xid = valueId(x);
+        var vcode = valueVarCode(x); // "PROV", "CCAA", ...
+        var score = 0;
 
-      if(!val){
+        // 1. Nom exacte (màxima prioritat) — resol ambigüitats 08/08
+        if(catLabel && vn === catLabel){
+          score = 100;
+        }
+        // 2. Id numèric exacte
+        else if(xid && (xid === sc || xid === cleaned)){
+          score = 90;
+        }
+        // 3. Codigo + prefix coherent (PROV_08 → Variable PROV)
+        else if(vc && (vc === sc || vc === cleaned)){
+          score = 70;
+          if(prefix && vcode && prefix === vcode) score = 85;
+          else if(prefix && vcode && prefix !== vcode) score = 40; // penalització
+        }
+        // 4. Nom normalitzat sense accents/espais
+        else if(catLabel && vn &&
+                vn.replace(/[^A-Z0-9]/g, "") === catLabel.replace(/[^A-Z0-9]/g, "")){
+          score = 60;
+        }
+
+        if(score > bestScore){
+          bestScore = score;
+          best = x;
+        }
+      }
+
+      if(!best || bestScore < 40){
         throw new Error(
           "No s'ha trobat el valor INE «" + sc + "» (" +
           (cat && cat.label || "") + ") de la dimensió «" +
@@ -1241,24 +1318,23 @@ async function ineResolveFilters(filters){
         );
       }
 
-      // Clau: Variable.Id del valor concret (no de la dimensió)
-      var variableId = String(
-        (val.Variable && (val.Variable.Id || val.Variable.id)) ||
-        f(val, "FK_Variable", "fk_variable") ||
-        ""
-      ).trim();
+      var variableId = valueVarId(best);
+      var valId = valueId(best);
 
-      var valueId = String(f(val, "Id", "id") || "").trim();
-
-      if(!variableId || !valueId){
+      if(!variableId || !valId){
         throw new Error(
           "El valor «" + sc + "» (" + (cat && cat.label || "") +
           ") no té Variable.Id o Id vàlid."
         );
       }
 
-      out.append("tv", variableId + ":" + valueId);
+      out.append("tv", variableId + ":" + valId);
     });
+  }
+
+  // Debug útil mentre es valida
+  if(out.toString()){
+    console.log("INE tv params:", out.toString());
   }
 
   return out;
