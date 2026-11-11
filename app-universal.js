@@ -229,27 +229,53 @@ function ineFindOperation(op){
 function ineOperationId(op){
  return String(op&&op.Id!=null?op.Id:"").trim();
 }
+async function ineLoadTablesFromBase(op){
+ // Algunes operacions d'INEbase no estan exposades com a operacions
+ // Tempus3. En aquests casos, la pàgina de "Resultados" continua
+ // proporcionant els identificadors reals de les taules (tpx, t=...).
+ // No fem un scraping general de la pàgina: només acceptem enllaços
+ // que apunten explícitament a una taula INEbase.
+ var href=ineAbsoluteUrl(op&&op.href);
+ if(!href)throw new Error("INE: l'operació no té URL d'INEbase.");
+ try{
+  var u=new URL(href);
+  u.searchParams.set("menu","resultados");
+  href=u.href;
+ }catch(e){}
+ var html=await fetchText(href,{cache:"no-store"});
+ var doc=new DOMParser().parseFromString(html,"text/html");
+ var links=Array.from(doc.querySelectorAll("a[href]")),out=[],seen=new Set();
+ links.forEach(function(aEl){
+  var raw=aEl.getAttribute("href")||"",abs;
+  try{abs=new URL(raw,href).href}catch(e){return}
+  var u2;try{u2=new URL(abs)}catch(e2){return}
+  var id="",kind="";
+  var tpx=u2.searchParams.get("tpx");
+  var t=u2.searchParams.get("t");
+  if(tpx){id=String(tpx).trim();kind="tpx"}
+  else if(t&&/jaxiT3|Tabla\.htm/i.test(u2.pathname)){id=String(t).trim();kind="table"}
+  else if(/\/jaxiT3\/Tabla\.htm/i.test(u2.pathname)&&t){id=String(t).trim();kind="table"}
+  if(!id)return;
+  var label=String(aEl.textContent||"").replace(/\s+/g," ").trim();
+  if(!label||seen.has(kind+":"+id))return;
+  seen.add(kind+":"+id);
+  out.push({id:id,label:id+" · "+label,type:"table",tableId:id});
+ });
+ out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});
+ if(!out.length)throw new Error("INE: no s'han trobat taules a INEbase per a aquesta operació.");
+ return out;
+}
 async function ineLoadTables(op){
  await loadIneOperations();
  var apiOp=ineFindOperation(op);
  if(!apiOp)throw new Error("INE: no s'ha pogut identificar l'operació a Tempus3.");
 
- // Tempus3 admet tres identificadors per a una operació:
- // Id numèric intern, codi alfabètic i codi IOE. En la majoria
- // de casos l'Id és suficient, però hi ha operacions en què
- // TABLAS_OPERACION respon sense taules amb un dels identificadors.
- // Com que ja hem identificat inequívocament l'operació (URL/cid),
- // podem provar els tres codis del mateix registre, sense fer
- // cap aproximació pel nom.
  var candidates=[];
  [apiOp.Id,apiOp.Codigo,apiOp.Cod_IOE].forEach(function(v){
   var s=String(v==null?"":v).trim();
   if(s&&!candidates.includes(s))candidates.push(s);
  });
- if(!candidates.length)throw new Error("INE: l'operació identificada no té cap codi Tempus3.");
-
- var rows=[];
- var lastErr=null;
+ var rows=[],lastErr=null;
  for(var ci=0;ci<candidates.length;ci++){
   try{
    var d=await fetchJson("https://servicios.ine.es/wstempus/js/ES/TABLAS_OPERACION/"+encodeURIComponent(candidates[ci])+"?det=2");
@@ -257,22 +283,29 @@ async function ineLoadTables(op){
    if(rr.length){rows=rr;break;}
   }catch(e){lastErr=e;}
  }
- if(!rows.length){
-  if(lastErr)throw lastErr;
-  throw new Error("INE: l'operació no té taules disponibles a Tempus3.");
+ if(rows.length){
+  var seen=new Set(),out=[];
+  rows.forEach(function(x){
+   var id=String(f(x,"Id","id","Codigo","codigo")).trim();
+   var name=String(f(x,"Nombre","nombre","Name","name","Titulo","titulo")||id).trim();
+   if(!id||seen.has(id))return;
+   seen.add(id);
+   out.push({id:id,label:id+" · "+name,type:"table",tableId:id});
+  });
+  if(out.length){
+   out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});
+   return {operation:apiOp,items:out};
+  }
  }
-
- var seen=new Set(),out=[];
- rows.forEach(function(x){
-  var id=String(f(x,"Id","id","Codigo","codigo")).trim();
-  var name=String(f(x,"Nombre","nombre","Name","name","Titulo","titulo")||id).trim();
-  if(!id||seen.has(id))return;
-  seen.add(id);
-  out.push({id:id,label:id+" · "+name,type:"table",tableId:id});
- });
- if(!out.length)throw new Error("INE: l'operació no té taules disponibles a Tempus3.");
- out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});
- return {operation:apiOp,items:out};
+ // Fallback per a operacions d'INEbase que no tenen taules Tempus3.
+ // És especialment necessari per a operacions de síntesi amb taules tpx.
+ try{
+  var baseItems=await ineLoadTablesFromBase(op);
+  return {operation:apiOp,items:baseItems};
+ }catch(baseErr){
+  if(lastErr)throw new Error("INE: no s'han trobat taules Tempus3 ni taules INEbase per a l'operació. "+(baseErr&&baseErr.message?baseErr.message:String(baseErr)));
+  throw baseErr;
+ }
 }
 function ineLevelLabel(index){return index===0?"Grup temàtic":index===1?"Tema":index===2?"Estadística":"Nivell "+(index-2)}
 async function ineSelectRoot(){
