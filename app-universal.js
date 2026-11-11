@@ -272,6 +272,11 @@ async function loadStats(){
  var loadToken=state.requestToken,loadProvider=state.provider,loadPreset=state.pxPreset;
  state.swedenPath=[];state.swedenV2Table=false;
  setProviderUI();state.stats=[];state.selected.stat="";fill($("stat"),[]);$("stat").disabled=true;
+ // INE: mostra la navegació jeràrquica abans de consultar Tempus3.
+ if(state.provider==="ine"){
+  hideStatSelector(true);
+  try{await ineSelectRoot()}catch(e){status("INE: "+(e&&e.message?e.message:String(e)),"error")}
+ }
  var c=provider(),out=[];
  if(state.provider==="idescat")out=collection(await fetchJson(c.base+"?lang=ca")).map(function(x){return{value:x.id,label:x.id+" · "+x.label}});
  else if(state.provider==="ine"){var d;try{d=await fetchJson(c.base+"/ES/OPERACIONES_DISPONIBLES?page=1")}catch(ineListErr){d=await fetchJson(c.base+"/ES/OPERACIONES_DISPONIBLES?det=1")}out=a(d).map(function(x){var id=String(f(x,"Id","id")).trim(),code=String(f(x,"Codigo","codigo","Code","code")||"").trim(),name=String(f(x,"Nombre","nombre","Name","Descripcion","Description")||id).trim();return{value:id,code:code,name:name,label:(code||id)+" · "+name}}).filter(function(x){return x.value}).sort(function(x,y){return String(x.code||x.value).localeCompare(String(y.code||y.value),"es",{numeric:true,sensitivity:"base"})})}
@@ -296,9 +301,11 @@ async function loadStats(){
 }
 else out=a(await fetchJson(c.base)).map(function(x){var id=String(f(x,"id","dbid","code","path"));return{value:id,label:String(f(x,"text","label","name","title")||id)}}).filter(function(x){return x.value});
  if(loadToken!==state.requestToken||loadProvider!==state.provider||(loadProvider==="pxweb"&&loadPreset!==state.pxPreset))return;
- out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});state.stats=out;fill($("stat"),out);$("stat").disabled=!out.length;if(state.provider==="ine"){hideStatSelector(true);await ineSelectRoot()}else if(state.provider==="eurostat"){hideStatSelector(true);await eurostatAddRootLevel()}else{hideStatSelector(false)}
+ out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});state.stats=out;fill($("stat"),out);$("stat").disabled=!out.length;
+ if(state.provider==="eurostat"){hideStatSelector(true);await eurostatAddRootLevel()}
+ else if(state.provider!=="ine"){hideStatSelector(false)}
  var initial=new URLSearchParams(location.search).get("stat")||"";
- if(initial&&[].slice.call($("stat").options).some(function(o){return o.value===initial})){$("stat").value=initial;await onStatChange()}
+ if(state.provider!=="ine"&&state.provider!=="eurostat"&&initial&&[].slice.call($("stat").options).some(function(o){return o.value===initial})){$("stat").value=initial;await onStatChange()}
 }
 async function loadEurostatTOC(){
  if(state.eurostatTOC&&state.eurostatTOC.length)return;
