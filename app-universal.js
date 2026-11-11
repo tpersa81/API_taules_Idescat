@@ -1409,8 +1409,8 @@ function renderResults(ds){
  var start=(current-1)*state.pageSize,
      end=Math.min(start+state.pageSize,rows.length),
      page=rows.slice(start,end),
-     h="<div class="result-meta">"+rows.length.toLocaleString("ca-ES")+" files · mostrant "+(rows.length?start+1:0)+"–"+end+"</div>"+
-       "<div class="table-wrap"><table class="data-table"><thead><tr>"+
+     h='<div class="result-meta">"+rows.length.toLocaleString("ca-ES")+" files · mostrant "+(rows.length?start+1:0)+"–"+end+"</div>'+
+       '<div class="table-wrap"><table class="data-table"><thead><tr>'+
        dd.map(function(d){return"<th>"+esc(d.id+"_Codi")+"</th><th>"+esc(d.id+"_Etiqueta")+"</th>"}).join("")+
        "<th>Valor</th></tr></thead><tbody>";
  page.forEach(function(r){
