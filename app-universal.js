@@ -148,12 +148,41 @@ async function loadStats(){
 else out=a(await fetchJson(c.base)).map(function(x){var id=String(f(x,"id","dbid","code","path"));return{value:id,label:String(f(x,"text","label","name","title")||id)}}).filter(function(x){return x.value});
  if(loadToken!==state.requestToken||loadProvider!==state.provider||(loadProvider==="pxweb"&&loadPreset!==state.pxPreset))return;
  if(state.provider==="ine")out.sort(function(x,y){return String(x.code||x.label).localeCompare(String(y.code||y.label),"ca",{numeric:true,sensitivity:"base"})});else out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});
- state.stats=out;fill($("stat"),out);$("stat").disabled=!out.length;
+ state.stats=out;
  if(state.provider==="ine"){
-   try{await loadIneNavigation();inePopulateThemes();}catch(e){state.ineNavigation=[];}
+   // INE: l'operació NO és el primer nivell de navegació.
+   // Primer mostrem Grupo temático; després Tema; només llavors Operació.
+   try{
+     await loadIneNavigation();
+     inePopulateThemes();
+     $("stat").disabled=true;
+   }catch(e){
+     state.ineNavigation=[];
+     inePopulateThemes();
+     $("stat").disabled=true;
+   }
+ }else{
+   fill($("stat"),out);
+   $("stat").disabled=!out.length;
  }
  var initial=new URLSearchParams(location.search).get("stat")||"";
- if(initial&&[].slice.call($("stat").options).some(function(o){return o.value===initial})){$("stat").value=initial;if(state.provider==="ine"){var nav0=(state.ineNavigation||[]).find(function(x){return String(x.value)===String(initial)});if(nav0&&nav0.paths&&nav0.paths.length){state.selected.concept=nav0.paths[0].group;state.selected.cross=nav0.paths[0].topic;$("concept").value=nav0.paths[0].group;$("cross").value=nav0.paths[0].topic;}}await onStatChange()}
+ if(initial&&state.provider==="ine"){
+   var nav0=(state.ineNavigation||[]).find(function(x){return String(x.value)===String(initial)});
+   if(nav0&&nav0.paths&&nav0.paths.length){
+     var group=nav0.paths[0].group,topic=nav0.paths[0].topic;
+     $("concept").value=group;
+     state.selected.concept=group;
+     await ineSelectTheme();
+     $("cross").value=topic;
+     state.selected.cross=topic;
+     await ineSelectTopic();
+     $("stat").value=initial;
+     await onStatChange();
+   }
+ }else if(initial&&[].slice.call($("stat").options).some(function(o){return o.value===initial})){
+   $("stat").value=initial;
+   await onStatChange();
+ }
 }
 async function loadEurostatTOC(){
  if(state.eurostatTOC&&state.eurostatTOC.length)return;
