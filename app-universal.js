@@ -1420,11 +1420,11 @@ function renderResults(ds){
  });
  h+="</tbody></table></div>";
  if(totalPages>1){
-  h+='<div class="pager"><button class="secondary" data-page="'+(current-1)+'"'+(current<=1?" disabled":"")+'>Anterior</button>';
+  h+='<div class="pager"><button class="secondary" data-page="'+(current-1)+'"'+(current<=1?" disabled":"")+'><span aria-hidden="true">◀</span><span class="sr-only">Anterior</span></button>';
   h+='<label>Pàgina <select data-page-select aria-label="Selecciona la pàgina">';
   for(var p=1;p<=totalPages;p++)h+='<option value="'+p+'"'+(p===current?" selected":"")+'> '+p+" / "+totalPages+"</option>";
   h+='</select></label>';
-  h+='<button class="secondary" data-page="'+(current+1)+'"'+(current>=totalPages?" disabled":"")+'>Següent</button></div>';
+  h+='<button class="secondary" data-page="'+(current+1)+'"'+(current>=totalPages?" disabled":"")+'><span aria-hidden="true">▶</span><span class="sr-only">Següent</span></button></div>';
  }
  $("results").innerHTML=h;
  renderPivotBuilder();
