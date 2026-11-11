@@ -1,6 +1,6 @@
 
 const MAX_CELLS=20000;
-const state={provider:"idescat",pxPreset:"finland",stats:[],metadata:null,lastData:null,lastQueryUrl:"",finlandTableUrl:"",ineVarCache:new Map(),filters:new Map(),page:1,pageSize:100,requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],swedenV2Tables:null,swedenV2Table:false,swedenPath:[],eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[],ineNavigation:null,ineOperationPages:new Map()};
+const state={provider:"idescat",pxPreset:"finland",stats:[],metadata:null,lastData:null,lastQueryUrl:"",finlandTableUrl:"",ineVarCache:new Map(),filters:new Map(),page:1,pageSize:100,requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],swedenV2Tables:null,swedenV2Table:false,swedenPath:[],eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[]};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]});
 async function fetchJson(url,opt){opt=opt||{};var r;try{r=await fetch(url,opt)}catch(e){
@@ -78,54 +78,16 @@ function collection(d){
   return jsonstatCats(d,d.id[0]).map(function(x){return{id:x.code,label:x.label}});
  return[];
 }
-function clearBelow(keepStat){state.pivot={rows:[],columns:[]};if(!keepStat)fill($("stat"),[]);["concept","cross","node","table","geo","ineTable"].forEach(resetSelect);eurostatClearLevels();state.metadata=null;state.lastData=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;$("resultCount").textContent=""}
-function setLabels(){
- var p=state.provider,ls;
- if(p==="idescat")ls=["Estadística","Tema","Encreuament","Entrada","Taula","Geografia"];
- else if(p==="pxweb"&&state.pxPreset==="sweden")ls=["Estadística","Tema","Nivell 2","Nivell 3","Taula","Geografia"];
- else if(p==="pxweb")ls=["Estadística","Nivell 1","Nivell 2","Nivell 3","Taula","Geografia"];
- else if(p==="ine")ls=["Grupo temático","Tema","Operació","Nivell 2","Nivell 3","Nivell 1"];
- else ls=["Tipus de dades","Tema","Subtema","Estadística","—","—"];
- var l=document.querySelectorAll("#step2>.grid:first-of-type label");
- l.forEach(function(x,i){x.firstChild.textContent=ls[i]+" "});
- if(p==="ine"){
-   var grid=document.querySelector("#step2>.grid:first-of-type"),labels={concept:$("concept").parentElement,cross:$("cross").parentElement,stat:$("stat").parentElement,node:$("node").parentElement,table:$("table").parentElement,geo:$("geo").parentElement};
-   [labels.concept,labels.cross,labels.stat,labels.geo,labels.node,labels.table].forEach(function(el){if(el)grid.appendChild(el);});
-   labels.concept.firstChild.textContent="Grupo temático ";
-   labels.cross.firstChild.textContent="Tema ";
-   labels.stat.firstChild.textContent="Operació ";
-   labels.geo.firstChild.textContent="Nivell 1 ";
-   labels.node.firstChild.textContent="Nivell 2 ";
-   labels.table.firstChild.textContent="Nivell 3 ";
- }
-}
-function setProviderUI(){
- setLabels();
- var isEuro=state.provider==="eurostat",isSweden=state.provider==="pxweb"&&state.pxPreset==="sweden",isIne=state.provider==="ine",fixedGrid=document.querySelector("#step2>.grid:first-of-type"),euroBox=$("eurostatLevels"),ineTableWrap=$("ineTableWrap");
- if(fixedGrid)fixedGrid.style.display=(isEuro||isSweden)?"none":"";
- if(euroBox)euroBox.hidden=!(isEuro||isSweden);
- if(ineTableWrap)ineTableWrap.hidden=!isIne;
- var tl=$("table")&&$("table").parentElement,gl=$("geo")&&$("geo").parentElement,nl=$("node")&&$("node").parentElement;
- if(tl)tl.style.display=isIne?"":"";
- if(gl)gl.style.display=(isEuro||!isIne&&state.provider==="ine")?"none":"";
- if(nl)nl.style.display=isIne?"":"";
- $("docLink").href=provider().doc;
- var sel=state.provider==="pxweb"?"pxweb:"+state.pxPreset:state.provider;
- if($("provider")&&[].slice.call($("provider").options).some(function(o){return o.value===sel}))$("provider").value=sel;
-}
+function clearBelow(keepStat){state.pivot={rows:[],columns:[]};if(!keepStat)fill($("stat"),[]);["concept","cross","node","table","geo"].forEach(resetSelect);eurostatClearLevels();state.metadata=null;state.lastData=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;$("resultCount").textContent=""}
+function setLabels(){var p=state.provider,ls=p==="idescat"?["Organisme","Tema","Encreuament","Entrada","Taula","Geografia"]:p==="pxweb"&&state.pxPreset==="sweden"?["Organisme","Tema","Nivell 2","Nivell 3","Taula","Geografia"]:p==="pxweb"?["Organisme","Nivell 1","Nivell 2","Nivell 3","Taula","Geografia"]:p==="ine"?["Organisme","—","—","Taula","—","—"]:["Organisme","Tipus de dades","Tema","Subtema","Estadística","—"];var l=document.querySelectorAll("#step2 label");document.querySelector("#step1 label:nth-child(1)").firstChild.textContent=ls[0]+" ";l.forEach(function(x,i){x.firstChild.textContent=ls[i+1]+" "})}
+function setProviderUI(){setLabels();var isEuro=state.provider==="eurostat",isSweden=state.provider==="pxweb"&&state.pxPreset==="sweden",sl=document.querySelector("#step1 .grid label:nth-child(2)");if(sl)sl.firstChild.textContent=(isEuro?"Tipus de dades":"Estadística")+" ";var fixedGrid=document.querySelector("#step2>.grid"),euroBox=$("eurostatLevels");if(fixedGrid)fixedGrid.style.display=(isEuro||isSweden)?"none":"";if(euroBox)euroBox.hidden=!(isEuro||isSweden);var tl=$("table")&&$("table").parentElement,gl=$("geo")&&$("geo").parentElement;if(tl)tl.style.display=isEuro?"none":"";if(gl)gl.style.display=isEuro?"none":"";$("docLink").href=provider().doc;var sel=state.provider==="pxweb"?"pxweb:"+state.pxPreset:state.provider;if($("provider")&&[].slice.call($("provider").options).some(function(o){return o.value===sel}))$("provider").value=sel}
 async function loadStats(){
  var loadToken=state.requestToken,loadProvider=state.provider,loadPreset=state.pxPreset;
  state.swedenPath=[];state.swedenV2Table=false;
  setProviderUI();state.stats=[];state.selected.stat="";fill($("stat"),[]);$("stat").disabled=true;
  var c=provider(),out=[];
  if(state.provider==="idescat")out=collection(await fetchJson(c.base+"?lang=ca")).map(function(x){return{value:x.id,label:x.id+" · "+x.label}});
- else if(state.provider==="ine"){
- var d;try{d=await fetchJson(c.base+"/ES/OPERACIONES_DISPONIBLES?page=1")}catch(ineListErr){d=await fetchJson(c.base+"/ES/OPERACIONES_DISPONIBLES?det=1")}
- out=a(d).map(function(x){
-   var id=String(f(x,"Id","id")).trim(),code=String(f(x,"Codigo","codigo","Code","code")||"").trim(),name=String(f(x,"Nombre","nombre","Name","Descripcion","Description")||id).trim();
-   return{value:id,code:code,name:name,label:(code?code+" · ":"")+name};
- }).filter(function(x){return x.value});
-}
+ else if(state.provider==="ine"){var d;try{d=await fetchJson(c.base+"/ES/OPERACIONES_DISPONIBLES?page=1")}catch(ineListErr){d=await fetchJson(c.base+"/ES/OPERACIONES_DISPONIBLES?det=1")}out=a(d).map(function(x){var id=String(f(x,"Id","id")).trim(),code=String(f(x,"Codigo","codigo","Code","code")||"").trim();return{value:id,code:code,label:id+" · "+String(f(x,"Nombre","nombre","Name","Descripcion","Description")||id)}}).filter(function(x){return x.value})}
  else if(state.provider==="eurostat"){await loadEurostatTOC();out=state.eurostatRoots.map(function(x){return{value:x.code,label:x.label}})}
  else if(state.pxPreset==="sweden"){out=a(await fetchJson(c.base)).map(function(x){return{id:String(f(x,"id","code","dbid","path")),label:String(f(x,"text","label","name","title")||f(x,"id","code","dbid","path")),type:String(f(x,"type","class"))}}).filter(function(x){return x.id}).map(function(x){return{value:x.id,label:x.id+" · "+x.label}})}
  else if(state.pxPreset==="finland"){
@@ -147,13 +109,9 @@ async function loadStats(){
 }
 else out=a(await fetchJson(c.base)).map(function(x){var id=String(f(x,"id","dbid","code","path"));return{value:id,label:String(f(x,"text","label","name","title")||id)}}).filter(function(x){return x.value});
  if(loadToken!==state.requestToken||loadProvider!==state.provider||(loadProvider==="pxweb"&&loadPreset!==state.pxPreset))return;
- if(state.provider==="ine")out.sort(function(x,y){return String(x.code||x.label).localeCompare(String(y.code||y.label),"ca",{numeric:true,sensitivity:"base"})});else out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});
- state.stats=out;fill($("stat"),out);$("stat").disabled=!out.length;
- if(state.provider==="ine"){
-   try{await loadIneNavigation();inePopulateThemes();}catch(e){state.ineNavigation=[];}
- }
+ out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});state.stats=out;fill($("stat"),out);$("stat").disabled=!out.length;
  var initial=new URLSearchParams(location.search).get("stat")||"";
- if(initial&&[].slice.call($("stat").options).some(function(o){return o.value===initial})){$("stat").value=initial;if(state.provider==="ine"){var nav0=(state.ineNavigation||[]).find(function(x){return String(x.value)===String(initial)});if(nav0&&nav0.paths&&nav0.paths.length){state.selected.concept=nav0.paths[0].group;state.selected.cross=nav0.paths[0].topic;$("concept").value=nav0.paths[0].group;$("cross").value=nav0.paths[0].topic;}}await onStatChange()}
+ if(initial&&[].slice.call($("stat").options).some(function(o){return o.value===initial})){$("stat").value=initial;await onStatChange()}
 }
 async function loadEurostatTOC(){
  if(state.eurostatTOC&&state.eurostatTOC.length)return;
@@ -246,207 +204,12 @@ function eurostatNodeByPath(path){
 
 function deriveConcept(s){s=String(s||"");var p=s.indexOf(".");return p>=0?s.slice(0,p):s}
 function deriveCross(s){s=String(s||"").trim();var p=s.indexOf(". ");if(p<0)return"";var r=s.slice(p+2),q=r.indexOf(". A");return(q>=0?r.slice(0,q):r).trim()}
-async function ineFetchText(url){
- var r;
- try{r=await fetch(url,{cache:"no-store"});}catch(e){
-   var proxies=[
-    "https://api.allorigins.win/raw?url="+encodeURIComponent(url),
-    "https://corsproxy.io/?url="+encodeURIComponent(url),
-    "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(url)
-   ];
-   var ok=false;
-   for(var i=0;i<proxies.length&&!ok;i++){try{var pr=await fetch(proxies[i],{cache:"no-store"});if(pr.ok){r=pr;ok=true;}}catch(e2){}}
-   if(!ok)throw e;
- }
- if(!r.ok)throw new Error("HTTP "+r.status);
- return await r.text();
-}
-function ineNavNorm(s){
- return String(s==null?"":s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim().toUpperCase();
-}
-function ineNavHeadings(root,anchor){
- var out=[],els=Array.from(root.querySelectorAll("h1,h2,h3,h4,h5,h6"));
- els.forEach(function(h){if(h.compareDocumentPosition(anchor)&Node.DOCUMENT_POSITION_FOLLOWING){var t=String(h.textContent||"").replace(/\s+/g," ").trim();if(t&&t.length<180)out.push({level:Number(h.tagName.slice(1)),text:t});}});
- return out;
-}
-function ineNavOperationLinks(doc){
- var links=Array.from(doc.querySelectorAll("a[href]")),ops=[];
- links.forEach(function(a){
-   var text=String(a.textContent||"").replace(/\\s+/g," ").trim(),href=a.href||"";
-   if(text&&/operacion\\.htm/i.test(href))ops.push({text:text,href:href});
- });
- return ops;
-}
-function ineNavPathFromHeads(heads){
- var generic=/^(lista completa|operaciones estadisticas|ultimos datos|serie desde|acceso directo|nota de prensa|resultados)$/i;
- var useful=(heads||[]).map(function(x){return x.text}).filter(function(t){return t&&!generic.test(t)&&t.length<140});
- var groups=["Agricultura y medio ambiente","Ciencia y tecnología","Demografía y población","Economía","Industria, energía y construcción","Mercado laboral","Servicios","Nivel y condiciones de vida (IPC)","Sociedad","Estadísticas Experimentales","Covid-19","Síntesis estadística","Clasificaciones estadísticas","Estadísticas territoriales","Información estadística europea","ODS. Indicadores Agenda 2030","Indicadores económicos. FMI","Datos de alto valor. HVD","Inventario de Operaciones Estadísticas (IOE)"];
- var group="",topic="";
- for(var i=0;i<useful.length;i++){
-   if(groups.some(function(g){return ineNavNorm(g)===ineNavNorm(useful[i])})){group=useful[i];topic="";}
-   else if(group&&!topic)topic=useful[i];
- }
- return{group:group||"Otros",topic:topic||"Otros"};
-}
-async function loadIneNavigation(){
- if(Array.isArray(state.ineNavigation)&&state.ineNavigation.length)return state.ineNavigation;
- var catalog=null;
- try{
-   var lr=await fetch("data/inebase-navigation.json",{cache:"no-store"});
-   if(lr.ok)catalog=await lr.json();
- }catch(e){}
- if(!Array.isArray(catalog)||!catalog.length){
-   try{
-     var html=await ineFetchText("https://ine.es/dyngs/INEbase/listaoperaciones.htm");
-     var doc=new DOMParser().parseFromString(html,"text/html"),links=ineNavOperationLinks(doc);
-     catalog=links.map(function(x){return{name:x.text,href:x.href,group:"Otros",topic:"Otros"}});
-   }catch(e){catalog=[];}
- }
- var byName=new Map();
- catalog.forEach(function(x){
-   var key=ineNavNorm(x.name||x.text||"");
-   if(!key)return;
-   byName.set(key,{name:String(x.name||x.text),href:String(x.href||""),paths:[{group:String(x.group||"Otros"),topic:String(x.topic||"Otros")}]});
- });
- // Stable fallback for EPA while the generated INEbase catalog is first built.
- var epaKey=ineNavNorm("Encuesta de población activa");
- if(!byName.has(epaKey))byName.set(epaKey,{name:"Encuesta de población activa",href:"https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176918&idp=1254735976595&menu=resultados",paths:[{group:"Mercado laboral",topic:"Actividad, ocupación y paro"}]});
- state.ineNavigation=state.stats.map(function(st){
-   var x=byName.get(ineNavNorm(st.name||""));
-   return{xValue:st.value,value:st.value,code:st.code,name:st.name,href:(x&&x.href||"").replace(/([?&])menu=ultiDatos/i,"$1menu=resultados"),paths:x&&x.paths&&x.paths.length?x.paths:[{group:"Otros",topic:"Otros"}]};
- });
- return state.ineNavigation;
-}
-function ineNavOpsForTheme(theme,topic){
- return (state.ineNavigation||[]).filter(function(x){
-   return (x.paths||[]).some(function(p){
-     return (!theme||ineNavNorm(p.group)===ineNavNorm(theme))&&(!topic||ineNavNorm(p.topic)===ineNavNorm(topic));
-   });
- });
-}
-function inePopulateThemes(){
- var groups=[...new Set((state.ineNavigation||[]).flatMap(function(x){return(x.paths||[]).map(function(p){return p.group})}).filter(Boolean))];
- fill($("concept"),groups.map(function(x){return{value:x,label:x}}));
- $("concept").disabled=!groups.length;
- resetSelect("cross");resetSelect("node");resetSelect("table");
-}
-function ineResetResults(){
- state.metadata=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';
- $("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;
-}
-async function ineSelectTheme(){
- state.selected.concept=$("concept").value;state.selected.cross="";state.selected.stat="";state.selected.node="";state.selected.table="";ineResetResults();
- fill($("cross"),[]);
- var topics=[...new Set(ineNavOpsForTheme(state.selected.concept,null).flatMap(function(x){return(x.paths||[]).filter(function(p){return ineNavNorm(p.group)===ineNavNorm(state.selected.concept)}).map(function(p){return p.topic})}).filter(Boolean))];
- fill($("cross"),topics.map(function(x){return{value:x,label:x}}));$("cross").disabled=!topics.length;
- resetSelect("stat");resetSelect("node");resetSelect("table");
- if(topics.length===1){$("cross").value=topics[0];await ineSelectTopic();}
-}
-async function ineSelectTopic(){
- state.selected.cross=$("cross").value;state.selected.stat="";state.selected.node="";state.selected.table="";ineResetResults();resetSelect("stat");resetSelect("node");resetSelect("table");
- var ops=ineNavOpsForTheme(state.selected.concept,state.selected.cross);
- ops.sort(function(a,b){return String(a.code||a.name).localeCompare(String(b.code||b.name),"ca",{numeric:true,sensitivity:"base"})});
- fill($("stat"),ops.map(function(x){return{value:x.value,label:(x.code?x.code+" · ":"")+x.name}}));$("stat").disabled=!ops.length;
- if(ops.length===1){$("stat").value=ops[0].value;await onStatChange();}
-}
-async function ineOperationPage(op){
- var key=String(op||"").trim(),cached=state.ineOperationPages.get(key);if(cached)return cached;
- var nav=(state.ineNavigation||[]).find(function(x){return String(x.value)===key});
- if(!nav||!nav.href)return null;
- var html=await ineFetchText(nav.href),doc=new DOMParser().parseFromString(html,"text/html");
- var all=Array.from(doc.querySelectorAll("*")),anchors=Array.from(doc.querySelectorAll("a[href]")),tables=[];
- function textOf(el){return String(el&&el.textContent||"").replace(/\\s+/g," ").trim();}
- function isTableAnchor(a){return /(?:jaxiT3\\/Tabla|[?&](?:t|tpx)=\\d+)/i.test(a.href||"");}
- function previousText(regex,limit){
-   for(var i=all.indexOf(limit)-1;i>=0;i--){var t=textOf(all[i]);if(t&&regex.test(t))return t;}
-   return "";
- }
- anchors.forEach(function(a){
-   var href=a.href||"",m=href.match(/[?&](?:t|tpx)=(\\d+)/i);if(!m)return;
-   var name=textOf(a);if(!name)return;
-   var idx=all.indexOf(a);
-   var level2="",level1="",level3="";
-   for(var i=idx-1;i>=0;i--){
-     var t=textOf(all[i]);if(!t||t.length>180)continue;
-     if(!level2&&/^Resultados\\b/i.test(t))level2=t;
-     if(!level1&&/^(Series\\b|Media de los cuatro trimestres|Resultados detallados|Principales resultados)/i.test(t))level1=t;
-     if(level2&&level1)break;
-   }
-   var l2idx=-1;
-   for(var j=idx-1;j>=0;j--){if(textOf(all[j])===level2){l2idx=j;break;}}
-   for(var k=idx-1;k>Math.max(l2idx,0);k--){
-     var el=all[k],t=textOf(el);
-     if(!t||t.length>140||isTableAnchor(el))continue;
-     if(/^Resultados\\b/i.test(t)||/^(Series\\b|Media de los cuatro trimestres|Resultados detallados|Principales resultados)/i.test(t))continue;
-     if(/^(Aviso|Última modificación|Dimensiones|Periodo|Formatos de descarga|Información tabla|Acceso directo|Últimos datos)/i.test(t))continue;
-     if(el.tagName==="A"&&/^(Trimestrales|Anuales|Módulos especiales|Análisis y estudios|Microdatos)$/i.test(t))continue;
-     if(el.tagName==="A"){level3=t;break;}
-   }
-   tables.push({jaxiId:m[1],name:name,level1:level1||"Altres",level2:level2||"Altres resultats",level3:level3||"Altres",territory:level2||"Altres resultats",href:href});
- });
- var out={tables:tables};state.ineOperationPages.set(key,out);return out;
-}
-function ineMatchTables(raw,opPage){
- var rows=raw.map(function(x){var id=String(f(x,"Id","id","Codigo","Code")).trim(),name=String(f(x,"Nombre","nombre","Name","Descripcion","Description")||id).trim();return{value:id,name:name,label:id+" · "+name};}).filter(function(x){return x.value});
- var page=(opPage&&opPage.tables)||[];
- return page.map(function(p){
-   var pn=ineNavNorm(p.name);
-   var exact=rows.filter(function(r){return String(r.value)===String(p.jaxiId)});
-   if(!exact.length)exact=rows.filter(function(r){return ineNavNorm(r.name)===pn});
-   return exact.map(function(r){return{value:r.value,name:r.name,label:r.label,level1:p.level1||p.territory||"Altres",level2:p.level2||"Altres resultats",level3:p.level3||r.name,jaxiId:p.jaxiId}});
- }).flat().filter(function(x,i,a){return a.findIndex(function(y){return y.value===x.value&&y.level1===x.level1&&y.level2===x.level2&&y.level3===x.level3})===i;});
-}
-function ineFillLevel(selectId,rows,field){
- var vals=[...new Set((rows||[]).map(function(x){return x[field]}).filter(Boolean))];
- vals.sort(function(a,b){return String(a).localeCompare(String(b),"ca",{numeric:true,sensitivity:"base"})});
- fill($(selectId),vals.map(function(x){return{value:x,label:x}}));$(selectId).disabled=!vals.length;
-}
-function inePopulateLevel1(){
- var rows=state.ineTables||[];ineFillLevel("geo",rows,"level1");resetSelect("node");resetSelect("table");resetSelect("ineTable");if(rows.length===1){$("geo").value=rows[0].level1;ineSelectLevel1();}
-}
-function ineSelectLevel1(){
- state.selected.geo=$("geo").value;state.selected.node="";state.selected.table="";state.ineLevel3="";ineResetResults();
- var rows=(state.ineTables||[]).filter(function(x){return x.level1===state.selected.geo});
- ineFillLevel("node",rows,"level2");resetSelect("table");resetSelect("ineTable");if(rows.length===1){$("node").value=rows[0].level2;ineSelectLevel2();}
-}
-function ineSelectLevel2(){
- state.selected.node=$("node").value;state.ineLevel3="";state.selected.table="";ineResetResults();
- var rows=(state.ineTables||[]).filter(function(x){return x.level1===state.selected.geo&&x.level2===state.selected.node});
- ineFillLevel("table",rows,"level3");resetSelect("ineTable");if(rows.length===1){$("table").value=rows[0].level3;ineSelectLevel3();}
-}
-function ineSelectLevel3(){
- state.ineLevel3=$("table").value;state.selected.table="";ineResetResults();
- var rows=(state.ineTables||[]).filter(function(x){return x.level1===state.selected.geo&&x.level2===state.selected.node&&x.level3===state.ineLevel3});
- fill($("ineTable"),rows.map(function(x){return{value:x.value,label:x.value+" · "+x.name}}));$("ineTable").disabled=!rows.length;
- if(rows.length===1){$("ineTable").value=rows[0].value;ineSelectRealTable();}
-}
-async function ineSelectRealTable(){
- state.selected.table=$("ineTable").value;if(!state.selected.table)return;
- try{await ineMetadata(state.selected.table)}catch(e){status("INE: "+e.message,"error")}
-}
-async function ineSelectTable(){
- state.selected.table=$("table").value;if(!state.selected.table)return;try{await ineMetadata(state.selected.table)}catch(e){status("INE: "+e.message,"error")}
-}
 async function onStatChange(){
  state.selected.stat=$("stat").value;clearBelow(true);if(!state.selected.stat)return;busy(true);
  try{
   if(state.provider==="idescat"){var d=await fetchJson(provider().base+"/"+encodeURIComponent(state.selected.stat)+"?lang=ca");state.catalog=collection(d).map(function(x){return{node:x.id,name:x.label,concept:deriveConcept(x.label),cross:deriveCross(x.label)}});var cs=[...new Set(state.catalog.map(function(x){return x.concept}).filter(Boolean))];fill($("concept"),cs.map(function(x){return{value:x,label:x}}));$("concept").disabled=!cs.length}
-  else if(state.provider==="ine"){
-   var keepConcept=state.selected.concept||$("concept").value,keepCross=state.selected.cross||$("cross").value;
-   var ineOpCode=await ineOperationCode(state.selected.stat);
-   var t=await fetchJson(provider().base+"/ES/TABLAS_OPERACION/"+encodeURIComponent(ineOpCode)+"?det=1");
-   var opPage=await ineOperationPage(state.selected.stat);
-   state.ineTables=ineMatchTables(a(t),opPage);
-   if(!state.ineTables.length){
-     state.ineTables=a(t).map(function(x){var id=String(f(x,"Id","id","Codigo","Code"));var nm=String(f(x,"Nombre","nombre","Name","Descripcion","Description")||id);return{value:id,name:nm,label:id+" · "+nm,level1:"Altres",level2:"Altres resultats",level3:nm}}).filter(function(x){return x.value});
-   }
-   if(keepConcept){$("concept").value=keepConcept;state.selected.concept=keepConcept;}
-   if(keepCross){$("cross").value=keepCross;state.selected.cross=keepCross;}
-   $("concept").disabled=false;$("cross").disabled=false;$("stat").disabled=false;
-   $("node").disabled=true;$("table").disabled=true;$("geo").disabled=true;$("ineTable").disabled=true;
-   inePopulateLevel1();
- }
- else if(state.provider==="eurostat"){await eurostatSelectRoot(state.selected.stat)}
+  else if(state.provider==="ine"){var t=await fetchJson(provider().base+"/ES/TABLAS_OPERACION/"+encodeURIComponent(state.selected.stat)+"?det=1");state.ineTables=a(t).map(function(x){var id=String(f(x,"Id","id","Codigo","Code"));return{value:id,label:String(f(x,"Nombre","nombre","Name","Descripcion","Description")||id)}}).filter(function(x){return x.value});fill($("node"),state.ineTables);$("node").disabled=!state.ineTables.length;$("concept").disabled=true;$("cross").disabled=true;$("table").disabled=true;$("geo").disabled=true}
+  else if(state.provider==="eurostat"){await eurostatSelectRoot(state.selected.stat)}
   else if(state.pxPreset==="sweden"){await swedenSelectRoot(state.selected.stat)}
   else{state.pxPath=[state.selected.stat];await pxChildren(state.pxPath,"concept")}
  }catch(e){status(e.message,"error")}finally{busy(false)}
@@ -1076,150 +839,67 @@ function ineTvCandidates(d){
   return a.filter(function(x,i){return x&&a.indexOf(x)===i});
 }
 function inePeriodCode(row){
-  if(!row) return "";
-  var y = String(row.Anyo != null ? row.Anyo : "").trim();
-  if(!y) return "";
-
-  // Compatibilitat amb les dues formes de resposta de l'API
-  var p = "";
-  if(row.T3_Periodo != null){
-    p = String(row.T3_Periodo).trim().toUpperCase();
-  } else if(row.Periodo != null){
-    // det=2 + tip=AM → objecte { Codigo, Nombre }
-    if(typeof row.Periodo === "object"){
-      p = String(row.Periodo.Codigo || row.Periodo.Nombre || "").trim().toUpperCase();
-    } else {
-      p = String(row.Periodo).trim().toUpperCase();
-    }
-  }
-
-  if(!p || p === "A" || p === "ANUAL") return y;
-
-  // Mensual: M1, M01, 1, 01, M12...
-  var m = p.match(/^M?(\d{1,2})$/);
-  if(m) return y + "M" + String(Number(m[1])).padStart(2, "0");
-
-  // Trimestral: T1, Q1, I, II, III, IV, 1T...
-  if(p === "I" || p === "1" || p === "T1" || p === "Q1") return y + "T1";
-  if(p === "II" || p === "2" || p === "T2" || p === "Q2") return y + "T2";
-  if(p === "III" || p === "3" || p === "T3" || p === "Q3") return y + "T3";
-  if(p === "IV" || p === "4" || p === "T4" || p === "Q4") return y + "T4";
-  var q = p.match(/^(?:T|Q)(\d)$/);
-  if(q) return y + "T" + q[1];
-
-  // Semestral
-  var s = p.match(/^S(\d)$/);
-  if(s) return y + "S" + s[1];
-
-  // Bimestral
-  var b = p.match(/^B(\d{1,2})$/);
-  if(b) return y + "B" + String(Number(b[1])).padStart(2, "0");
-
-  // Fallback
-  return y + "-" + p.replace(/\s+/g, "_");
+  var y=String(row&&row.Anyo!=null?row.Anyo:"").trim(),p=String(row&&row.T3_Periodo!=null?row.T3_Periodo:"").trim().toUpperCase();
+  if(!y)return"";
+  if(!p||p==="A"||p==="ANUAL")return y;
+  var m=p.match(/^M(\\d{1,2})$/);if(m)return y+"M"+String(Number(m[1])).padStart(2,"0");
+  var q=p.match(/^(?:T|Q)(\\d)$/);if(q)return y+"Q"+q[1];
+  var s=p.match(/^S(\\d)$/);if(s)return y+"S"+s[1];
+  var b=p.match(/^B(\\d{1,2})$/);if(b)return y+"B"+String(Number(b[1])).padStart(2,"0");
+  return y+"-"+p.replace(/\\s+/g,"_");
 }
-function ineDatosTablaToJsonStat(raw, metadata){
-  var series = Array.isArray(raw) ? raw : [];
-  if(!series.length) return null;
-
-  var baseDims = dims(metadata);
-  var timeDim = baseDims.find(function(d){ return temporal(d); });
-  var nonTime = baseDims.filter(function(d){ return !timeDim || d.id !== timeDim.id; });
-
-  function norm(x){
-    return String(x == null ? "" : x)
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-      .trim().toUpperCase();
-  }
-  function metaFor(s){
-    return Array.isArray(s && s.MetaData) ? s.MetaData : [];
-  }
-
-  // Index de categories per dimensió: code → index
-  var catIndex = new Map();
-  nonTime.forEach(function(d){
-    var m = new Map();
-    (d.categories || []).forEach(function(c, i){
-      m.set(String(c.code), i);
-      // també indexem pel codi sense prefix per si de cas
-      var suf = String(c.code).indexOf("_") >= 0
-        ? String(c.code).slice(String(c.code).lastIndexOf("_") + 1)
-        : String(c.code);
-      if(suf && !m.has(suf)) m.set(suf, i);
-    });
-    catIndex.set(d.id, m);
+function ineDatosTablaToJsonStat(raw,metadata){
+ var series=Array.isArray(raw)?raw:[];
+ if(!series.length)return null;
+ var baseDims=dims(metadata),timeDim=baseDims.find(function(d){return temporal(d)});
+ var nonTime=baseDims.filter(function(d){return !timeDim||d.id!==timeDim.id});
+ var timeMap=new Map(),rows=[];
+ function norm(x){return String(x==null?"":x).normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").trim().toUpperCase()}
+ function metaFor(s){return Array.isArray(s&&s.MetaData)?s.MetaData:[]}
+ function categoryMatch(d,m){
+  if(!m)return null;
+  var name=norm(m.Nombre||""),code=String(m.Codigo==null?"":m.Codigo).trim(),id=String(m.Id==null?"":m.Id).trim();
+  var tv=norm(m.T3_Variable||"");
+  var dn=norm(d.label||d.id),dk=dn.replace(/[^A-Z0-9]/g,"");
+  var best=null,bestScore=-1;
+  (d.categories||[]).forEach(function(cat){
+   var cc=String(cat.code==null?"":cat.code),suffix=cc.indexOf("_")>=0?cc.slice(cc.lastIndexOf("_")+1):cc;
+   var score=0;
+   if(name&&norm(cat.label)===name)score=100;
+   else if(code&&cc===code)score=90;
+   else if(id&&cc===id)score=80;
+   else if(code&&suffix===code)score=70;
+   else if(id&&suffix===id)score=60;
+   if(score>0){
+    var ck=norm(cat.label||"").replace(/[^A-Z0-9]/g,"");
+    if(tv&&((tv===dn)||(tv===dk)))score+=10;
+    if(ck===dk)score+=2;
+    if(score>bestScore){bestScore=score;best=cat}
+   }
   });
-
-  function findCategory(d, m){
-    if(!m) return null;
-    var nombre = norm(m.Nombre || "");
-    var codigo = String(m.Codigo == null ? "" : m.Codigo).trim();
-    var id = String(m.Id == null ? "" : m.Id).trim();
-    var varName = norm(
-      (m.Variable && m.Variable.Nombre) || m.T3_Variable || ""
-    );
-
-    var best = null, bestScore = -1;
-    (d.categories || []).forEach(function(cat){
-      var cc = String(cat.code);
-      var suffix = cc.indexOf("_") >= 0 ? cc.slice(cc.lastIndexOf("_") + 1) : cc;
-      var cl = norm(cat.label || "");
-      var score = 0;
-
-      if(nombre && cl === nombre) score = 100;
-      else if(codigo && (cc === codigo || suffix === codigo)) score = 90;
-      else if(id && (cc === id || suffix === id)) score = 80;
-      else if(nombre && cl.replace(/[^A-Z0-9]/g,"") === nombre.replace(/[^A-Z0-9]/g,"")) score = 70;
-
-      // reforç si el nom de la variable Tempus3 s'assembla a la dimensió
-      var dn = norm(d.label || d.id);
-      if(varName && (varName === dn || varName.indexOf(dn) >= 0 || dn.indexOf(varName) >= 0))
-        score += 5;
-
-      if(score > bestScore){ bestScore = score; best = cat; }
+  return best;
+ }
+ series.forEach(function(s){
+  var md=metaFor(s),data=Array.isArray(s.Data)?s.Data:[];
+  data.forEach(function(x){
+   var tc=inePeriodCode(x);if(!tc)return;
+   var key=[];
+   nonTime.forEach(function(d){
+    var best=null;
+    md.forEach(function(m){
+     var hit=categoryMatch(d,m);
+     if(!hit)return;
+     var name=norm(m.Nombre||""),code=String(m.Codigo==null?"":m.Codigo).trim(),id=String(m.Id==null?"":m.Id).trim();
+     var score=(norm(hit.label)===name?100:0)+(String(hit.code)===code?20:0)+(String(hit.code)===id?10:0);
+     if(!best||score>best.score)best={code:String(hit.code),score:score};
     });
-    return bestScore >= 70 ? best : null;
-  }
-
-  var timeMap = new Map();
-  var rows = [];
-
-  series.forEach(function(s){
-    var md = metaFor(s);
-    var data = Array.isArray(s.Data) ? s.Data : [];
-
-    data.forEach(function(x){
-      var tc = inePeriodCode(x);
-      if(!tc) return;
-
-      var key = [];
-      var ok = true;
-
-      nonTime.forEach(function(d){
-        var hit = null;
-        for(var i = 0; i < md.length; i++){
-          var cand = findCategory(d, md[i]);
-          if(cand){ hit = cand; break; }
-        }
-        if(!hit){
-          // fallback: si només hi ha un valor possible a la dimensió, l'usem
-          if((d.categories || []).length === 1) hit = d.categories[0];
-          else ok = false;
-        }
-        key.push(hit ? String(hit.code) : "");
-      });
-
-      if(!ok) return;   // descartem la fila si no hem pogut mapear totes les dimensions
-
-      timeMap.set(tc, {
-        code: tc,
-        label: (x.T3_Periodo || (x.Periodo && x.Periodo.Codigo) || "") + " " + (x.Anyo || tc)
-      });
-      rows.push({ key: key, time: tc, value: x.Valor });
-    });
+    key.push(best?best.code:"");
+   });
+   timeMap.set(tc,{code:tc,label:(x.T3_Periodo?String(x.T3_Periodo)+" ":"")+String(x.Anyo||tc)});
+   rows.push({key:key,time:tc,value:x.Valor});
   });
-
-  if(!rows.length) return null;
+ });
+ if(!rows.length)return null;
  var td=timeDim||{id:"time",label:"Temps",role:"time",categories:[]};
  var timeCats=Array.from(timeMap.values()).sort(function(a,b){return String(a.code).localeCompare(String(b.code),"ca",{numeric:true})});
  var outDims=nonTime.concat([{id:td.id,label:td.label,role:td.role,categories:timeCats.map(function(c,i){return{code:c.code,label:c.label,index:i}})}]);
@@ -1249,17 +929,11 @@ function ineDatosTablaToJsonStat(raw, metadata){
 function ineShowMetaDebug(tableId,raw,filters){
  var arr=Array.isArray(raw)?raw:[];
  function fmt(s){
-  var md = Array.isArray(s && s.MetaData) ? s.MetaData : [];
+  var md=Array.isArray(s&&s.MetaData)?s.MetaData:[];
   return md.map(function(m){
-    var varId = (m.Variable && m.Variable.Id) || m.FK_Variable || "";
-    var varName = (m.Variable && m.Variable.Nombre) || m.T3_Variable || "";
-    return "Id=" + (m.Id == null ? "" : m.Id) +
-           " | Variable.Id=" + varId +
-           " | Variable=" + varName +
-           " | Nombre=" + (m.Nombre == null ? "" : m.Nombre) +
-           " | Codigo=" + (m.Codigo == null ? "" : m.Codigo);
+   return "Id="+(m.Id==null?"":m.Id)+" | T3_Variable="+(m.T3_Variable==null?"":m.T3_Variable)+" | Nombre="+(m.Nombre==null?"":m.Nombre)+" | Codigo="+(m.Codigo==null?"":m.Codigo)+" | FK_Variable="+(m.FK_Variable==null?"":m.FK_Variable);
   }).join("\n");
-}
+ }
  function find(name){
   return arr.find(function(s){
    return Array.isArray(s&&s.MetaData)&&s.MetaData.some(function(m){return String(m.Nombre||"").trim()===name});
@@ -1298,13 +972,7 @@ function ineShowMetaDebug(tableId,raw,filters){
 }
 async function ineDatosTablaFiltered(tableId,filters){
  var allFilters=filters||{};
- var query="det=2&tip=AM";
- if(Object.keys(allFilters).length){
-  var tv=await ineResolveFilters(allFilters);
-  var tvs=tv.toString();
-  if(tvs)query+="&"+tvs;
- }
- var u=ineDatosTablaUrl(tableId,query);
+ var u=ineDatosTablaUrl(tableId,"det=2&tip=AM");
  var raw=await fetchJson(u);
  ineShowMetaDebug(tableId,raw,allFilters);
  if(!Array.isArray(raw)||!raw.length)throw new Error("L'INE no ha retornat dades.");
@@ -1443,82 +1111,101 @@ async function ineOperationCode(op){
  return code;
 }
 async function ineResolveFilters(filters){
-  var tableId = String(state.selected.table || "").trim();
-  if(!tableId) throw new Error("No s'ha pogut identificar la taula INE.");
+ var tableId=String(state.selected.table||"").trim();
+ if(!tableId)throw new Error("No s'ha pogut identificar la taula INE.");
+ var op=String(state.selected.stat||"").trim();
+ if(!op)throw new Error("No s'ha pogut identificar l'operació INE.");
+ var opCode=await ineOperationCode(op);
+ var varsKey="VARS|"+opCode,vars=state.ineVarCache.get(varsKey);
+ if(!vars){
+  vars=a(await fetchJson(provider().base+"/ES/VARIABLES_OPERACION/"+encodeURIComponent(opCode)));
+  state.ineVarCache.set(varsKey,vars);
+ }
+ var groupsKey="GROUPS|"+tableId,groups=state.ineVarCache.get(groupsKey);
+ if(!groups){
+  groups=a(await fetchJson(provider().base+"/ES/GRUPOS_TABLA/"+encodeURIComponent(tableId)));
+  state.ineVarCache.set(groupsKey,groups);
+ }
+ var out=new URLSearchParams(),dsDims=dims(state.metadata);
+ for(var di=0;di<dsDims.length;di++){
+  var d=dsDims[di],wanted=filters[d.id];
+  if(!wanted||!wanted.length)continue;
+  var dn=ineNorm(d.label||d.id),dnKey=dn.replace(/[^A-Z0-9]/g,"");
+  var v=(opCode==="IPRI"&&dnKey==="CLASES")
+      ? {Id:394,Nombre:"CLASES",Codigo:""}
+      : (opCode==="IPRI"&&dnKey==="INDICESYTASAS")
+      ? {Id:83,Nombre:"Índices y Tasas",Codigo:""}
+      : vars.find(function(x){
+   var id=String(f(x,"Id","id")).trim();
+   var name=ineNorm(f(x,"Nombre","nombre","Name","Descripcion","Description")||"");
+   var code=ineNorm(f(x,"Codigo","codigo","Code","code")||"");
+   return id===String(d.id).trim() || name===dn || code===dn ||
+          name.replace(/[^A-Z0-9]/g,"")===dnKey ||
+          code.replace(/[^A-Z0-9]/g,"")===dnKey;
+  });
+  if(!v)throw new Error("No s'ha pogut identificar la variable INE «"+String(d.label||d.id)+"».");
+  var vid=String(f(v,"Id","id")).trim();
+  if(!vid)throw new Error("La variable INE «"+String(d.label||d.id)+"» no té identificador.");
 
-  // 1. Grups de la taula
-  var groupsKey = "GROUPS|" + tableId;
-  var groups = state.ineVarCache.get(groupsKey);
-  if(!groups){
-    groups = a(await fetchJson(provider().base + "/ES/GRUPOS_TABLA/" + encodeURIComponent(tableId)));
-    state.ineVarCache.set(groupsKey, groups);
+  // En una taula Tempus3 normal, tv NO utilitza els IDs numèrics.
+  // Els IDs numèrics només s'utilitzen amb el sufix ~id en taules tpx.
+  // Per a aquesta taula, per tant, necessitem el nom/codi de la variable
+  // i el Codigo del valor (p. ex. sexo:1 per a Hombres).
+  var candidateValues=[];
+  for(var gi=0;gi<groups.length;gi++){
+   var gid=String(f(groups[gi],"Id","id")).trim();
+   if(!gid)continue;
+   var gKey="GROUPVALS|"+tableId+"|"+gid,gv=state.ineVarCache.get(gKey);
+   if(!gv){
+    try{
+     gv=a(await fetchJson(provider().base+"/ES/VALORES_GRUPOSTABLA/"+encodeURIComponent(tableId)+"/"+encodeURIComponent(gid)+"?det=1"));
+     state.ineVarCache.set(gKey,gv);
+    }catch(e){}
+   }
+   if(gv&&gv.length)candidateValues=candidateValues.concat(gv);
   }
 
-  // 2. Tots els valors de tots els grups (amb det=1 per tenir Variable.Id)
-  var allValues = [];
-  for(var gi = 0; gi < groups.length; gi++){
-    var gid = String(f(groups[gi], "Id", "id")).trim();
-    if(!gid) continue;
-    var gKey = "GROUPVALS|" + tableId + "|" + gid;
-    var gv = state.ineVarCache.get(gKey);
-    if(!gv){
-      try{
-        gv = a(await fetchJson(
-          provider().base + "/ES/VALORES_GRUPOSTABLA/" +
-          encodeURIComponent(tableId) + "/" + encodeURIComponent(gid) + "?det=1"
-        ));
-        state.ineVarCache.set(gKey, gv);
-      }catch(e){ gv = []; }
-    }
-    allValues = allValues.concat(gv || []);
+  if(!candidateValues.length){
+   var valuesKey="VALS|"+opCode+"|"+vid,values=state.ineVarCache.get(valuesKey);
+   if(!values){
+    values=a(await fetchJson(provider().base+"/ES/VALORES_VARIABLEOPERACION/"+encodeURIComponent(vid)+"/"+encodeURIComponent(opCode)));
+    if(!values.length&&opCode==="IPRI"&&vid==="83")
+      values=a(await fetchJson(provider().base+"/ES/VALORES_VARIABLE/83?det=1"));
+    state.ineVarCache.set(valuesKey,values);
+   }
+   candidateValues=values;
   }
 
-  var out = new URLSearchParams();
-  var dsDims = dims(state.metadata);
-
-  for(var di = 0; di < dsDims.length; di++){
-    var d = dsDims[di];
-    if(temporal(d)) continue;          // el temps no va amb tv
-
-    var wanted = filters[d.id];
-    if(!wanted || !wanted.length) continue;
-
-    wanted.forEach(function(code){
-      var sc = String(code);
-      var suffix = sc.indexOf("_") >= 0 ? sc.slice(sc.lastIndexOf("_") + 1) : sc;
-      var cat = (d.categories || []).find(function(c){ return String(c.code) === sc; });
-      var catLabel = ineNorm(cat && cat.label || "");
-
-      // Busquem el valor a qualsevol grup (per Codigo, Id o Nombre)
-      var val = allValues.find(function(x){
-        var vc = String(f(x, "Codigo", "codigo", "Code", "code") || "").trim();
-        var vn = ineNorm(f(x, "Nombre", "nombre", "Name") || "");
-        var xid = String(f(x, "Id", "id")).trim();
-        return vc === sc || vc === suffix ||
-               xid === sc || xid === suffix ||
-               (catLabel && vn === catLabel) ||
-               (catLabel && vn.replace(/[^A-Z0-9]/g,"") === catLabel.replace(/[^A-Z0-9]/g,""));
-      });
-
-      if(!val){
-        throw new Error("No s'ha trobat el valor INE «" + sc + "» (" + (cat && cat.label || "") + ") de la dimensió «" + (d.label || d.id) + "».");
-      }
-
-      // Clau: agafem la Variable.Id DEL VALOR, no de la dimensió
-      var variableId = String(
-        f(val.Variable, "Id", "id") ||
-        f(val, "FK_Variable", "fk_variable") || ""
-      ).trim();
-      var valueId = String(f(val, "Id", "id")).trim();
-
-      if(!variableId || !valueId){
-        throw new Error("El valor «" + sc + "» no té Variable.Id o Id vàlid.");
-      }
-
-      out.append("tv", variableId + ":" + valueId);
-    });
-  }
-  return out;
+  // Una dimensió JSON-stat pot agrupar diversos variables Tempus3
+  // (especialment Edad). Per això el valor seleccionat també determina
+  // la variable real mitjançant FK_Variable.
+  wanted.forEach(function(code){
+   var sc=String(code),suffix=sc.indexOf("_")>=0?sc.slice(sc.lastIndexOf("_")+1):sc;
+   var cat=d.categories&&d.categories.find(function(c){return String(c.code)===sc});
+   var catLabel=ineNorm(cat&&cat.label||"");
+   var val=candidateValues.find(function(x){
+    var fk=String(f(x,"FK_Variable","fk_variable","VariableId","variableId")||"").trim();
+    if(fk&&fk!==vid)return false;
+    var vc=String(f(x,"Codigo","codigo","Code","code")||"").trim();
+    var vn=ineNorm(f(x,"Nombre","nombre","Name","Descripcion","Description")||"");
+    return vc===sc||vc===suffix||String(f(x,"Id","id"))===sc||(catLabel&&vn===catLabel);
+   });
+   if(!val)throw new Error("No s'ha trobat el valor INE «"+sc+"» de la variable «"+String(d.label||d.id)+"».");
+   var valueCode=String(f(val,"Codigo","codigo","Code","code")||"").trim();
+   var variableCode=String(f(v,"Codigo","codigo","Code","code")||"").trim();
+   // Si la variable no té Codigo, la sintaxi Tempus3 utilitza el nom
+   // normalitzat de la variable (p. ex. sexo).
+   var variableTv=variableCode||String(f(v,"Nombre","nombre","Name")||d.id||"").trim();
+   variableTv=ineNorm(variableTv).toLowerCase().replace(/[^a-z0-9]+/g,"");
+   if(!variableTv)variableTv=String(d.id||"").trim();
+   // Alguns valors, com Total, tenen Codigo buit. En aquests casos el
+   // filtre amb tv=variable: buit significa "tots", i no permet seleccionar
+   // només aquest valor. Per això, més endavant es reforça el filtre
+   // localment a partir de MetaData.
+   if(valueCode)out.append("tv",variableTv+":"+valueCode);
+  });
+ }
+ return out;
 }
 async function runQuery(){
  var token=++state.requestToken;busy(true);$("query").disabled=true;status("Consultant l’API…");
@@ -1703,9 +1390,9 @@ function bind(){
  $("provider").onchange=async function(){var v=$("provider").value;if(v.indexOf("pxweb:")===0){state.provider="pxweb";state.pxPreset=v.slice(6)}else{state.provider=v}state.requestToken++;clearBelow();state.selected.stat="";fill($("stat"),[]);$("stat").disabled=true;setProviderUI();status("Carregant estadístiques…");try{await loadStats();status("")}catch(e){status(e.message,"error")}updateUrl()};
  
   $("stat").onchange=async function(){await onStatChange();updateUrl()};
- $("concept").onchange=async function(){if(state.provider==="ine"){await ineSelectTheme();updateUrl();return;}if(state.provider==="pxweb")await pxSelect("concept");else if(state.provider==="eurostat")await eurostatSelectLevel("concept");else{state.selected.concept=$("concept").value;state.selected.cross="";state.selected.node="";state.selected.table="";state.selected.geo="";["cross","node","table","geo"].forEach(resetSelect);state.metadata=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;var c=state.selected.concept,rows=(state.catalog||[]).filter(function(r){return r.concept===c}),x=[...new Set(rows.map(function(r){return r.cross}).filter(Boolean))];fill($("cross"),x.map(function(v){return{value:v,label:v}}));$("cross").disabled=!x.length;if(x.length===1){$("cross").value=x[0];await $("cross").onchange()}else if(x.length===0){var ids=[...new Set(rows.map(function(r){return String(r.node)}).filter(Boolean))];fill($("node"),ids.map(function(id){var q=rows.find(function(r){return String(r.node)===id});return{value:id,label:id+" · "+q.name}}));$("node").disabled=!ids.length;if(ids.length===1){$("node").value=ids[0];await onNodeChange()}}}};
- $("cross").onchange=async function(){if(state.provider==="ine"){await ineSelectTopic();updateUrl();return;}if(state.provider==="pxweb")await pxSelect("cross");else if(state.provider==="eurostat")await eurostatSelectLevel("cross");else{var c=$("concept").value,x=$("cross").value;state.selected.cross=x;state.selected.node="";state.selected.table="";state.selected.geo="";resetSelect("node");resetSelect("table");resetSelect("geo");state.metadata=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;var r=(state.catalog||[]).filter(function(v){return v.concept===c&&v.cross===x}),ids=[...new Set(r.map(function(v){return v.node}))];fill($("node"),ids.map(function(id){var q=r.find(function(v){return v.node===id});return{value:id,label:id+" · "+q.name}}));$("node").disabled=!ids.length;if(ids.length===1){$("node").value=ids[0];await onNodeChange()}}};
- $("geo").onchange=async function(){if(state.provider==="ine"){ineSelectLevel1();updateUrl();}else await onGeoChange()};$("node").onchange=async function(){if(state.provider==="ine"){ineSelectLevel2();updateUrl();}else if(state.provider==="eurostat")await eurostatSelectLevel("node");else await onNodeChange()};$("table").onchange=async function(){if(state.provider==="ine"){ineSelectLevel3();updateUrl();}else await onTableChange();};$("ineTable").onchange=async function(){if(state.provider==="ine")await ineSelectRealTable();};$("tabData").onclick=function(){$("tabData").classList.add("active");$("tabPivot").classList.remove("active");$("results").hidden=false;$("pivotBuilder").hidden=true};$("tabPivot").onclick=function(){$("tabPivot").classList.add("active");$("tabData").classList.remove("active");$("results").hidden=true;$("pivotBuilder").hidden=false;renderPivotBuilder()};$("query").onclick=runQuery;$("exportCsv").onclick=exportCSV;$("exportXlsx").onclick=exportXLSX;$("addToCart").onclick=addCart;$("cartExport").onclick=exportCart;$("cartClear").onclick=function(){state.cart=[];renderCart()};$("cartToggle").onclick=function(){var p=$("cartPanel");p.hidden=false;$("cartToggle").setAttribute("aria-expanded","true");p.scrollIntoView({behavior:"smooth",block:"start"})};$("clear").onclick=function(){if(state.metadata)renderMetadata(state.metadata)}
+ $("concept").onchange=async function(){if(state.provider==="pxweb")await pxSelect("concept");else if(state.provider==="eurostat")await eurostatSelectLevel("concept");else{state.selected.concept=$("concept").value;state.selected.cross="";state.selected.node="";state.selected.table="";state.selected.geo="";["cross","node","table","geo"].forEach(resetSelect);state.metadata=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;var c=state.selected.concept,rows=(state.catalog||[]).filter(function(r){return r.concept===c}),x=[...new Set(rows.map(function(r){return r.cross}).filter(Boolean))];fill($("cross"),x.map(function(v){return{value:v,label:v}}));$("cross").disabled=!x.length;if(x.length===1){$("cross").value=x[0];await $("cross").onchange()}else if(x.length===0){var ids=[...new Set(rows.map(function(r){return String(r.node)}).filter(Boolean))];fill($("node"),ids.map(function(id){var q=rows.find(function(r){return String(r.node)===id});return{value:id,label:id+" · "+q.name}}));$("node").disabled=!ids.length;if(ids.length===1){$("node").value=ids[0];await onNodeChange()}}}};
+ $("cross").onchange=async function(){if(state.provider==="pxweb")await pxSelect("cross");else if(state.provider==="eurostat")await eurostatSelectLevel("cross");else{var c=$("concept").value,x=$("cross").value;state.selected.cross=x;state.selected.node="";state.selected.table="";state.selected.geo="";resetSelect("node");resetSelect("table");resetSelect("geo");state.metadata=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;var r=(state.catalog||[]).filter(function(v){return v.concept===c&&v.cross===x}),ids=[...new Set(r.map(function(v){return v.node}))];fill($("node"),ids.map(function(id){var q=r.find(function(v){return v.node===id});return{value:id,label:id+" · "+q.name}}));$("node").disabled=!ids.length;if(ids.length===1){$("node").value=ids[0];await onNodeChange()}}};
+ $("node").onchange=async function(){if(state.provider==="eurostat")await eurostatSelectLevel("node");else await onNodeChange()};$("table").onchange=onTableChange;$("geo").onchange=onGeoChange;$("tabData").onclick=function(){$("tabData").classList.add("active");$("tabPivot").classList.remove("active");$("results").hidden=false;$("pivotBuilder").hidden=true};$("tabPivot").onclick=function(){$("tabPivot").classList.add("active");$("tabData").classList.remove("active");$("results").hidden=true;$("pivotBuilder").hidden=false;renderPivotBuilder()};$("query").onclick=runQuery;$("exportCsv").onclick=exportCSV;$("exportXlsx").onclick=exportXLSX;$("addToCart").onclick=addCart;$("cartExport").onclick=exportCart;$("cartClear").onclick=function(){state.cart=[];renderCart()};$("cartToggle").onclick=function(){var p=$("cartPanel");p.hidden=false;$("cartToggle").setAttribute("aria-expanded","true");p.scrollIntoView({behavior:"smooth",block:"start"})};$("clear").onclick=function(){if(state.metadata)renderMetadata(state.metadata)}
 }
 function updateUrl(){var q=new URLSearchParams();q.set("provider",state.provider);if(state.provider==="pxweb")q.set("px",state.pxPreset);if(state.selected.stat)q.set("stat",state.selected.stat);history.replaceState(null,"","?"+q.toString())}
 (async function(){bind();renderCart();var q=new URLSearchParams(location.search);state.provider=q.get("provider")||"idescat";state.pxPreset=q.get("px")||"finland";$("provider").value=state.provider==="pxweb"?"pxweb:"+state.pxPreset:state.provider;setProviderUI();try{await loadStats()}catch(e){status(e.message,"error")}})();
