@@ -2342,7 +2342,10 @@ function renderResults(ds) {
     );
 
   html +=
-    `<div class="pager"><button class="secondary" id="prevPage" ${state.page <= 1 ? 'disabled' : ''}>Anterior</button><span>Pàgina ${state.page} / ${pages}</span><button class="secondary" id="nextPage" ${state.page >= pages ? 'disabled' : ''}>Següent</button><select id="pageSize"><option ${state.pageSize === 50 ? 'selected' : ''}>50</option><option ${state.pageSize === 100 ? 'selected' : ''}>100</option><option ${state.pageSize === 250 ? 'selected' : ''}>250</option></select></div>`;
+    `<div class="pager"><button class="secondary" id="prevPage" ${state.page <= 1 ? 'disabled' : ''}>◀</button>
+    <span>Pàgina ${state.page} / ${pages}</span>
+    <button class="secondary" id="nextPage" ${state.page >= pages ? 'disabled' : ''}>▶</button>
+    <select id="pageSize"><option ${state.pageSize === 50 ? 'selected' : ''}>50</option><option ${state.pageSize === 100 ? 'selected' : ''}>100</option><option ${state.pageSize === 250 ? 'selected' : ''}>250</option></select></div>`;
 
   $('results').innerHTML =
     html;
