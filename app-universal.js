@@ -1119,25 +1119,32 @@ async function ineOperationCode(op){
 async function ineResolveFilters(filters){
   var tableId = String(state.selected.table || "").trim();
   if(!tableId) throw new Error("No s'ha pogut identificar la taula INE.");
-  var op = String(state.selected.stat || "").trim();
-  if(!op) throw new Error("No s'ha pogut identificar l'operació INE.");
 
-  var opCode = await ineOperationCode(op);
-
-  // Variables de l'operació
-  var varsKey = "VARS|" + opCode;
-  var vars = state.ineVarCache.get(varsKey);
-  if(!vars){
-    vars = a(await fetchJson(provider().base + "/ES/VARIABLES_OPERACION/" + encodeURIComponent(opCode)));
-    state.ineVarCache.set(varsKey, vars);
-  }
-
-  // Grups de la taula (més fiables per al matching)
+  // 1. Grups de la taula
   var groupsKey = "GROUPS|" + tableId;
   var groups = state.ineVarCache.get(groupsKey);
   if(!groups){
     groups = a(await fetchJson(provider().base + "/ES/GRUPOS_TABLA/" + encodeURIComponent(tableId)));
     state.ineVarCache.set(groupsKey, groups);
+  }
+
+  // 2. Tots els valors de tots els grups (amb det=1 per tenir Variable.Id)
+  var allValues = [];
+  for(var gi = 0; gi < groups.length; gi++){
+    var gid = String(f(groups[gi], "Id", "id")).trim();
+    if(!gid) continue;
+    var gKey = "GROUPVALS|" + tableId + "|" + gid;
+    var gv = state.ineVarCache.get(gKey);
+    if(!gv){
+      try{
+        gv = a(await fetchJson(
+          provider().base + "/ES/VALORES_GRUPOSTABLA/" +
+          encodeURIComponent(tableId) + "/" + encodeURIComponent(gid) + "?det=1"
+        ));
+        state.ineVarCache.set(gKey, gv);
+      }catch(e){ gv = []; }
+    }
+    allValues = allValues.concat(gv || []);
   }
 
   var out = new URLSearchParams();
@@ -1150,87 +1157,39 @@ async function ineResolveFilters(filters){
     var wanted = filters[d.id];
     if(!wanted || !wanted.length) continue;
 
-    var dn = ineNorm(d.label || d.id);
-    var dnKey = dn.replace(/[^A-Z0-9]/g, "");
-
-    // 1. Prova de trobar la variable pels grups de la taula
-    var group = groups.find(function(g){
-      return ineNorm(f(g, "Nombre", "nombre", "Name") || "") === dn ||
-             ineNorm(f(g, "Nombre", "nombre", "Name") || "").replace(/[^A-Z0-9]/g,"") === dnKey;
-    });
-
-    var vid = null;
-    var candidateValues = [];
-
-    if(group){
-      var gid = String(f(group, "Id", "id")).trim();
-      var gKey = "GROUPVALS|" + tableId + "|" + gid;
-      var gv = state.ineVarCache.get(gKey);
-      if(!gv){
-        try{
-          gv = a(await fetchJson(provider().base + "/ES/VALORES_GRUPOSTABLA/" +
-                encodeURIComponent(tableId) + "/" + encodeURIComponent(gid) + "?det=1"));
-          state.ineVarCache.set(gKey, gv);
-        }catch(e){}
-      }
-      if(gv && gv.length){
-        candidateValues = gv;
-        // El Variable.Id del primer valor ens dóna el vid real
-        var first = gv[0];
-        vid = String(f(first && first.Variable, "Id", "id") || f(first, "FK_Variable") || "").trim();
-      }
-    }
-
-    // 2. Fallback a VARIABLES_OPERACION
-    if(!vid){
-      var v = vars.find(function(x){
-        var id = String(f(x,"Id","id")).trim();
-        var name = ineNorm(f(x,"Nombre","nombre","Name","Descripcion","Description") || "");
-        var code = ineNorm(f(x,"Codigo","codigo","Code","code") || "");
-        return id === String(d.id).trim() ||
-               name === dn || code === dn ||
-               name.replace(/[^A-Z0-9]/g,"") === dnKey ||
-               code.replace(/[^A-Z0-9]/g,"") === dnKey;
-      });
-      if(v) vid = String(f(v,"Id","id")).trim();
-    }
-
-    if(!vid){
-      throw new Error("No s'ha pogut identificar la variable INE «" + (d.label || d.id) + "».");
-    }
-
-    // Carrega valors si encara no els tenim
-    if(!candidateValues.length){
-      var valuesKey = "VALS|" + opCode + "|" + vid;
-      var values = state.ineVarCache.get(valuesKey);
-      if(!values){
-        values = a(await fetchJson(provider().base + "/ES/VALORES_VARIABLEOPERACION/" +
-                  encodeURIComponent(vid) + "/" + encodeURIComponent(opCode)));
-        state.ineVarCache.set(valuesKey, values);
-      }
-      candidateValues = values;
-    }
-
     wanted.forEach(function(code){
       var sc = String(code);
       var suffix = sc.indexOf("_") >= 0 ? sc.slice(sc.lastIndexOf("_") + 1) : sc;
       var cat = (d.categories || []).find(function(c){ return String(c.code) === sc; });
       var catLabel = ineNorm(cat && cat.label || "");
 
-      var val = candidateValues.find(function(x){
-        var vc = String(f(x,"Codigo","codigo","Code","code") || "").trim();
-        var vn = ineNorm(f(x,"Nombre","nombre","Name","Descripcion","Description") || "");
-        var xid = String(f(x,"Id","id")).trim();
-        return vc === sc || vc === suffix || xid === sc || xid === suffix ||
-               (catLabel && vn === catLabel);
+      // Busquem el valor a qualsevol grup (per Codigo, Id o Nombre)
+      var val = allValues.find(function(x){
+        var vc = String(f(x, "Codigo", "codigo", "Code", "code") || "").trim();
+        var vn = ineNorm(f(x, "Nombre", "nombre", "Name") || "");
+        var xid = String(f(x, "Id", "id")).trim();
+        return vc === sc || vc === suffix ||
+               xid === sc || xid === suffix ||
+               (catLabel && vn === catLabel) ||
+               (catLabel && vn.replace(/[^A-Z0-9]/g,"") === catLabel.replace(/[^A-Z0-9]/g,""));
       });
 
       if(!val){
-        throw new Error("No s'ha trobat el valor INE «" + sc + "» de la variable «" + (d.label || d.id) + "».");
+        throw new Error("No s'ha trobat el valor INE «" + sc + "» (" + (cat && cat.label || "") + ") de la dimensió «" + (d.label || d.id) + "».");
       }
 
-      var valueId = String(f(val,"Id","id")).trim();
-      if(valueId) out.append("tv", vid + ":" + valueId);
+      // Clau: agafem la Variable.Id DEL VALOR, no de la dimensió
+      var variableId = String(
+        f(val.Variable, "Id", "id") ||
+        f(val, "FK_Variable", "fk_variable") || ""
+      ).trim();
+      var valueId = String(f(val, "Id", "id")).trim();
+
+      if(!variableId || !valueId){
+        throw new Error("El valor «" + sc + "» no té Variable.Id o Id vàlid.");
+      }
+
+      out.append("tv", variableId + ":" + valueId);
     });
   }
   return out;
