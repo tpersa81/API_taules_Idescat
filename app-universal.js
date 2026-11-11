@@ -171,7 +171,7 @@ function ineAddLevel(items,index,labelText){
  if(list.length===1){sel.value=list[0].id;ineSelectLevel(index,list[0].id).catch(function(e){status("INE: "+(e&&e.message?e.message:String(e)),"error")})}
 }
 function ineTrimTitle(s){
- return String(s||"").replace(/\\s+/g," ").replace(/\\s*[·|]+\\s*$/,"").trim();
+ return String(s||"").replace(/\s+/g," ").replace(/\s*[·|]+\s*$/,"").trim();
 }
 function ineAbsoluteUrl(href){
  try{return new URL(href,"https://www.ine.es/").href}catch(e){return String(href||"")}
