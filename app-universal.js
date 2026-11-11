@@ -93,6 +93,8 @@ async function fetchText(url,opt){
  opt=opt||{};var r=null,last=null;
  try{r=await fetch(url,opt);if(r.ok)return await r.text();last=new Error("HTTP "+r.status)}catch(e){last=e}
  var proxies=[
+  "https://r.jina.ai/http://r.jina.ai/http://"+url.replace(/^https?:\/\//i,""),
+  "https://r.jina.ai/http://"+url.replace(/^https?:\/\//i,""),
   "https://api.allorigins.win/raw?url="+encodeURIComponent(url),
   "https://api.allorigins.win/get?url="+encodeURIComponent(url),
   "https://corsproxy.io/?url="+encodeURIComponent(url),
@@ -233,7 +235,13 @@ async function ineSelectLevel(index,val){
   state.selected.stat=stat?stat.value:"";
   state.inePath[2]=op.id;
   if(!op.href)throw new Error("No s'ha trobat l'operació INE.");
-  var children=await ineOperationChildren(op.href);
+  // Després de seleccionar l'Estadística, l'INE sempre entra directament
+  // a la pàgina "Resultados"; no mostrem "Resultados" com un nivell més.
+  var resultsUrl=op.href.replace(/([?&])menu=[^&]*/i,"$1menu=resultados");
+  if(resultsUrl===op.href){
+   resultsUrl+=(resultsUrl.indexOf("?")>=0?"&":"?")+"menu=resultados";
+  }
+  var children=await ineOperationChildren(resultsUrl);
   state.selected.node="";state.selected.table="";state.metadata=null;state.filters.clear();
   $("filters").innerHTML="";$("query").disabled=true;$("tableInfo").hidden=true;
   if(!children.length)throw new Error("L'operació INE no conté nivells de navegació o taules accessibles.");
