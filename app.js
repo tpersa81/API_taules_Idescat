@@ -1254,7 +1254,9 @@ function sortRowsByJsonStatIndex(
           Number.MAX_SAFE_INTEGER;
 
         if (ai !== bi) {
-          return ai - bi;
+          return temporal(dim)
+            ? bi - ai
+            : ai - bi;
         }
       }
 
