@@ -12,13 +12,12 @@
 </header>
 <main>
 <section class="card" id="step1">
-<h2>1. Selecciona l'organisme i la font</h2>
+<h2>1. Selecciona l'organisme</h2>
 <div class="grid">
 <label>Organisme<select id="provider"><option value="idescat">Idescat</option><option value="ine">INE</option><option value="eurostat">Eurostat</option><option value="pxweb:finland">Statistics Finland</option><option value="pxweb:iceland">Statistics Iceland</option><option value="pxweb:sweden">Statistics Sweden</option><option value="pxweb:unece">UNECE Statistical Database</option></select></label>
-<label>Estadística<select id="stat"></select></label>
 </div></section>
-<section class="card" id="step2"><h2>2. Tria la taula</h2><div id="themeCount" class="selection-count" hidden></div><div class="grid">
-<label>Tema<select id="concept" disabled></select></label><label>Encreuament<select id="cross" disabled></select></label><label>Entrada<select id="node" disabled><option>— Selecciona —</option></select></label><label>Taula<select id="table" disabled><option>— Selecciona —</option></select></label><label>Geografia<select id="geo" disabled><option>— Selecciona —</option></select></label>
+<section class="card" id="step2"><h2>2. Tria la font</h2><div id="themeCount" class="selection-count" hidden></div><div class="grid">
+<label>Estadística<select id="stat" disabled></select></label><label>Tema<select id="concept" disabled></select></label><label>Encreuament<select id="cross" disabled></select></label><label>Entrada<select id="node" disabled><option>— Selecciona —</option></select></label><label>Taula<select id="table" disabled><option>— Selecciona —</option></select></label><label>Geografia<select id="geo" disabled><option>— Selecciona —</option></select></label>
 </div><div id="eurostatLevels" class="grid eurostat-levels" hidden></div><div id="tableInfo" class="selected" hidden></div></section>
 <div id="eurostatLoading" class="eurostat-loading" hidden>Consultant el conjunt de dades d’Eurostat…</div>
 <section class="card" id="step3"><div class="section-title"><h2>3. Filtra la taula</h2><button id="clear" class="secondary">Restableix seleccions</button></div><p class="filter-help">Selecciona els valors identificant-los pel <strong>codi</strong> i l’<strong>etiqueta</strong>.</p><div id="filters"></div><div id="cellInfo" class="cell-info" hidden></div></section>
@@ -27,5 +26,5 @@
 <section class="card cart-panel" id="cartPanel" hidden><div class="section-title"><h2>Cistella de consultes</h2><div class="cart-actions"><button id="cartExport" class="primary" disabled>Exporta Excel (0)</button><button id="cartClear" class="secondary" disabled>Buidar cistella</button></div></div><div id="cartItems"><div class="cart-empty">La cistella és buida.</div></div></section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
-<script src="app-universal.js?v=20261111-38"></script>
+<script src="app-universal.js?v=20261111-39"></script>
 </body></html>
