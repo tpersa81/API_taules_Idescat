@@ -93,7 +93,6 @@ async function fetchText(url,opt){
  opt=opt||{};var r=null,last=null;
  try{r=await fetch(url,opt);if(r.ok)return await r.text();last=new Error("HTTP "+r.status)}catch(e){last=e}
  var proxies=[
-  "https://r.jina.ai/http://r.jina.ai/http://"+url.replace(/^https?:\/\//i,""),
   "https://r.jina.ai/http://"+url.replace(/^https?:\/\//i,""),
   "https://api.allorigins.win/raw?url="+encodeURIComponent(url),
   "https://api.allorigins.win/get?url="+encodeURIComponent(url),
@@ -213,7 +212,7 @@ async function ineOperationChildren(url){
  // r.jina.ai pot retornar la pàgina en Markdown en lloc d'HTML.
  // En aquest cas els enllaços no apareixen com a <a>, sinó com:
  // [text](https://www.ine.es/...)
- var md=/\\[([^\\]]+)\\]\\((https?:\\/\\/www\\.ine\\.es\\/[^)]+)\\)/g,m;
+ var md=/\[([^\]]+)\]\((https?:\/\/www\.ine\.es\/[^)]+)\)/g,m;
  while((m=md.exec(html))!==null)addLink(m[1],m[2]);
  return out;
 }
