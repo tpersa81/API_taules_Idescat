@@ -187,31 +187,34 @@ function ineAbsoluteUrl(href){
  try{return new URL(href,"https://www.ine.es/").href}catch(e){return String(href||"")}
 }
 async function ineOperationChildren(url){
- var html=await fetchText(url,{cache:"no-store"});
- var doc=new DOMParser().parseFromString(html,"text/html"),seen=new Set(),out=[];
- Array.from(doc.querySelectorAll("a[href]")).forEach(function(a){
-  var text=ineTrimTitle(a.textContent);
-  if(!text||text.length<2)return;
-  var href=ineAbsoluteUrl(a.getAttribute("href")||"");
-  if(!href||href.indexOf("https://www.ine.es/")!==0)return;
+ var html=await fetchText(url,{cache:"no-store"}),seen=new Set(),out=[];
+ function addLink(text,href){
+  text=ineTrimTitle(text);href=ineAbsoluteUrl(href||"");
+  if(!text||text.length<2||!href||href.indexOf("https://www.ine.es/")!==0)return;
   var u;
   try{u=new URL(href)}catch(e){return}
   var path=u.pathname.toLowerCase();
-  var isTable=path.indexOf("/jaxit3/tabla.htm")>=0||path.indexOf("/jaxit3/tabla.htm")>=0;
+  var isTable=path.indexOf("/jaxit3/tabla.htm")>=0||path.indexOf("/jaxi/tabla.htm")>=0||path.indexOf("/jaxit3/datos.htm")>=0||path.indexOf("/jaxi/datos.htm")>=0;
   var tm=u.searchParams.get("t");
   if(isTable&&!tm)return;
   var isFolder=path.indexOf("/dynt3/inebase/")>=0||path.indexOf("/dyngs/inebase/")>=0;
   if(!isTable&&!isFolder)return;
-  if(isFolder){
-   if(!u.searchParams.get("capsel")&&!u.searchParams.get("cid"))return;
-  }
+  if(isFolder&&!u.searchParams.get("capsel")&&!u.searchParams.get("cid"))return;
   var key=(isTable?"T:":"F:")+href;
   if(seen.has(key))return;
   seen.add(key);
   if(isTable)out.push({id:String(tm),label:text,type:"table",href:href,tableId:String(tm)});
   else out.push({id:href,label:text,type:"folder",href:href});
+ }
+ var doc=new DOMParser().parseFromString(html,"text/html");
+ Array.from(doc.querySelectorAll("a[href]")).forEach(function(a){
+  addLink(a.textContent,a.getAttribute("href"));
  });
- out.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true,sensitivity:"base"})});
+ // r.jina.ai pot retornar la pàgina en Markdown en lloc d'HTML.
+ // En aquest cas els enllaços no apareixen com a <a>, sinó com:
+ // [text](https://www.ine.es/...)
+ var md=/\\[([^\\]]+)\\]\\((https?:\\/\\/www\\.ine\\.es\\/[^)]+)\\)/g,m;
+ while((m=md.exec(html))!==null)addLink(m[1],m[2]);
  return out;
 }
 function ineLevelLabel(index){return index===0?"Grup temàtic":index===1?"Tema":index===2?"Estadística":"Nivell "+(index-2)}
