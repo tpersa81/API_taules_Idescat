@@ -979,11 +979,17 @@ function ineDatosTablaToJsonStat(raw, metadata){
 function ineShowMetaDebug(tableId,raw,filters){
  var arr=Array.isArray(raw)?raw:[];
  function fmt(s){
-  var md=Array.isArray(s&&s.MetaData)?s.MetaData:[];
+  var md = Array.isArray(s && s.MetaData) ? s.MetaData : [];
   return md.map(function(m){
-   return "Id="+(m.Id==null?"":m.Id)+" | T3_Variable="+(m.T3_Variable==null?"":m.T3_Variable)+" | Nombre="+(m.Nombre==null?"":m.Nombre)+" | Codigo="+(m.Codigo==null?"":m.Codigo)+" | FK_Variable="+(m.FK_Variable==null?"":m.FK_Variable);
+    var varId = (m.Variable && m.Variable.Id) || m.FK_Variable || "";
+    var varName = (m.Variable && m.Variable.Nombre) || m.T3_Variable || "";
+    return "Id=" + (m.Id == null ? "" : m.Id) +
+           " | Variable.Id=" + varId +
+           " | Variable=" + varName +
+           " | Nombre=" + (m.Nombre == null ? "" : m.Nombre) +
+           " | Codigo=" + (m.Codigo == null ? "" : m.Codigo);
   }).join("\n");
- }
+}
  function find(name){
   return arr.find(function(s){
    return Array.isArray(s&&s.MetaData)&&s.MetaData.some(function(m){return String(m.Nombre||"").trim()===name});
