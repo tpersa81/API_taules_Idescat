@@ -87,7 +87,7 @@ async function loadStats(){
  setProviderUI();state.stats=[];state.selected.stat="";fill($("stat"),[]);$("stat").disabled=true;
  var c=provider(),out=[];
  if(state.provider==="idescat")out=collection(await fetchJson(c.base+"?lang=ca")).map(function(x){return{value:x.id,label:x.id+" · "+x.label}});
- else if(state.provider==="ine"){var d;try{d=await fetchJson(c.base+"/ES/OPERACIONES_DISPONIBLES?page=1")}catch(ineListErr){d=await fetchJson(c.base+"/ES/OPERACIONES_DISPONIBLES?det=1")}out=a(d).map(function(x){var id=String(f(x,"Id","id")).trim(),code=String(f(x,"Codigo","codigo","Code","code")||"").trim();return{value:id,code:code,label:id+" · "+String(f(x,"Nombre","nombre","Name","Descripcion","Description")||id)}}).filter(function(x){return x.value})}
+ else if(state.provider==="ine"){var d;try{d=await fetchJson(c.base+"/ES/OPERACIONES_DISPONIBLES?page=1")}catch(ineListErr){d=await fetchJson(c.base+"/ES/OPERACIONES_DISPONIBLES?det=1")}out=a(d).map(function(x){var id=String(f(x,"Id","id")).trim(),code=String(f(x,"Codigo","codigo","Code","code")||"").trim(),name=String(f(x,"Nombre","nombre","Name","Descripcion","Description")||id).trim();return{value:id,code:code,label:(code||id)+" · "+name}}).filter(function(x){return x.value}).sort(function(x,y){return String(x.code||x.value).localeCompare(String(y.code||y.value),"es",{numeric:true,sensitivity:"base"})})}
  else if(state.provider==="eurostat"){await loadEurostatTOC();out=state.eurostatRoots.map(function(x){return{value:x.code,label:x.label}})}
  else if(state.pxPreset==="sweden"){out=a(await fetchJson(c.base)).map(function(x){return{id:String(f(x,"id","code","dbid","path")),label:String(f(x,"text","label","name","title")||f(x,"id","code","dbid","path")),type:String(f(x,"type","class"))}}).filter(function(x){return x.id}).map(function(x){return{value:x.id,label:x.id+" · "+x.label}})}
  else if(state.pxPreset==="finland"){
@@ -992,96 +992,14 @@ function ineDatosTablaToJsonStat(raw,metadata){
  });
  out.value=vals;return out;
 }
-function ineShowMetaDebug(tableId,raw,filters){
- var arr=Array.isArray(raw)?raw:[];
- function fmt(s){
-  var md=Array.isArray(s&&s.MetaData)?s.MetaData:[];
-  return md.map(function(m){
-   return "Id="+(m.Id==null?"":m.Id)+" | T3_Variable="+(m.T3_Variable==null?"":m.T3_Variable)+" | Nombre="+(m.Nombre==null?"":m.Nombre)+" | Codigo="+(m.Codigo==null?"":m.Codigo)+" | FK_Variable="+(m.FK_Variable==null?"":m.FK_Variable);
-  }).join("\n");
- }
- function find(name){
-  return arr.find(function(s){
-   return Array.isArray(s&&s.MetaData)&&s.MetaData.some(function(m){return String(m.Nombre||"").trim()===name});
-  });
- }
- var h=find("Hombres"),a=find("Ambos sexos"),mu=find("Mujeres");
- var first=arr[0];
- var text=[
-  "INE DEBUG · DATOS_TABLA/"+tableId,
-  "Sèries rebudes: "+arr.length,
-  "Filtres seleccionats: "+JSON.stringify(filters||{}),
-  "",
-  "PRIMERA SÈRIE",
-  fmt(first),
-  "",
-  "PRIMERA SÈRIE HOMBRES",
-  fmt(h),
-  "",
-  "PRIMERA SÈRIE AMBOS SEXOS",
-  fmt(a),
-  "",
-  "PRIMERA SÈRIE MUJERES",
-  fmt(mu)
- ].join("\n");
- console.log(text);
- var box=document.getElementById("ineDebug");
- if(!box){
-  box=document.createElement("details");
-  box.id="ineDebug";
-  box.style.marginTop="12px";
-  box.innerHTML="<summary>Diagnòstic temporal INE · MetaData</summary><pre></pre>";
-  var results=document.getElementById("results");
-  if(results)results.parentNode.insertBefore(box,results);
- }
- box.querySelector("pre").textContent=text;
-}
-function ineShowFilterDebug(ds,filters,filtered){
- var lines=["INE DEBUG · FILTRATGE JSON-STAT",""];
- Object.keys(filters||{}).forEach(function(id){
-  var wanted=(filters[id]||[]).map(String),cats=jsonstatCats(ds,id);
-  var matches=cats.filter(function(c){return wanted.indexOf(String(c.code))>=0});
-  lines.push("DIMENSIÓ: "+id);
-  lines.push("  Sol·licitats: "+JSON.stringify(wanted));
-  lines.push("  Categories disponibles: "+cats.map(function(c){return String(c.code)+" = "+String(c.label)}).join(" | "));
-  lines.push("  Coincidències: "+(matches.length?matches.map(function(c){return String(c.code)+" = "+String(c.label)}).join(" | "):"cap"));
-  lines.push("");
- });
- lines.push("ABANS DEL FILTRE: "+(ds&&ds.size?ds.size.join(" × "):"—")+" = "+((ds&&ds.value)?ds.value.length:0)+" valors");
- if(filtered){
-  lines.push("DESPRÉS DEL FILTRE: "+(filtered.size||[]).join(" × ")+" = "+(Array.isArray(filtered.value)?filtered.value.length:0)+" valors");
-  lines.push("Valors no nuls després del filtre: "+(Array.isArray(filtered.value)?filtered.value.filter(function(v){return v!=null}).length:0));
-  Object.keys(filters||{}).forEach(function(id){
-   var cats=jsonstatCats(filtered,id);
-   lines.push("  "+id+" → "+cats.map(function(c){return String(c.code)+" = "+String(c.label)}).join(" | "));
-  });
- }
- var text=lines.join("\n");
- console.log(text);
- var box=document.getElementById("ineDebug");
- if(!box){
-  box=document.createElement("details");
-  box.id="ineDebug";
-  box.style.marginTop="12px";
-  box.innerHTML="<summary>Diagnòstic temporal INE · MetaData i filtratge</summary><pre></pre>";
-  var results=document.getElementById("results");
-  if(results)results.parentNode.insertBefore(box,results);
- }else{
-  box.querySelector("summary").textContent="Diagnòstic temporal INE · MetaData i filtratge";
- }
- box.querySelector("pre").textContent=text;
-}
 async function ineDatosTablaFiltered(tableId,filters){
  var allFilters=filters||{};
  var u=ineDatosTablaUrl(tableId,"det=2&tip=AM");
  var raw=await fetchJson(u);
- ineShowMetaDebug(tableId,raw,allFilters);
  if(!Array.isArray(raw)||!raw.length)throw new Error("L'INE no ha retornat dades.");
  var ds=ineDatosTablaToJsonStat(raw,state.metadata);
  if(!ds)throw new Error("L'INE no ha pogut convertir les dades de la taula.");
- var beforeFilter=ds;
  ds=diceJsonStat(ds,allFilters);
- ineShowFilterDebug(beforeFilter,allFilters,ds);
  if(!ds||!Array.isArray(ds.value)||!ds.value.some(function(v){return v!=null})){
   throw new Error("L'INE no ha retornat sèries per als filtres seleccionats.");
  }
