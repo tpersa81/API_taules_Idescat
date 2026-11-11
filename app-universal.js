@@ -970,20 +970,52 @@ function ineShowMetaDebug(tableId,raw,filters){
  }
  box.querySelector("pre").textContent=text;
 }
+function ineFilterRawSeries(raw,metadata,filters){
+ var series=Array.isArray(raw)?raw:[];
+ var dsDims=dims(metadata);
+ var wantedDims=Object.keys(filters||{}).map(function(id){
+  var d=dsDims.find(function(x){return String(x.id)===String(id)});
+  return d?{dim:d,codes:(filters[id]||[]).map(String)}:null;
+ }).filter(Boolean);
+ if(!wantedDims.length)return series;
+ function norm(x){return String(x==null?"":x).normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").trim().toUpperCase()}
+ function matchesCategory(cat,m){
+  var cc=String(cat.code==null?"":cat.code).trim();
+  var cl=norm(cat.label||"");
+  var mid=String(m&&m.Id==null?"":m&&m.Id).trim();
+  var mc=String(m&&m.Codigo==null?"":m&&m.Codigo).trim();
+  var mn=norm(m&&m.Nombre||"");
+  var suffix=cc.indexOf("_")>=0?cc.slice(cc.lastIndexOf("_")+1):cc;
+  return (cc!==""&&(mc===cc||mid===cc||suffix===mc||suffix===mid)) ||
+         (cc===""&&mc==="") ||
+         (cl!==""&&mn===cl);
+ }
+ return series.filter(function(s){
+  var md=Array.isArray(s&&s.MetaData)?s.MetaData:[];
+  return wantedDims.every(function(w){
+   return w.codes.some(function(code){
+    var cat=(w.dim.categories||[]).find(function(x){return String(x.code)===String(code)});
+    return cat&&md.some(function(m){return matchesCategory(cat,m)});
+   });
+  });
+}
 async function ineDatosTablaFiltered(tableId,filters){
  var allFilters=filters||{};
  var u=ineDatosTablaUrl(tableId,"det=2&tip=AM");
  var raw=await fetchJson(u);
  ineShowMetaDebug(tableId,raw,allFilters);
  if(!Array.isArray(raw)||!raw.length)throw new Error("L'INE no ha retornat dades.");
- var ds=ineDatosTablaToJsonStat(raw,state.metadata);
+ var filtered=ineFilterRawSeries(raw,state.metadata,allFilters);
+ console.log("INE DEBUG · sèries després del filtre:",filtered.length);
+ if(!filtered.length)throw new Error("L'INE no ha retornat sèries per als filtres seleccionats.");
+ var ds=ineDatosTablaToJsonStat(filtered,state.metadata);
  if(!ds)throw new Error("L'INE no ha pogut convertir les dades de la taula.");
- ds=diceJsonStat(ds,allFilters);
- if(!ds||!Array.isArray(ds.value)||!ds.value.some(function(v){return v!=null})){
-  throw new Error("L'INE no ha retornat sèries per als filtres seleccionats.");
+ if(!Array.isArray(ds.value)||!ds.value.some(function(v){return v!=null})){
+  throw new Error("L'INE no ha retornat dades per als filtres seleccionats.");
  }
  return{data:ds,url:u};
 }
+
 async function ineMetadata(tableId){
  var u=ineJsonStatUrl(tableId);
  var ds=await fetchJson(u);
