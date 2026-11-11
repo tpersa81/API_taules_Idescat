@@ -62,64 +62,72 @@ for a in soup.select('a[href]'):
     if text and re.search(r"operacion\.htm", href, re.I):
         links.append((a, text, href))
 
-# Use exact visible text nodes/elements so the navigation anchors in the
-# top menu do not override the actual hierarchy in the body.
-all_tags = soup.find_all(True)
-tag_pos = {id(el): i for i, el in enumerate(all_tags)}
-operation_ids = {id(a) for a, _, _ in links}
+# Parse the visible document stream. INEbase places the major group and
+# subtopic labels before the operation links, while the operation names
+# themselves are anchors. Tracking that stream reproduces the web hierarchy
+# without depending on INE's presentation CSS classes.
+operation_lookup = {}
+for anchor, name, href in links:
+    operation_lookup[id(anchor)] = (name, href)
 
 records = []
 seen = set()
+current_group = None
+current_topic = None
 
-for a, name, href in links:
-    pos = tag_pos.get(id(a))
-    if pos is None:
+for node in soup.descendants:
+    if getattr(node, "name", None) == "a":
+        info = operation_lookup.get(id(node))
+        if info:
+            name, href = info
+            key = norm(name)
+            if key not in seen:
+                seen.add(key)
+                records.append({
+                    "name": name,
+                    "href": href,
+                    "group": current_group or "Otros",
+                    "topic": current_topic or "Otros",
+                })
         continue
 
-    group = None
-    group_pos = -1
-    for i in range(pos - 1, -1, -1):
-        el = all_tags[i]
-        text = re.sub(r"\s+", " ", el.get_text(" ", strip=True))
-        if len(text) <= 100 and norm(text) in group_by_norm:
-            group = group_by_norm[norm(text)]
-            group_pos = i
-            break
-
-    topic = None
-    if group_pos >= 0:
-        for i in range(group_pos + 1, pos):
-            el = all_tags[i]
-            text = re.sub(r"\s+", " ", el.get_text(" ", strip=True))
-            if not text or len(text) > 120:
-                continue
-            n = norm(text)
-            if n in group_by_norm or n in {norm(x) for x in GENERIC}:
-                continue
-            if id(el) in operation_ids:
-                continue
-            # Prefer compact heading/list labels. Ignore metadata rows.
-            if " | " in text or "Últimos datos" in text or "Ultimos datos" in text:
-                continue
-            if n in {norm(x) for _, x, _ in links}:
-                continue
-            # A candidate must look like a navigation label, not a paragraph.
-            if len(text.split()) <= 10:
-                topic = text
-
-    group = group or "Otros"
-    topic = topic or "Otros"
-
-    key = norm(name)
-    if key in seen:
+    if not getattr(node, "strip", lambda: False)():
         continue
-    seen.add(key)
-    records.append({
-        "name": name,
-        "href": href,
-        "group": group,
-        "topic": topic,
-    })
+
+    parent_a = node.find_parent("a")
+    if parent_a is not None and id(parent_a) in operation_lookup:
+        continue
+
+    text = re.sub(r"\s+", " ", str(node)).strip()
+    if not text or len(text) > 120:
+        continue
+
+    n = norm(text)
+    if n in group_by_norm:
+        current_group = group_by_norm[n]
+        current_topic = None
+        continue
+
+    if n in {norm(x) for x in GENERIC}:
+        continue
+    if n in {
+        "¿QUE ES INEBASE?",
+        "ULTIMA MODIFICACION:",
+        "DIMENSIONES:",
+        "PERIODO:",
+        "FORMATOS DE DESCARGA DISPONIBLES",
+        "INFORMACION TABLA",
+        "AVISO SOBRE DISPONIBILIDAD DE DATOS",
+        "AVISO A LOS USUARIOS",
+    }:
+        continue
+
+    # Navigation subtopics are short labels such as "Actividad, ocupación y
+    # paro", "Agricultura" or "Construcción y vivienda". Ignore table/update
+    # metadata and long explanatory paragraphs.
+    if current_group and len(text.split()) <= 10:
+        if not re.match(r"^(Año|Serie|Trimestre|Desde|Publicado|Últimos datos|Acceso directo)\b", text, re.I):
+            current_topic = text
 
 OUT.parent.mkdir(parents=True, exist_ok=True)
 OUT.write_text(json.dumps(records, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
