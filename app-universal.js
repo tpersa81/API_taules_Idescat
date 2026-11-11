@@ -279,7 +279,12 @@ async function loadStats(){
  }
  var c=provider(),out=[];
  if(state.provider==="idescat")out=collection(await fetchJson(c.base+"?lang=ca")).map(function(x){return{value:x.id,label:x.id+" · "+x.label}});
- else if(state.provider==="ine"){var d;try{d=await fetchJson(c.base+"/ES/OPERACIONES_DISPONIBLES?page=1")}catch(ineListErr){d=await fetchJson(c.base+"/ES/OPERACIONES_DISPONIBLES?det=1")}out=a(d).map(function(x){var id=String(f(x,"Id","id")).trim(),code=String(f(x,"Codigo","codigo","Code","code")||"").trim(),name=String(f(x,"Nombre","nombre","Name","Descripcion","Description")||id).trim();return{value:id,code:code,name:name,label:(code||id)+" · "+name}}).filter(function(x){return x.value}).sort(function(x,y){return String(x.code||x.value).localeCompare(String(y.code||y.value),"es",{numeric:true,sensitivity:"base"})})}
+ else if(state.provider==="ine"){
+ await loadIneNavigation();
+ var seenIne=new Set();
+ out=(state.ineNav||[]).filter(function(x){if(seenIne.has(x.name))return false;seenIne.add(x.name);return true})
+   .map(function(x){return{value:x.name,label:x.name,name:x.name,code:""}});
+}
  else if(state.provider==="eurostat"){await loadEurostatTOC();out=state.eurostatRoots.map(function(x){return{value:x.code,label:x.label}})}
  else if(state.pxPreset==="sweden"){out=a(await fetchJson(c.base)).map(function(x){return{id:String(f(x,"id","code","dbid","path")),label:String(f(x,"text","label","name","title")||f(x,"id","code","dbid","path")),type:String(f(x,"type","class"))}}).filter(function(x){return x.id}).map(function(x){return{value:x.id,label:x.id+" · "+x.label}})}
  else if(state.pxPreset==="finland"){
@@ -571,6 +576,10 @@ async function eurostatSelectRoot(rootCode){
  state.eurostatPath=[root.code];
  state.eurostatNodeParentPath=[root.code];
  eurostatClearLevels();
+ // Mantén sempre visible el selector de "Tipus de dades".
+ eurostatAddRootLevel();
+ var rootSel=$("eurostatRootLevel");
+ if(rootSel)rootSel.value=root.code;
  ["concept","cross","node","table","geo"].forEach(resetSelect);
  eurostatAddLevel(root.children||[],[root.code],0);
 }
