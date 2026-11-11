@@ -237,11 +237,24 @@ async function ineSelectLevel(index,val){
   if(!op.href)throw new Error("No s'ha trobat l'operació INE.");
   // Després de seleccionar l'Estadística, l'INE sempre entra directament
   // a la pàgina "Resultados"; no mostrem "Resultados" com un nivell més.
-  var resultsUrl=op.href.replace(/([?&])menu=[^&]*/i,"$1menu=resultados");
-  if(resultsUrl===op.href){
-   resultsUrl+=(resultsUrl.indexOf("?")>=0?"&":"?")+"menu=resultados";
+  // Cada operació té el seu propi cid i idp. Els conservem explícitament
+  // i només canviem el paràmetre menu a "resultados".
+  var resultsUrl="";
+  try{
+   var ou=new URL(op.href);
+   ou.searchParams.set("menu","resultados");
+   if(!ou.searchParams.get("idp")){
+    throw new Error("L'operació INE no conté el paràmetre idp.");
+   }
+   resultsUrl=ou.href;
+  }catch(e){
+   throw new Error("No s'ha pogut construir la URL de Resultados de l'operació INE.");
   }
   var children=await ineOperationChildren(resultsUrl);
+  // Algunes pàgines d'INEbase carreguen els continguts de Resultados
+  // dinàmicament. En aquest cas, utilitzem la pàgina de l'operació com a
+  // font de navegació, mantenint Resultados com a destinació conceptual.
+  if(!children.length&&op.href!==resultsUrl)children=await ineOperationChildren(op.href);
   state.selected.node="";state.selected.table="";state.metadata=null;state.filters.clear();
   $("filters").innerHTML="";$("query").disabled=true;$("tableInfo").hidden=true;
   if(!children.length)throw new Error("L'operació INE no conté nivells de navegació o taules accessibles.");
