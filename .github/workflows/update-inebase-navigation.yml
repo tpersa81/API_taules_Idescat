@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - ".github/workflows/update-inebase-navigation.yml"
+      - "scripts/build_inebase_navigation.py"
   schedule:
     - cron: "17 4 * * 1"
   workflow_dispatch:
