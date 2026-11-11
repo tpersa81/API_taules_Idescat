@@ -286,32 +286,39 @@ async function ineLoadTablesFromBase(op){
  return out;
 }
 async function ineLoadTablesFromBaseCatalog(op){
- // Fallback genèric per a operacions INEbase que no existeixen a Tempus3.
- // La pàgina de l'operació pot ser retornada com HTML o com Markdown per
- // un proxy CORS; per això detectem els enllaços tpx en tots dos formats.
- var href=ineAbsoluteUrl(op&&op.href);
- if(!href)throw new Error("INE: l'operació no té URL d'INEbase.");
- var html=await fetchText(href,{cache:"no-store"});
+ // Fallback per a operacions d'INEbase que tenen el contingut
+ // organitzat en una pàgina dynt3/inebase amb capsel/padre.
+ // El cid identifica l'operació, però no forma part de la URL de
+ // la pàgina de taules; per això mantenim aquí només correspondències
+ // verificades quan l'operació no és Tempus3.
+ var cid="";
+ try{
+  var u=new URL(ineAbsoluteUrl(op&&op.href));
+  cid=String(u.searchParams.get("cid")||"").trim();
+ }catch(e){}
+ var pages={
+  "1254736176979":"https://www.ine.es/dynt3/inebase/index.htm?capsel=11347&padre=11346"
+ };
+ var page=pages[cid];
+ if(!page)return [];
+ var html=await fetchText(page,{cache:"no-store"});
+ var doc=new DOMParser().parseFromString(html,"text/html");
  var out=[],seen=new Set();
- function add(id,label){
-  id=String(id||"").trim();
-  label=String(label||"").replace(/\\s+/g," ").trim();
-  if(!id||seen.has(id))return;
-  seen.add(id);
-  out.push({id:id,label:id+" · "+(label||("Taula "+id)),type:"table",tableId:id});
- }
- // HTML real: href="...jaxi/Tabla.htm?tpx=12345..."
- var re1=/href=["']([^"']*\\/jaxi\\/Tabla\\.htm[^"']*tpx=([0-9]+)[^"']*)["'][^>]*>([\\s\\S]*?)<\\/a>/gi,m;
- while((m=re1.exec(html))!==null){
-  add(m[2],String(m[3]||"").replace(/<[^>]+>/g," "));
- }
- // Markdown de r.jina.ai: [text](https://www.ine.es/jaxi/Tabla.htm?tpx=12345...)
- var re2=/\\[([^\\]]+)\\]\\(([^)]*\\/jaxi\\/Tabla\\.htm[^)]*tpx=([0-9]+)[^)]*)\\)/gi;
- while((m=re2.exec(html))!==null)add(m[3],m[1]);
- // Últim recurs: si el proxy ha eliminat l'etiqueta de l'enllaç,
- // encara podem recuperar els identificadors tpx de les URL.
- var re3=/[?&]tpx=([0-9]+)/gi;
- while((m=re3.exec(html))!==null)add(m[1],"");
+ Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
+  var raw=aEl.getAttribute("href")||"",abs;
+  try{abs=new URL(raw,page).href}catch(e){return}
+  var u2;try{u2=new URL(abs)}catch(e2){return}
+  var path=u2.pathname.toLowerCase();
+  var tpx=u2.searchParams.get("tpx"),t=u2.searchParams.get("t"),id="",kind="";
+  if(tpx&&path.indexOf("/jaxi/")>=0){id=String(tpx).trim();kind="tpx"}
+  else if(t&&path.indexOf("/jaxit3/")>=0){id=String(t).trim();kind="table"}
+  if(!id)return;
+  var label=String(aEl.textContent||"").replace(/\s+/g," ").trim();
+  if(label&&!seen.has(kind+":"+id)){
+   seen.add(kind+":"+id);
+   out.push({id:id,label:id+" · "+label,type:"table",tableId:id});
+  }
+ });
  out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});
  return out;
 }
@@ -351,8 +358,10 @@ async function ineLoadTables(op){
  // Fallback per a operacions d'INEbase que no tenen taules Tempus3.
  // És especialment necessari per a operacions de síntesi amb taules tpx.
  try{
-  var baseItems=await ineLoadTablesFromBaseCatalog(op);
+  var baseItems=await ineLoadTablesFromBase(op);
   if(baseItems.length)return {operation:apiOp,items:baseItems};
+  var catalogItems=await ineLoadTablesFromBaseCatalog(op);
+  if(catalogItems.length)return {operation:apiOp,items:catalogItems};
   throw new Error("INE: no s'han trobat taules a INEbase per a aquesta operació.");
  }catch(baseErr){
   if(lastErr)throw new Error("INE: no s'han trobat taules Tempus3 ni taules INEbase per a l'operació. "+(baseErr&&baseErr.message?baseErr.message:String(baseErr)));
