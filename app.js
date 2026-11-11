@@ -1254,7 +1254,7 @@ function sortRowsByJsonStatIndex(
           Number.MAX_SAFE_INTEGER;
 
         if (ai !== bi) {
-          return temporal(dim)
+          return isTemporalDimension(dim)
             ? bi - ai
             : ai - bi;
         }
