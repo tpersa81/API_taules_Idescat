@@ -233,10 +233,36 @@ async function ineLoadTables(op){
  await loadIneOperations();
  var apiOp=ineFindOperation(op);
  if(!apiOp)throw new Error("INE: no s'ha pogut identificar l'operació a Tempus3.");
- var code=ineOperationId(apiOp);
- if(!code)throw new Error("INE: l'operació identificada no té codi Tempus3.");
- var d=await fetchJson("https://servicios.ine.es/wstempus/js/ES/TABLAS_OPERACION/"+encodeURIComponent(code)+"?det=2");
- var rows=a(d),seen=new Set(),out=[];
+
+ // Tempus3 admet tres identificadors per a una operació:
+ // Id numèric intern, codi alfabètic i codi IOE. En la majoria
+ // de casos l'Id és suficient, però hi ha operacions en què
+ // TABLAS_OPERACION respon sense taules amb un dels identificadors.
+ // Com que ja hem identificat inequívocament l'operació (URL/cid),
+ // podem provar els tres codis del mateix registre, sense fer
+ // cap aproximació pel nom.
+ var candidates=[];
+ [apiOp.Id,apiOp.Codigo,apiOp.Cod_IOE].forEach(function(v){
+  var s=String(v==null?"":v).trim();
+  if(s&&!candidates.includes(s))candidates.push(s);
+ });
+ if(!candidates.length)throw new Error("INE: l'operació identificada no té cap codi Tempus3.");
+
+ var rows=[];
+ var lastErr=null;
+ for(var ci=0;ci<candidates.length;ci++){
+  try{
+   var d=await fetchJson("https://servicios.ine.es/wstempus/js/ES/TABLAS_OPERACION/"+encodeURIComponent(candidates[ci])+"?det=2");
+   var rr=a(d);
+   if(rr.length){rows=rr;break;}
+  }catch(e){lastErr=e;}
+ }
+ if(!rows.length){
+  if(lastErr)throw lastErr;
+  throw new Error("INE: l'operació no té taules disponibles a Tempus3.");
+ }
+
+ var seen=new Set(),out=[];
  rows.forEach(function(x){
   var id=String(f(x,"Id","id","Codigo","codigo")).trim();
   var name=String(f(x,"Nombre","nombre","Name","name","Titulo","titulo")||id).trim();
