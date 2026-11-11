@@ -1117,91 +1117,123 @@ async function ineOperationCode(op){
  return code;
 }
 async function ineResolveFilters(filters){
- var tableId=String(state.selected.table||"").trim();
- if(!tableId)throw new Error("No s'ha pogut identificar la taula INE.");
- var op=String(state.selected.stat||"").trim();
- if(!op)throw new Error("No s'ha pogut identificar l'operació INE.");
- var opCode=await ineOperationCode(op);
- var varsKey="VARS|"+opCode,vars=state.ineVarCache.get(varsKey);
- if(!vars){
-  vars=a(await fetchJson(provider().base+"/ES/VARIABLES_OPERACION/"+encodeURIComponent(opCode)));
-  state.ineVarCache.set(varsKey,vars);
- }
- var groupsKey="GROUPS|"+tableId,groups=state.ineVarCache.get(groupsKey);
- if(!groups){
-  groups=a(await fetchJson(provider().base+"/ES/GRUPOS_TABLA/"+encodeURIComponent(tableId)));
-  state.ineVarCache.set(groupsKey,groups);
- }
- var out=new URLSearchParams(),dsDims=dims(state.metadata);
- for(var di=0;di<dsDims.length;di++){
-  var d=dsDims[di],wanted=filters[d.id];
-  if(!wanted||!wanted.length)continue;
-  var dn=ineNorm(d.label||d.id),dnKey=dn.replace(/[^A-Z0-9]/g,"");
-  var v=(opCode==="IPRI"&&dnKey==="CLASES")
-      ? {Id:394,Nombre:"CLASES",Codigo:""}
-      : (opCode==="IPRI"&&dnKey==="INDICESYTASAS")
-      ? {Id:83,Nombre:"Índices y Tasas",Codigo:""}
-      : vars.find(function(x){
-   var id=String(f(x,"Id","id")).trim();
-   var name=ineNorm(f(x,"Nombre","nombre","Name","Descripcion","Description")||"");
-   var code=ineNorm(f(x,"Codigo","codigo","Code","code")||"");
-   return id===String(d.id).trim() || name===dn || code===dn ||
-          name.replace(/[^A-Z0-9]/g,"")===dnKey ||
-          code.replace(/[^A-Z0-9]/g,"")===dnKey;
-  });
-  if(!v)throw new Error("No s'ha pogut identificar la variable INE «"+String(d.label||d.id)+"».");
-  var vid=String(f(v,"Id","id")).trim();
-  if(!vid)throw new Error("La variable INE «"+String(d.label||d.id)+"» no té identificador.");
+  var tableId = String(state.selected.table || "").trim();
+  if(!tableId) throw new Error("No s'ha pogut identificar la taula INE.");
+  var op = String(state.selected.stat || "").trim();
+  if(!op) throw new Error("No s'ha pogut identificar l'operació INE.");
 
-  // En una taula Tempus3 normal, tv NO utilitza els IDs numèrics.
-  // Els IDs numèrics només s'utilitzen amb el sufix ~id en taules tpx.
-  // Per a aquesta taula, per tant, necessitem el nom/codi de la variable
-  // i el Codigo del valor (p. ex. sexo:1 per a Hombres).
-  var candidateValues=[];
-  for(var gi=0;gi<groups.length;gi++){
-   var gid=String(f(groups[gi],"Id","id")).trim();
-   if(!gid)continue;
-   var gKey="GROUPVALS|"+tableId+"|"+gid,gv=state.ineVarCache.get(gKey);
-   if(!gv){
-    try{
-     gv=a(await fetchJson(provider().base+"/ES/VALORES_GRUPOSTABLA/"+encodeURIComponent(tableId)+"/"+encodeURIComponent(gid)+"?det=1"));
-     state.ineVarCache.set(gKey,gv);
-    }catch(e){}
-   }
-   if(gv&&gv.length)candidateValues=candidateValues.concat(gv);
+  var opCode = await ineOperationCode(op);
+
+  // Variables de l'operació
+  var varsKey = "VARS|" + opCode;
+  var vars = state.ineVarCache.get(varsKey);
+  if(!vars){
+    vars = a(await fetchJson(provider().base + "/ES/VARIABLES_OPERACION/" + encodeURIComponent(opCode)));
+    state.ineVarCache.set(varsKey, vars);
   }
 
-  if(!candidateValues.length){
-   var valuesKey="VALS|"+opCode+"|"+vid,values=state.ineVarCache.get(valuesKey);
-   if(!values){
-    values=a(await fetchJson(provider().base+"/ES/VALORES_VARIABLEOPERACION/"+encodeURIComponent(vid)+"/"+encodeURIComponent(opCode)));
-    if(!values.length&&opCode==="IPRI"&&vid==="83")
-      values=a(await fetchJson(provider().base+"/ES/VALORES_VARIABLE/83?det=1"));
-    state.ineVarCache.set(valuesKey,values);
-   }
-   candidateValues=values;
+  // Grups de la taula (més fiables per al matching)
+  var groupsKey = "GROUPS|" + tableId;
+  var groups = state.ineVarCache.get(groupsKey);
+  if(!groups){
+    groups = a(await fetchJson(provider().base + "/ES/GRUPOS_TABLA/" + encodeURIComponent(tableId)));
+    state.ineVarCache.set(groupsKey, groups);
   }
 
-  // Una dimensió JSON-stat pot agrupar diversos variables Tempus3
-  // (especialment Edad). Per això el valor seleccionat també determina
-  // la variable real mitjançant FK_Variable.
-  wanted.forEach(function(code){
-   var sc=String(code),suffix=sc.indexOf("_")>=0?sc.slice(sc.lastIndexOf("_")+1):sc;
-   var cat=d.categories&&d.categories.find(function(c){return String(c.code)===sc});
-   var catLabel=ineNorm(cat&&cat.label||"");
-   var val=candidateValues.find(function(x){
-    var fk=String(f(x,"FK_Variable","fk_variable","VariableId","variableId")||"").trim();
-    if(fk&&fk!==vid)return false;
-    var vc=String(f(x,"Codigo","codigo","Code","code")||"").trim();
-    var vn=ineNorm(f(x,"Nombre","nombre","Name","Descripcion","Description")||"");
-    return vc===sc||vc===suffix||String(f(x,"Id","id"))===sc||(catLabel&&vn===catLabel);
-   });
-   if(!val)throw new Error("No s'ha trobat el valor INE «"+sc+"» de la variable «"+String(d.label||d.id)+"».");
-   var valueId=String(f(val,"Id","id")).trim();
-   if(valueId)out.append("tv",vid+":"+valueId);
-  });
- }
- return out;
+  var out = new URLSearchParams();
+  var dsDims = dims(state.metadata);
+
+  for(var di = 0; di < dsDims.length; di++){
+    var d = dsDims[di];
+    if(temporal(d)) continue;          // el temps no va amb tv
+
+    var wanted = filters[d.id];
+    if(!wanted || !wanted.length) continue;
+
+    var dn = ineNorm(d.label || d.id);
+    var dnKey = dn.replace(/[^A-Z0-9]/g, "");
+
+    // 1. Prova de trobar la variable pels grups de la taula
+    var group = groups.find(function(g){
+      return ineNorm(f(g, "Nombre", "nombre", "Name") || "") === dn ||
+             ineNorm(f(g, "Nombre", "nombre", "Name") || "").replace(/[^A-Z0-9]/g,"") === dnKey;
+    });
+
+    var vid = null;
+    var candidateValues = [];
+
+    if(group){
+      var gid = String(f(group, "Id", "id")).trim();
+      var gKey = "GROUPVALS|" + tableId + "|" + gid;
+      var gv = state.ineVarCache.get(gKey);
+      if(!gv){
+        try{
+          gv = a(await fetchJson(provider().base + "/ES/VALORES_GRUPOSTABLA/" +
+                encodeURIComponent(tableId) + "/" + encodeURIComponent(gid) + "?det=1"));
+          state.ineVarCache.set(gKey, gv);
+        }catch(e){}
+      }
+      if(gv && gv.length){
+        candidateValues = gv;
+        // El Variable.Id del primer valor ens dóna el vid real
+        var first = gv[0];
+        vid = String(f(first && first.Variable, "Id", "id") || f(first, "FK_Variable") || "").trim();
+      }
+    }
+
+    // 2. Fallback a VARIABLES_OPERACION
+    if(!vid){
+      var v = vars.find(function(x){
+        var id = String(f(x,"Id","id")).trim();
+        var name = ineNorm(f(x,"Nombre","nombre","Name","Descripcion","Description") || "");
+        var code = ineNorm(f(x,"Codigo","codigo","Code","code") || "");
+        return id === String(d.id).trim() ||
+               name === dn || code === dn ||
+               name.replace(/[^A-Z0-9]/g,"") === dnKey ||
+               code.replace(/[^A-Z0-9]/g,"") === dnKey;
+      });
+      if(v) vid = String(f(v,"Id","id")).trim();
+    }
+
+    if(!vid){
+      throw new Error("No s'ha pogut identificar la variable INE «" + (d.label || d.id) + "».");
+    }
+
+    // Carrega valors si encara no els tenim
+    if(!candidateValues.length){
+      var valuesKey = "VALS|" + opCode + "|" + vid;
+      var values = state.ineVarCache.get(valuesKey);
+      if(!values){
+        values = a(await fetchJson(provider().base + "/ES/VALORES_VARIABLEOPERACION/" +
+                  encodeURIComponent(vid) + "/" + encodeURIComponent(opCode)));
+        state.ineVarCache.set(valuesKey, values);
+      }
+      candidateValues = values;
+    }
+
+    wanted.forEach(function(code){
+      var sc = String(code);
+      var suffix = sc.indexOf("_") >= 0 ? sc.slice(sc.lastIndexOf("_") + 1) : sc;
+      var cat = (d.categories || []).find(function(c){ return String(c.code) === sc; });
+      var catLabel = ineNorm(cat && cat.label || "");
+
+      var val = candidateValues.find(function(x){
+        var vc = String(f(x,"Codigo","codigo","Code","code") || "").trim();
+        var vn = ineNorm(f(x,"Nombre","nombre","Name","Descripcion","Description") || "");
+        var xid = String(f(x,"Id","id")).trim();
+        return vc === sc || vc === suffix || xid === sc || xid === suffix ||
+               (catLabel && vn === catLabel);
+      });
+
+      if(!val){
+        throw new Error("No s'ha trobat el valor INE «" + sc + "» de la variable «" + (d.label || d.id) + "».");
+      }
+
+      var valueId = String(f(val,"Id","id")).trim();
+      if(valueId) out.append("tv", vid + ":" + valueId);
+    });
+  }
+  return out;
 }
 async function runQuery(){
  var token=++state.requestToken;busy(true);$("query").disabled=true;status("Consultant l’API…");
