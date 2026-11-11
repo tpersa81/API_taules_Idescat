@@ -84,19 +84,31 @@ function setLabels(){
  if(p==="idescat")ls=["Estadística","Tema","Encreuament","Entrada","Taula","Geografia"];
  else if(p==="pxweb"&&state.pxPreset==="sweden")ls=["Estadística","Tema","Nivell 2","Nivell 3","Taula","Geografia"];
  else if(p==="pxweb")ls=["Estadística","Nivell 1","Nivell 2","Nivell 3","Taula","Geografia"];
- else if(p==="ine")ls=["Operació","Grupo temático","Tema","Territorio","Tabla","—"];
+ else if(p==="ine")ls=["Grupo temático","Tema","Operació","Nivell 2","Nivell 3","Nivell 1"];
  else ls=["Tipus de dades","Tema","Subtema","Estadística","—","—"];
- var l=document.querySelectorAll("#step2 label");
+ var l=document.querySelectorAll("#step2>.grid:first-of-type label");
  l.forEach(function(x,i){x.firstChild.textContent=ls[i]+" "});
+ if(p==="ine"){
+   var grid=document.querySelector("#step2>.grid:first-of-type"),labels={concept:$("concept").parentElement,cross:$("cross").parentElement,stat:$("stat").parentElement,node:$("node").parentElement,table:$("table").parentElement,geo:$("geo").parentElement};
+   [labels.concept,labels.cross,labels.stat,labels.geo,labels.node,labels.table].forEach(function(el){if(el)grid.appendChild(el);});
+   labels.concept.firstChild.textContent="Grupo temático ";
+   labels.cross.firstChild.textContent="Tema ";
+   labels.stat.firstChild.textContent="Operació ";
+   labels.geo.firstChild.textContent="Nivell 1 ";
+   labels.node.firstChild.textContent="Nivell 2 ";
+   labels.table.firstChild.textContent="Nivell 3 ";
+ }
 }
 function setProviderUI(){
  setLabels();
- var isEuro=state.provider==="eurostat",isSweden=state.provider==="pxweb"&&state.pxPreset==="sweden",fixedGrid=document.querySelector("#step2>.grid"),euroBox=$("eurostatLevels");
+ var isEuro=state.provider==="eurostat",isSweden=state.provider==="pxweb"&&state.pxPreset==="sweden",isIne=state.provider==="ine",fixedGrid=document.querySelector("#step2>.grid:first-of-type"),euroBox=$("eurostatLevels"),ineTableWrap=$("ineTableWrap");
  if(fixedGrid)fixedGrid.style.display=(isEuro||isSweden)?"none":"";
  if(euroBox)euroBox.hidden=!(isEuro||isSweden);
- var tl=$("table")&&$("table").parentElement,gl=$("geo")&&$("geo").parentElement;
- if(tl)tl.style.display=isEuro?"none":"";
- if(gl)gl.style.display=(isEuro||state.provider==="ine")?"none":"";
+ if(ineTableWrap)ineTableWrap.hidden=!isIne;
+ var tl=$("table")&&$("table").parentElement,gl=$("geo")&&$("geo").parentElement,nl=$("node")&&$("node").parentElement;
+ if(tl)tl.style.display=isIne?"":"";
+ if(gl)gl.style.display=(isEuro||!isIne&&state.provider==="ine")?"none":"";
+ if(nl)nl.style.display=isIne?"":"";
  $("docLink").href=provider().doc;
  var sel=state.provider==="pxweb"?"pxweb:"+state.pxPreset:state.provider;
  if($("provider")&&[].slice.call($("provider").options).some(function(o){return o.value===sel}))$("provider").value=sel;
@@ -260,11 +272,8 @@ function ineNavHeadings(root,anchor){
 function ineNavOperationLinks(doc){
  var links=Array.from(doc.querySelectorAll("a[href]")),ops=[];
  links.forEach(function(a){
-   var text=String(a.textContent||"").replace(/\s+/g," ").trim();
-   if(!text)return;
-   var href=a.href||"";
-   if(!/operacion\.htm/i.test(href))return;
-   ops.push({text:text,href:href,heads:ineNavHeadings(doc.body,a)});
+   var text=String(a.textContent||"").replace(/\\s+/g," ").trim(),href=a.href||"";
+   if(text&&/operacion\\.htm/i.test(href))ops.push({text:text,href:href});
  });
  return ops;
 }
@@ -281,18 +290,30 @@ function ineNavPathFromHeads(heads){
 }
 async function loadIneNavigation(){
  if(Array.isArray(state.ineNavigation)&&state.ineNavigation.length)return state.ineNavigation;
- var html=await ineFetchText("https://ine.es/dyngs/INEbase/listaoperaciones.htm");
- var doc=new DOMParser().parseFromString(html,"text/html");
+ var catalog=null;
+ try{
+   var lr=await fetch("data/inebase-navigation.json",{cache:"no-store"});
+   if(lr.ok)catalog=await lr.json();
+ }catch(e){}
+ if(!Array.isArray(catalog)||!catalog.length){
+   try{
+     var html=await ineFetchText("https://ine.es/dyngs/INEbase/listaoperaciones.htm");
+     var doc=new DOMParser().parseFromString(html,"text/html"),links=ineNavOperationLinks(doc);
+     catalog=links.map(function(x){return{name:x.text,href:x.href,group:"Otros",topic:"Otros"}});
+   }catch(e){catalog=[];}
+ }
  var byName=new Map();
- var opLinks=ineNavOperationLinks(doc);
- opLinks.forEach(function(x){
-   var key=ineNavNorm(x.text),ctx=ineNavPathFromHeads(x.heads),cur=byName.get(key);
-   if(!cur){cur={name:x.text,href:x.href,paths:[]};byName.set(key,cur);}
-   if(!cur.paths.some(function(p){return ineNavNorm(p.group)===ineNavNorm(ctx.group)&&ineNavNorm(p.topic)===ineNavNorm(ctx.topic)}))cur.paths.push(ctx);
+ catalog.forEach(function(x){
+   var key=ineNavNorm(x.name||x.text||"");
+   if(!key)return;
+   byName.set(key,{name:String(x.name||x.text),href:String(x.href||""),paths:[{group:String(x.group||"Otros"),topic:String(x.topic||"Otros")}]});
  });
- state.ineNavigation=state.stats.map(function(s){
-   var x=byName.get(ineNavNorm(s.name||""));
-   return{value:s.value,code:s.code,name:s.name,href:x&&x.href||"",paths:x&&x.paths&&x.paths.length?x.paths:[{group:"Otros",topic:"Otros"}]};
+ // Stable fallback for EPA while the generated INEbase catalog is first built.
+ var epaKey=ineNavNorm("Encuesta de población activa");
+ if(!byName.has(epaKey))byName.set(epaKey,{name:"Encuesta de población activa",href:"https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176918&idp=1254735976595&menu=resultados",paths:[{group:"Mercado laboral",topic:"Actividad, ocupación y paro"}]});
+ state.ineNavigation=state.stats.map(function(st){
+   var x=byName.get(ineNavNorm(st.name||""));
+   return{xValue:st.value,value:st.value,code:st.code,name:st.name,href:x&&x.href||"",paths:x&&x.paths&&x.paths.length?x.paths:[{group:"Otros",topic:"Otros"}]};
  });
  return state.ineNavigation;
 }
@@ -332,21 +353,36 @@ async function ineOperationPage(op){
  var key=String(op||"").trim(),cached=state.ineOperationPages.get(key);if(cached)return cached;
  var nav=(state.ineNavigation||[]).find(function(x){return String(x.value)===key});
  if(!nav||!nav.href)return null;
- var html=await ineFetchText(nav.href),doc=new DOMParser().parseFromString(html,"text/html"),links=Array.from(doc.querySelectorAll("a[href]")),tables=[];
- links.forEach(function(a){
-   var href=a.href||"",m=href.match(/[?&](?:t|tpx)=(\d+)/i);
-   if(!m)return;
-   var name=String(a.textContent||"").replace(/\s+/g," ").trim();if(!name)return;
-   var heads=ineNavHeadings(doc.body,a),territory="";
-   for(var i=heads.length-1;i>=0;i--){if(/^Resultados\b/i.test(heads[i].text)){territory=heads[i].text;break;}}
-   if(!territory){
-     var n=ineNavNorm(name);
-     if(n.indexOf("COMUNIDADES AUTONOMAS")>=0)territory="Resultados por comunidades autónomas";
-     else if(n.indexOf("PROVINCIAS")>=0)territory="Resultados provinciales";
-     else if(n.indexOf("NACIONAL")>=0)territory="Resultados nacionales";
-     else territory="Otros resultados";
+ var html=await ineFetchText(nav.href),doc=new DOMParser().parseFromString(html,"text/html");
+ var all=Array.from(doc.querySelectorAll("*")),anchors=Array.from(doc.querySelectorAll("a[href]")),tables=[];
+ function textOf(el){return String(el&&el.textContent||"").replace(/\\s+/g," ").trim();}
+ function isTableAnchor(a){return /(?:jaxiT3\\/Tabla|[?&](?:t|tpx)=\\d+)/i.test(a.href||"");}
+ function previousText(regex,limit){
+   for(var i=all.indexOf(limit)-1;i>=0;i--){var t=textOf(all[i]);if(t&&regex.test(t))return t;}
+   return "";
+ }
+ anchors.forEach(function(a){
+   var href=a.href||"",m=href.match(/[?&](?:t|tpx)=(\\d+)/i);if(!m)return;
+   var name=textOf(a);if(!name)return;
+   var idx=all.indexOf(a);
+   var level2="",level1="",level3="";
+   for(var i=idx-1;i>=0;i--){
+     var t=textOf(all[i]);if(!t||t.length>180)continue;
+     if(!level2&&/^Resultados\\b/i.test(t))level2=t;
+     if(!level1&&/^(Series\\b|Media de los cuatro trimestres|Resultados detallados|Principales resultados)/i.test(t))level1=t;
+     if(level2&&level1)break;
    }
-   tables.push({jaxiId:m[1],name:name,territory:territory,href:href});
+   var l2idx=-1;
+   for(var j=idx-1;j>=0;j--){if(textOf(all[j])===level2){l2idx=j;break;}}
+   for(var k=idx-1;k>Math.max(l2idx,0);k--){
+     var el=all[k],t=textOf(el);
+     if(!t||t.length>140||isTableAnchor(el))continue;
+     if(/^Resultados\\b/i.test(t)||/^(Series\\b|Media de los cuatro trimestres|Resultados detallados|Principales resultados)/i.test(t))continue;
+     if(/^(Aviso|Última modificación|Dimensiones|Periodo|Formatos de descarga|Información tabla|Acceso directo|Últimos datos)/i.test(t))continue;
+     if(el.tagName==="A"&&/^(Trimestrales|Anuales|Módulos especiales|Análisis y estudios|Microdatos)$/i.test(t))continue;
+     if(el.tagName==="A"){level3=t;break;}
+   }
+   tables.push({jaxiId:m[1],name:name,level1:level1||"Altres",level2:level2||"Altres resultats",level3:level3||"Altres",territory:level2||"Altres resultats",href:href});
  });
  var out={tables:tables};state.ineOperationPages.set(key,out);return out;
 }
@@ -357,22 +393,36 @@ function ineMatchTables(raw,opPage){
    var pn=ineNavNorm(p.name);
    var exact=rows.filter(function(r){return String(r.value)===String(p.jaxiId)});
    if(!exact.length)exact=rows.filter(function(r){return ineNavNorm(r.name)===pn});
-   return exact.map(function(r){return{value:r.value,name:r.name,label:r.label,territory:p.territory,jaxiId:p.jaxiId}});
+   return exact.map(function(r){return{value:r.value,name:r.name,label:r.label,level1:p.level1||p.territory||"Altres",level2:p.level2||"Altres resultats",level3:p.level3||r.name,jaxiId:p.jaxiId}});
  }).flat().filter(function(x,i,a){return a.findIndex(function(y){return y.value===x.value&&y.territory===x.territory})===i;});
 }
-function inePopulateTerritories(){
- var ts=[...new Set((state.ineTables||[]).map(function(x){return x.territory||"Otros resultados"}))];
- ts.sort(function(a,b){return a.localeCompare(b,"ca",{sensitivity:"base"})});
- fill($("node"),ts.map(function(x){return{value:x,label:x}}));$("node").disabled=!ts.length;
- resetSelect("table");
- if(ts.length===1){$("node").value=ts[0];return ineSelectTerritory();}
+function ineFillLevel(selectId,rows,field){
+ var vals=[...new Set((rows||[]).map(function(x){return x[field]}).filter(Boolean))];
+ vals.sort(function(a,b){return String(a).localeCompare(String(b),"ca",{numeric:true,sensitivity:"base"})});
+ fill($(selectId),vals.map(function(x){return{value:x,label:x}}));$(selectId).disabled=!vals.length;
 }
-async function ineSelectTerritory(){
- state.selected.node=$("node").value;state.selected.table="";resetSelect("table");ineResetResults();if(!state.selected.node)return;
- var rows=(state.ineTables||[]).filter(function(x){return x.territory===state.selected.node});
- rows.sort(function(a,b){return String(a.value).localeCompare(String(b.value),"ca",{numeric:true})});
- fill($("table"),rows.map(function(x){return{value:x.value,label:x.label}}));$("table").disabled=!rows.length;
- if(rows.length===1){$("table").value=rows[0].value;await ineSelectTable();}
+function inePopulateLevel1(){
+ var rows=state.ineTables||[];ineFillLevel("geo",rows,"level1");resetSelect("node");resetSelect("table");resetSelect("ineTable");if(rows.length===1){$("geo").value=rows[0].level1;ineSelectLevel1();}
+}
+function ineSelectLevel1(){
+ state.selected.geo=$("geo").value;state.selected.node="";state.selected.table="";state.ineLevel3="";ineResetResults();
+ var rows=(state.ineTables||[]).filter(function(x){return x.level1===state.selected.geo});
+ ineFillLevel("node",rows,"level2");resetSelect("table");resetSelect("ineTable");if(rows.length===1){$("node").value=rows[0].level2;ineSelectLevel2();}
+}
+function ineSelectLevel2(){
+ state.selected.node=$("node").value;state.ineLevel3="";state.selected.table="";ineResetResults();
+ var rows=(state.ineTables||[]).filter(function(x){return x.level1===state.selected.geo&&x.level2===state.selected.node});
+ ineFillLevel("table",rows,"level3");resetSelect("ineTable");if(rows.length===1){$("table").value=rows[0].level3;ineSelectLevel3();}
+}
+function ineSelectLevel3(){
+ state.ineLevel3=$("table").value;state.selected.table="";ineResetResults();
+ var rows=(state.ineTables||[]).filter(function(x){return x.level1===state.selected.geo&&x.level2===state.selected.node&&x.level3===state.ineLevel3});
+ fill($("ineTable"),rows.map(function(x){return{value:x.value,label:x.value+" · "+x.name}}));$("ineTable").disabled=!rows.length;
+ if(rows.length===1){$("ineTable").value=rows[0].value;ineSelectRealTable();}
+}
+async function ineSelectRealTable(){
+ state.selected.table=$("ineTable").value;if(!state.selected.table)return;
+ try{await ineMetadata(state.selected.table)}catch(e){status("INE: "+e.message,"error")}
 }
 async function ineSelectTable(){
  state.selected.table=$("table").value;if(!state.selected.table)return;try{await ineMetadata(state.selected.table)}catch(e){status("INE: "+e.message,"error")}
@@ -388,18 +438,15 @@ async function onStatChange(){
    var opPage=await ineOperationPage(state.selected.stat);
    state.ineTables=ineMatchTables(a(t),opPage);
    if(!state.ineTables.length){
-     state.ineTables=a(t).map(function(x){var id=String(f(x,"Id","id","Codigo","Code"));return{value:id,name:String(f(x,"Nombre","nombre","Name","Descripcion","Description")||id),label:id+" · "+String(f(x,"Nombre","nombre","Name","Descripcion","Description")||id),territory:"Altres resultats"}}).filter(function(x){return x.value});
+     state.ineTables=a(t).map(function(x){var id=String(f(x,"Id","id","Codigo","Code"));var nm=String(f(x,"Nombre","nombre","Name","Descripcion","Description")||id);return{value:id,name:nm,label:id+" · "+nm,level1:"Altres",level2:"Altres resultats",level3:nm}}).filter(function(x){return x.value});
    }
    if(keepConcept){$("concept").value=keepConcept;state.selected.concept=keepConcept;}
    if(keepCross){$("cross").value=keepCross;state.selected.cross=keepCross;}
    $("concept").disabled=false;$("cross").disabled=false;$("stat").disabled=false;
-   inePopulateTerritories();$("table").disabled=true;$("geo").disabled=true;
-   var op=state.ineNavigation&&state.ineNavigation.find(function(x){return String(x.value)===String(state.selected.stat)});
-   if(op&&!keepConcept&&op.paths&&op.paths.length){
-     var path=op.paths[0];state.selected.concept=path.group;state.selected.cross=path.topic;$("concept").value=path.group;$("cross").value=path.topic;
-   }
+   $("node").disabled=true;$("table").disabled=true;$("geo").disabled=true;$("ineTable").disabled=true;
+   inePopulateLevel1();
  }
-  else if(state.provider==="eurostat"){await eurostatSelectRoot(state.selected.stat)}
+ else if(state.provider==="eurostat"){await eurostatSelectRoot(state.selected.stat)}
   else if(state.pxPreset==="sweden"){await swedenSelectRoot(state.selected.stat)}
   else{state.pxPath=[state.selected.stat];await pxChildren(state.pxPath,"concept")}
  }catch(e){status(e.message,"error")}finally{busy(false)}
@@ -1658,7 +1705,7 @@ function bind(){
   $("stat").onchange=async function(){await onStatChange();updateUrl()};
  $("concept").onchange=async function(){if(state.provider==="ine"){await ineSelectTheme();updateUrl();return;}if(state.provider==="pxweb")await pxSelect("concept");else if(state.provider==="eurostat")await eurostatSelectLevel("concept");else{state.selected.concept=$("concept").value;state.selected.cross="";state.selected.node="";state.selected.table="";state.selected.geo="";["cross","node","table","geo"].forEach(resetSelect);state.metadata=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;var c=state.selected.concept,rows=(state.catalog||[]).filter(function(r){return r.concept===c}),x=[...new Set(rows.map(function(r){return r.cross}).filter(Boolean))];fill($("cross"),x.map(function(v){return{value:v,label:v}}));$("cross").disabled=!x.length;if(x.length===1){$("cross").value=x[0];await $("cross").onchange()}else if(x.length===0){var ids=[...new Set(rows.map(function(r){return String(r.node)}).filter(Boolean))];fill($("node"),ids.map(function(id){var q=rows.find(function(r){return String(r.node)===id});return{value:id,label:id+" · "+q.name}}));$("node").disabled=!ids.length;if(ids.length===1){$("node").value=ids[0];await onNodeChange()}}}};
  $("cross").onchange=async function(){if(state.provider==="ine"){await ineSelectTopic();updateUrl();return;}if(state.provider==="pxweb")await pxSelect("cross");else if(state.provider==="eurostat")await eurostatSelectLevel("cross");else{var c=$("concept").value,x=$("cross").value;state.selected.cross=x;state.selected.node="";state.selected.table="";state.selected.geo="";resetSelect("node");resetSelect("table");resetSelect("geo");state.metadata=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;var r=(state.catalog||[]).filter(function(v){return v.concept===c&&v.cross===x}),ids=[...new Set(r.map(function(v){return v.node}))];fill($("node"),ids.map(function(id){var q=r.find(function(v){return v.node===id});return{value:id,label:id+" · "+q.name}}));$("node").disabled=!ids.length;if(ids.length===1){$("node").value=ids[0];await onNodeChange()}}};
- $("node").onchange=async function(){if(state.provider==="ine"){await ineSelectTerritory();updateUrl();}else if(state.provider==="eurostat")await eurostatSelectLevel("node");else await onNodeChange()};$("table").onchange=async function(){if(state.provider==="ine")await ineSelectTable();else await onTableChange();};$("geo").onchange=onGeoChange;$("tabData").onclick=function(){$("tabData").classList.add("active");$("tabPivot").classList.remove("active");$("results").hidden=false;$("pivotBuilder").hidden=true};$("tabPivot").onclick=function(){$("tabPivot").classList.add("active");$("tabData").classList.remove("active");$("results").hidden=true;$("pivotBuilder").hidden=false;renderPivotBuilder()};$("query").onclick=runQuery;$("exportCsv").onclick=exportCSV;$("exportXlsx").onclick=exportXLSX;$("addToCart").onclick=addCart;$("cartExport").onclick=exportCart;$("cartClear").onclick=function(){state.cart=[];renderCart()};$("cartToggle").onclick=function(){var p=$("cartPanel");p.hidden=false;$("cartToggle").setAttribute("aria-expanded","true");p.scrollIntoView({behavior:"smooth",block:"start"})};$("clear").onclick=function(){if(state.metadata)renderMetadata(state.metadata)}
+ $("geo").onchange=async function(){if(state.provider==="ine"){ineSelectLevel1();updateUrl();}else await onGeoChange()};$("node").onchange=async function(){if(state.provider==="ine"){ineSelectLevel2();updateUrl();}else if(state.provider==="eurostat")await eurostatSelectLevel("node");else await onNodeChange()};$("table").onchange=async function(){if(state.provider==="ine"){ineSelectLevel3();updateUrl();}else await onTableChange();};$("ineTable").onchange=async function(){if(state.provider==="ine")await ineSelectRealTable();};$("tabData").onclick=function(){$("tabData").classList.add("active");$("tabPivot").classList.remove("active");$("results").hidden=false;$("pivotBuilder").hidden=true};$("tabPivot").onclick=function(){$("tabPivot").classList.add("active");$("tabData").classList.remove("active");$("results").hidden=true;$("pivotBuilder").hidden=false;renderPivotBuilder()};$("query").onclick=runQuery;$("exportCsv").onclick=exportCSV;$("exportXlsx").onclick=exportXLSX;$("addToCart").onclick=addCart;$("cartExport").onclick=exportCart;$("cartClear").onclick=function(){state.cart=[];renderCart()};$("cartToggle").onclick=function(){var p=$("cartPanel");p.hidden=false;$("cartToggle").setAttribute("aria-expanded","true");p.scrollIntoView({behavior:"smooth",block:"start"})};$("clear").onclick=function(){if(state.metadata)renderMetadata(state.metadata)}
 }
 function updateUrl(){var q=new URLSearchParams();q.set("provider",state.provider);if(state.provider==="pxweb")q.set("px",state.pxPreset);if(state.selected.stat)q.set("stat",state.selected.stat);history.replaceState(null,"","?"+q.toString())}
 (async function(){bind();renderCart();var q=new URLSearchParams(location.search);state.provider=q.get("provider")||"idescat";state.pxPreset=q.get("px")||"finland";$("provider").value=state.provider==="pxweb"?"pxweb:"+state.pxPreset:state.provider;setProviderUI();try{await loadStats()}catch(e){status(e.message,"error")}})();
