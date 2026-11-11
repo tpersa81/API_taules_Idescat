@@ -66,7 +66,29 @@ function temporal(d){
  });
  return explicit||named||temporalCodes;
 }
-function sortedCats(c,d){var x=c.slice().sort(function(a,b){return a.index-b.index});return temporal(d)?x.reverse():x}
+function temporalCodeRank(code){
+ var v=String(code==null?"":code).trim().toUpperCase(),m;
+ if(/^\\d{4}$/.test(v))return Number(v)*100000000;
+ m=v.match(/^(\\d{4})M(\\d{1,2})$/);if(m)return Number(m[1])*100000000+Number(m[2])*1000000;
+ m=v.match(/^(\\d{4})Q(\\d)$/);if(m)return Number(m[1])*100000000+Number(m[2])*10000000;
+ m=v.match(/^(\\d{4})S(\\d)$/);if(m)return Number(m[1])*100000000+Number(m[2])*10000000;
+ m=v.match(/^(\\d{4})B(\\d{1,2})$/);if(m)return Number(m[1])*100000000+Number(m[2])*1000000;
+ m=v.match(/^(\\d{4})W(\\d{1,2})$/);if(m)return Number(m[1])*100000000+Number(m[2])*1000000;
+ m=v.match(/^(\\d{4})D(\\d{1,3})$/);if(m)return Number(m[1])*100000000+Number(m[2])*1000000;
+ m=v.match(/^(\\d{4})-(\\d{2})(?:-(\\d{2}))?$/);if(m)return Number(m[1])*100000000+Number(m[2])*1000000+Number(m[3]||0);
+ return null;
+}
+function sortedCats(c,d){
+ var x=c.slice();
+ if(temporal(d)){
+  x.sort(function(a,b){
+   var ar=temporalCodeRank(a.code),br=temporalCodeRank(b.code);
+   if(ar!=null&&br!=null&&ar!==br)return br-ar;
+   return Number(b.index)-Number(a.index);
+  });
+ }else x.sort(function(a,b){return Number(a.index)-Number(b.index)});
+ return x;
+}
 function collection(d){
  if(d&&d.class==="collection"){
   var items=Array.isArray(d.link&&d.link.item)?d.link.item:[];
