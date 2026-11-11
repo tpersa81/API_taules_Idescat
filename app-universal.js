@@ -231,10 +231,10 @@ function ineOperationId(op){
 }
 async function ineLoadTablesFromBase(op){
  // Algunes operacions d'INEbase no estan exposades com a operacions
- // Tempus3. En aquests casos, la pàgina de "Resultados" continua
- // proporcionant els identificadors reals de les taules (tpx, t=...).
- // No fem un scraping general de la pàgina: només acceptem enllaços
- // que apunten explícitament a una taula INEbase.
+ // Tempus3. En aquests casos, la pàgina de Resultados apunta primer
+ // a pàgines de categories (dynt3/inebase) i aquestes, al seu torn,
+ // apunten a les taules reals (jaxi/Tabla.htm?tpx=...). Recorrem
+ // únicament aquest petit arbre INEbase, sense fer scraping general.
  var href=ineAbsoluteUrl(op&&op.href);
  if(!href)throw new Error("INE: l'operació no té URL d'INEbase.");
  try{
@@ -242,27 +242,56 @@ async function ineLoadTablesFromBase(op){
   u.searchParams.set("menu","resultados");
   href=u.href;
  }catch(e){}
- var html=await fetchText(href,{cache:"no-store"});
- var doc=new DOMParser().parseFromString(html,"text/html");
- var links=Array.from(doc.querySelectorAll("a[href]")),out=[],seen=new Set();
- links.forEach(function(aEl){
-  var raw=aEl.getAttribute("href")||"",abs;
-  try{abs=new URL(raw,href).href}catch(e){return}
-  var u2;try{u2=new URL(abs)}catch(e2){return}
-  var id="",kind="";
-  var tpx=u2.searchParams.get("tpx");
-  var t=u2.searchParams.get("t");
-  if(tpx){id=String(tpx).trim();kind="tpx"}
-  else if(t&&/jaxiT3|Tabla\.htm/i.test(u2.pathname)){id=String(t).trim();kind="table"}
-  else if(/\/jaxiT3\/Tabla\.htm/i.test(u2.pathname)&&t){id=String(t).trim();kind="table"}
-  if(!id)return;
-  var label=String(aEl.textContent||"").replace(/\s+/g," ").trim();
-  if(!label||seen.has(kind+":"+id))return;
-  seen.add(kind+":"+id);
-  out.push({id:id,label:id+" · "+label,type:"table",tableId:id});
- });
+ var queue=[{url:href,depth:0}],visited=new Set(),out=[],seen=new Set(),lastErr=null;
+ while(queue.length){
+  var cur=queue.shift(),pageUrl=cur.url,depth=cur.depth;
+  if(visited.has(pageUrl)||depth>3)continue;
+  visited.add(pageUrl);
+  var html;
+  try{html=await fetchText(pageUrl,{cache:"no-store"});}
+  catch(e){lastErr=e;continue;}
+  var doc=new DOMParser().parseFromString(html,"text/html");
+  var links=Array.from(doc.querySelectorAll("a[href]"));
+  links.forEach(function(aEl){
+   var raw=aEl.getAttribute("href")||"",abs;
+   try{abs=new URL(raw,pageUrl).href}catch(e){return}
+   var u2;try{u2=new URL(abs)}catch(e2){return}
+   var host=u2.hostname.toLowerCase();
+   if(host!=="www.ine.es"&&host!=="ine.es")return;
+   var path=u2.pathname.toLowerCase();
+   var id="",kind="";
+   var tpx=u2.searchParams.get("tpx");
+   var t=u2.searchParams.get("t");
+   if(tpx&&path.indexOf("/jaxi/")===0){
+    id=String(tpx).trim();kind="tpx";
+   }else if(t&&path.indexOf("/jaxit3/")===0){
+    id=String(t).trim();kind="table";
+   }
+   if(id){
+    var label=String(aEl.textContent||"").replace(/\\s+/g," ").trim();
+    if(label&&!seen.has(kind+":"+id)){
+     seen.add(kind+":"+id);
+     out.push({id:id,label:id+" · "+label,type:"table",tableId:id});
+    }
+    return;
+   }
+   // Només seguim pàgines internes de l'arbre INEbase.
+   var follow=(path.indexOf("/dynt3/inebase/")===0||
+               path.indexOf("/jaxi/")===0||
+               path.indexOf("/jaxit3/")===0);
+   if(follow&&depth<3){
+    var next=u2.href;
+    if(path.indexOf("/dynt3/inebase/")===0&&u2.searchParams.get("capsel")){
+     queue.push({url:next,depth:depth+1});
+    }
+   }
+  });
+ }
  out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});
- if(!out.length)throw new Error("INE: no s'han trobat taules a INEbase per a aquesta operació.");
+ if(!out.length){
+  if(lastErr)throw new Error("No s'ha pogut accedir a les pàgines de taules d'INEbase.");
+  throw new Error("INE: no s'han trobat taules a INEbase per a aquesta operació.");
+ }
  return out;
 }
 async function ineLoadTables(op){
