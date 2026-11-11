@@ -212,7 +212,7 @@ async function ineOperationChildren(url){
  out.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true,sensitivity:"base"})});
  return out;
 }
-function ineLevelLabel(index){return index===0?"Grup temático":index===1?"Tema":index===2?"Estadística":"Nivell "+(index-2)}
+function ineLevelLabel(index){return index===0?"Grup temàtic":index===1?"Tema":index===2?"Estadística":"Nivell "+(index-2)}
 async function ineSelectRoot(){
  await loadIneNavigation();ineClearNavigation();ineAddLevel(ineNavGroups(),0,ineLevelLabel(0));
 }
