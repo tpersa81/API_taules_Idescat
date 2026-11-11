@@ -1,0 +1,2798 @@
+[
+  {
+    "name": "Encuesta sobre la estructura de las explotaciones agrícolas",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176854&menu=ultiDatos&idp=1254735727106",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Censo Agrario",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176851&menu=ultiDatos&idp=1254735727106",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Encuesta sobre métodos de producción en las explotaciones agrícolas 2009",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176852&menu=resultados&idp=1254735727106",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Encuesta Semestral de Ganado Bovino y su Producción Láctea",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01006",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Precios Coyunturales de Productos Ganaderos",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01180",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Encuesta Anual de Ganados Ovino y Caprino, y su Producción Láctea",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01008",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Encuestas de Producción de Huevos e Incubación",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01009",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Encuesta Mensual y Anual de Sacrificio de Ganado en Mataderos",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01010",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Estadística Anual de Lana, Miel y Otras Producciones Ganaderas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01013",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Avances Mensuales de Superficies y Producciones Agrícolas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01019",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Encuesta Anual de Superficies y Rendimientos de Cultivos",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01023",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Estadística Anual de Cortas de Madera",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01029",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Estadística Anual de Otros Aprovechamientos Forestales",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01030",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Precios e Índices Medios Nacionales Mensuales y Anuales Percibidos por los Agricultores",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01046",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Precios e Índices Medios Nacionales Mensuales y Anuales Pagados por los Agricultores",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01047",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Índices y Salarios Agrarios Trimestrales y Anuales",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01048",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Red Española de Datos de Sostenibilidad Agraria (REDSA)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01049",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Cuentas Económicas Nacionales de la Agricultura",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01053",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Cuentas Económicas de la Agricultura Regionales",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01054",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Encuesta de Utilización de Medios de Producción",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01061",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Estadística Anual de Proyectos y Actuaciones Forestales",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01069",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Cuentas Económicas Nacionales de la Selvicultura",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01070",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Estadística Anual de Caza",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01085",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Estadística Mensual de Inscripciones de Maquinaria Agrícola",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01087",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Estadística Anual de Consumo de Fertilizantes en Agricultura",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01088",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Balances de Aprovisionamiento de Vino",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01122",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Balance Nacional de la Madera",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01124",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Estadísticas de Producción y Comercialización de Material Forestal de Reproducción",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01134",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Estadística Anual de Superficies y Producciones de Cultivos",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01135",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Inventario Forestal Nacional",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=04001",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Inventario Nacional del Estado de Salud de los Bosques",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=04004",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Estadística sobre Gestión Forestal Sostenible",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=23030",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Encuesta de Comercialización de Productos Fitosanitarios",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01160",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Encuesta Semestral de Ganado Porcino",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01007",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Estadísticas sobre el uso del agua",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176839&menu=ultiDatos&idp=1254735976602",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Estadística sobre el suministro y saneamiento del agua",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176834&menu=ultiDatos&idp=1254735976602",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Estadística de Aguas Minerales y Termales",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=08036",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Seguimiento del Estado Cuantitativo de las Aguas Subterráneas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=10041",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Calidad de las Aguas de Baño",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=54027",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Seguimiento del Estado de las Aguas Superficiales",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=21021",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Calidad de las Aguas de Consumo Humano",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=54025",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Seguimiento del Estado Químico de las Aguas Subterráneas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=10042",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Estadísticas sobre las actividades de protección medioambiental",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176846&menu=ultiDatos&idp=1254735976612",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Estadísticas sobre generación de residuos",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176841&menu=ultiDatos&idp=1254735976612",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Estadística sobre recogida y tratamiento de residuos",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176844&menu=ultiDatos&idp=1254735976612",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Cuenta de los residuos",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177062&menu=ultiDatos&idp=1254735976612",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Estadística de Envases y Residuos de Envases",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=23008",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Cuenta de bienes y servicios ambientales",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177053&menu=ultiDatos&idp=1254735976603",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Cuenta de emisiones a la atmósfera",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176941&menu=ultiDatos&idp=1254735976603",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Cuenta de flujos de materiales",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176943&menu=ultiDatos&idp=1254735976603",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Cuenta de flujos físicos de la energía",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177046&menu=ultiDatos&idp=1254735976603",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Cuenta de gasto en protección medioambiental",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177048&menu=ultiDatos&idp=1254735976603",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Cuenta de impuestos ambientales",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176942&menu=ultiDatos&idp=1254735976603",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Cuenta de subvenciones y otras transferencias similares",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177118&menu=ultiDatos&idp=1254735976603",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Otras cuentas medioambientales",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176944&menu=resultados&idp=1254735976603",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Panel de Indicadores Ambientales",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177113&menu=ultiDatos&idp=1254735976603",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Encuesta de hogares y medio ambiente 2008",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176950&menu=resultados&idp=1254735976601",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "¿Qué es INEbase?"
+  },
+  {
+    "name": "Estadística de Incendios Forestales",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=04002",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Inventario Nacional de Erosión de Suelos",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=04006",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Proyecto CORINE Land Cover (UE)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=20041",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estadística de las Variables Meteorofenológicas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=23093",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Espacios Naturales o de Interés",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=23031",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estadística de Calidad del Aire",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=23041",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Inventario de Emisiones Contaminantes a la Atmósfera",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=23042",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Sistema de Información de Ocupación del Suelo en España (SIOSE)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=20046",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estadística sobre actividades de I+D",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176754&menu=ultiDatos&idp=1254735576669",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Indicadores de alta tecnología",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176979&menu=ultiDatos&idp=1254735576669",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estadística sobre el uso de biotecnología",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176808&menu=ultiDatos&idp=1254735576669",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Encuesta sobre innovación en las empresas",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176755&menu=ultiDatos&idp=1254735576669",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Encuesta sobre recursos humanos en ciencia y tecnología",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176980&menu=resultados&idp=1254735576669",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estadística de Centros de Investigación y Desarrollo en el Ministerio de Defensa",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=76042",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estadística de Créditos Presupuestarios (Iniciales y Finales) de I+D",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=43025",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Boletín de Propiedad Industrial",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=09102",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estadísticas de Propiedad Industrial",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=09101",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Encuesta sobre el uso de TIC y comercio electrónico en las empresas",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176743&menu=ultiDatos&idp=1254735576692",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Encuesta sobre equipamiento y uso de tecnologías de información y comunicación en los hogares",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176741&menu=ultiDatos&idp=1254735576692",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Indicadores del sector de tecnologías de la información y las comunicaciones (TIC)",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176742&menu=ultiDatos&idp=1254735576692",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estadística de las Tecnologías de la Información y la Comunicación en los Centros Educativos No Universitarios",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=41022",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estadística de Presupuestos de Tecnologías de la Información y las Comunicaciones en la Administración del Estado",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=80039",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Las Tecnologías de la Información y las Comunicaciones en las Administraciones Públicas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=80022",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Cifras oficiales de población de los municipios españoles: Revisión del Padrón Municipal",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177011&menu=resultados&idp=1254734710990",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Relación de municipios y sus códigos por provincias",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177031&menu=ultiDatos&idp=1254734710990",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estadística del Padrón de españoles residentes en el extranjero",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177014&menu=ultiDatos&idp=1254734710990",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estadística del Padrón continuo",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177012&menu=ultiDatos&idp=1254734710990",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estadística de variaciones residenciales",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177013&menu=ultiDatos&idp=1254734710990",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estadística continua de población",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177095&menu=ultiDatos&idp=1254735572981",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Censo Anual de Población",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176992&menu=ultiDatos&idp=1254735572981",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Nomenclátor: Población por unidad poblacional",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177010&menu=resultados&idp=1254735572981",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Apellidos y nombres más frecuentes",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177009&menu=ultiDatos&idp=1254735572981",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Proyecciones de población",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176953&menu=ultiDatos&idp=1254735572981",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Proyección de hogares",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176954&menu=ultiDatos&idp=1254735572981",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Censos de Poblacion y Viviendas",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177108&menu=ultiDatos&idp=1254735572981",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Encuesta de Características Esenciales de la Población y las Viviendas",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177092&menu=ultiDatos&idp=1254735572981",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Alteraciones de los municipios en los Censos de Población desde 1842",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176998&menu=resultados&idp=1254735572981",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Cifras de población",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176951&menu=ultiDatos&idp=1254735572981",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Encuesta continua de hogares",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176952&menu=ultiDatos&idp=1254735572981",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estadística de Migraciones y Cambios de Residencia",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177098&menu=ultiDatos&idp=1254735573002",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "MNP: Estadística de Matrimonios",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176999&menu=ultiDatos&idp=1254735573002",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "MNP: Estadística de Nacimientos",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177007&menu=ultiDatos&idp=1254735573002",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "MNP: Estadística de Defunciones",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177008&menu=ultiDatos&idp=1254735573002",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estadística de adquisiciones de nacionalidad española de residentes",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177001&menu=ultiDatos&idp=1254735573002",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Indicadores demográficos básicos",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177003&menu=ultiDatos&idp=1254735573002",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Tablas de mortalidad",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177004&menu=ultiDatos&idp=1254735573002",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estimación del número de defunciones semanales",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177074&menu=ultiDatos&idp=1254735573002",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Encuesta de fecundidad",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177006&menu=ultiDatos&idp=1254735573002",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estimación mensual de nacimientos",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177079&menu=ultiDatos&idp=1254735573002",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estadística de migraciones",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177000&menu=ultiDatos&idp=1254735573002",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Encuesta nacional de inmigrantes",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177005&menu=resultados&idp=1254735573002",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Movimiento natural de la población de españoles en el extranjero",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177029&menu=resultados&idp=1254735573002",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estadística de Interrupciones Voluntarias del Embarazo",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=54021",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estadística de Españoles Residentes en el Extranjero Retornados",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=63007",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estadística de Concesiones de Nacionalidad Española por Residencia",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=63051",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estadística de Personas Extranjeras con Documentación de Residencia en Vigor",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=63052",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estadísticas Comunitarias en el Ámbito de la Migración y la Protección Internacional",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=68029",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estadística de Visados Expedidos en Oficinas Consulares",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=63054",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Flujo de Documentos de Residencia Concedidos a Personas Extranjeras",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=63058",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estadística de Población Extranjera Solicitante de Protección Internacional, Refugiados, Beneficiarios de Protección Subsidiaria, Desplazados y Apátridas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=68040",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Estadística de Personas Extranjeras con Autorización de Estancia por Estudios en Vigor",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=63053",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Contabilidad nacional trimestral de España: principales agregados (CNTR)",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736164439&menu=ultiDatos&idp=1254735576581",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Cuentas trimestrales no financieras de los sectores institucionales",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736165305&menu=ultiDatos&idp=1254735576581",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Contabilidad nacional anual de España: principales agregados",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177057&menu=ultiDatos&idp=1254735576581",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Contabilidad nacional anual de España: agregados por rama de actividad",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177056&menu=ultiDatos&idp=1254735576581",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Cuentas anuales no financieras de los sectores institucionales",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177054&menu=ultiDatos&idp=1254735576581",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Contabilidad nacional anual de España: tablas de Origen y Destino",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177059&menu=resultados&idp=1254735576581",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Contabilidad nacional anual de España: tablas Input-Output",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177058&menu=resultados&idp=1254735576581",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Cuenta satélite del turismo de España",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736169169&menu=ultiDatos&idp=1254735576581",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Cuenta Satélite de la Economía Social",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177120&menu=ultiDatos&idp=1254735576581",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Contabilidad regional de España",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736167628&menu=ultiDatos&idp=1254735576581",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Tabla de pensiones",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177063&menu=ultiDatos&idp=1254735576581",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Cuentas Económicas Nacionales de la Pesca",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01066",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Deuda del Estado",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=29001",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Cuentas de las Empresas Públicas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=31126",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Cuentas Financieras de la Economía Española. Sistema SEC/2010",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=37040",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Cuentas de las Administraciones Públicas Territoriales",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=31128",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Cuentas Trimestrales de las Administraciones Públicas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=31130",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Balanza de Pagos, Comercio Internacional de Servicios e Inversiones Extranjeras Directas, Posición de Inversión Internacional, Deuda Externa y Reservas Internacionales y Liquidez en Moneda Extranjera",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=37142",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Deuda Pública según el Protocolo de Déficit Excesivo",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=37144",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Cuenta Satélite de la Cultura",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=50052",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Cuentas Satélites del Gasto Sanitario Público",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=54012",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Cuentas de las Administraciones Públicas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=31127",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Estadística de sociedades mercantiles",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177026&menu=ultiDatos&idp=1254735576550",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Índice de cifra de negocios empresarial",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176958&menu=ultiDatos&idp=1254735576550",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Encuesta coyuntural sobre stocks y existencias",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176995&menu=ultiDatos&idp=1254735576550",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Indicadores de confianza empresarial",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736163552&menu=ultiDatos&idp=1254735576550",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Explotación estadística del directorio central de empresas. DIRCE",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736160707&menu=ultiDatos&idp=1254735576550",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Demografía armonizada de empresas",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736161927&menu=ultiDatos&idp=1254735576550",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Estadística estructural de empresas: sector construcción",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177121&menu=ultiDatos&idp=1254735576550",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Estadística estructural de empresas: sector comercio",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176902&menu=ultiDatos&idp=1254735576550",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Estadística estructural de empresas: sector industrial",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736143952&menu=ultiDatos&idp=1254735576550",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Estadística estructural de empresas: sector servicios",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176865&menu=ultiDatos&idp=1254735576550",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Estadística de Empresas según su pertenencia a grupos",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736161127&menu=ultiDatos&idp=1254735576550",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Estadística de filiales de empresas españolas en el exterior",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736162975&menu=ultiDatos&idp=1254735576550",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Estadística sobre cadenas de valor globales",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177116&menu=ultiDatos&idp=1254735576550",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Cuentas ambientales"
+  },
+  {
+    "name": "Encuesta sobre acceso a financiación de las empresas",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736162453&menu=resultados&idp=1254735576550",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Estadística del procedimiento concursal",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177018&menu=ultiDatos&idp=1254735576550",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Impuesto sobre Sociedades. Análisis de los Datos Estadísticos del Ejercicio",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=31006",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Estadística de Empresas Inscritas en la Seguridad Social",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=58028",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Estadística de Ventas, Empleo y Salarios en las Grandes Empresas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=32028",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Estadística de hipotecas",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736170236&menu=ultiDatos&idp=1254735576606",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Estadística de transmisiones de derechos de la propiedad",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736171438&menu=ultiDatos&idp=1254735576606",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Estadística sobre ejecuciones hipotecarias",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176993&menu=ultiDatos&idp=1254735576606",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Estadística de efectos de comercio impagados",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736169832&menu=resultados&idp=1254735576606",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Suspensiones de pagos y declaraciones de quiebra",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736171545&menu=resultados&idp=1254735576606",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Ventas a plazos",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736171834&menu=resultados&idp=1254735576606",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Índices de producción industrial",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736145519&menu=ultiDatos&idp=1254735576715",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Índices de precios industriales",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736147699&menu=ultiDatos&idp=1254735576715",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Índices de cifras de negocios en la industria",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736148782&menu=ultiDatos&idp=1254735576715",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Índices de precios de exportación e importación de productos industriales",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736148943&menu=ultiDatos&idp=1254735576715",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Encuesta industrial de productos",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736149053&menu=ultiDatos&idp=1254735576715",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Encuesta de consumos energéticos",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736146240&menu=ultiDatos&idp=1254735576715",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Índices de entradas de pedidos en la industria",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736148149&menu=ultiDatos&idp=1254735576715",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Encuesta Mensual de Recogida de Leche y de Productos Lácteos Elaborados",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01034",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Estadística de Embalses y Producible de Energía Hidroeléctrica",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=21041",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Estadística de Destilación de Carbones (Mensual)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=08002",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Estadística de Destilación de Carbones (Anual)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=08003",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Estadística de Industrias del Gas (Suministro al Mercado Interior)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=08006",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Estadística de Refinerías de Petróleo (Mensual)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=08011",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Estadística de Refinerías de Petróleo (Anual)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=08012",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Estadística del Mercado de Productos Petrolíferos (Mensual)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=08013",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Estadística del Mercado de Productos Petrolíferos (Anual)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=08014",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Estadística de Industria de Energía Eléctrica (Mensual)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=08016",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Estadística de Industria de Energía Eléctrica (Anual)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=08017",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Estadística de Extracción de Carbones (Anual)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=08020",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Estadística de Extracción de Minerales no Metálicos ni Energéticos",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=08023",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Estadística de Fabricación de Vehículos",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=08024",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Encuesta de Coyuntura Industrial",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=08032",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Estadística de Extracción de Minerales Metálicos",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=08037",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Estadística de Extracción de Petróleo y Gas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=08038",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Estadística de Extracción de Petróleo y Gas (Mensual)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=08039",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Boletín de Coyuntura Energética (Trimestral)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=10001",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Balance Energético (Anual)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=10002",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Encuesta Anual de Recogida de Leche y de Productos Lácteos Elaborados",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01035",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Índice de Producción de la Construcción",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177119&menu=ultiDatos&idp=1254735576757",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Índices de precios de materiales, nacional de la mano de obra y de componentes de transporte de viajeros por carretera",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736154972&menu=resultados&idp=1254735576757",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Índice de precios de vivienda",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736152838&menu=ultiDatos&idp=1254735576757",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Coyuntura demográfica de empresas"
+  },
+  {
+    "name": "Encuesta de Coyuntura Industrial en el Sector de la Construcción",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=08033",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Construcción de Edificios",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=20001",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Licitación Oficial en la Construcción",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=20004",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Índices de Producción de la Industria de la Construcción",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=20005",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Visados de Dirección de Obra (Estadísticas de Obras en Edificación)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=20006",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Valor Tasado de Vivienda",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=20007",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística del Impuesto sobre Bienes Inmuebles",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=31089",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Precios del Suelo",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=25002",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Transacciones Inmobiliarias",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=25003",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Vivienda Libre y Protegida",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=25004",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estimación del Parque de Viviendas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=25006",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Ordenanzas Fiscales del Impuesto sobre Bienes Inmuebles",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=31088",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Índices de Costes del Sector de la Construcción",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=20008",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta de población activa",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176918&menu=ultiDatos&idp=1254735976595",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de flujos de la población activa",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176907&menu=ultiDatos&idp=1254735976595",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Proyecciones de tasas de actividad",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176908&menu=resultados&idp=1254735976595",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta sobre el tiempo de trabajo",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176829&menu=resultados&idp=1254735976595",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Empleo Turístico según la EPA. (Explotación de Turespaña)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=16030",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Empleo Turístico según la Afiliación a la Seguridad Social. (Explotación de Turespaña)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=16031",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Efectivos de Personal al Servicio del Sector Público Estatal",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=31121",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística del Movimiento Laboral Registrado",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=59021",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Personas Trabajadoras por Cuenta Propia Afiliadas a la Seguridad Social",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=59003",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística del Personal al Servicio de las Administraciones Públicas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=80024",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Autorizaciones de Trabajo a Extranjeros",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=58002",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Afiliación de Trabajadores a la Seguridad Social",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=58015",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta trimestral de coste laboral",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736045053&menu=ultiDatos&idp=1254735976596",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Índice de coste laboral armonizado",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736053992&menu=ultiDatos&idp=1254735976596",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Índice de precios del trabajo",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177027&menu=ultiDatos&idp=1254735976596",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta anual de coste laboral",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736060920&menu=ultiDatos&idp=1254735976596",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuestas de estructura salarial",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177025&menu=ultiDatos&idp=1254735976596",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta de salarios en la industria y los servicios",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176831&menu=resultados&idp=1254735976596",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística del empleo de las personas con discapacidad",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736055502&menu=ultiDatos&idp=1254735976621",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística del Salario de las Personas con Discapacidad",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176911&menu=ultiDatos&idp=1254735976621",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "La vida laboral de las personas con discapacidad",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177069&menu=ultiDatos&idp=1254735976621",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta de inserción laboral de titulados universitarios",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176991&menu=ultiDatos&idp=1254735976597",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta de transición educativa-formativa e inserción laboral",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736056996&menu=ultiDatos&idp=1254735976597",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de movilidad laboral y geográfica",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176909&menu=ultiDatos&idp=1254735976597",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Accidentes de Carácter Militar en las Fuerzas Armadas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=76022",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Movilidad del Mercado de Trabajo en las Fuentes Tributarias",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=32067",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística del Mercado de Trabajo y Pensiones en las Fuentes Tributarias",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=31062",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Cooperativas Constituidas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=58003",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Regulación de Empleo",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=58006",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Apoyo a la Creación de Empleo",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=58007",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Accidentes de Trabajo",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=58012",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Prestaciones por Desempleo",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=58021",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta de Calidad de Vida en el Trabajo",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=58029",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta de Formación Profesional para el Empleo en Empresas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=58030",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística del Sistema de Formación en el Trabajo y Formación Programada por las Empresas para sus Trabajadores",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=59022",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Sociedades Laborales Registradas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=58004",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Mediación, Arbitraje y Conciliación Laboral",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=58008",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Asuntos Judiciales Sociales",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=58009",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Convenios Colectivos de Trabajo",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=58010",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Huelgas y Cierres Patronales",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=58011",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta Comunitaria de Formación Profesional Continua",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=58014",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Ayudas a Trabajadores Afectados por Procesos de Reestructuración de Empresas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=58020",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Empresas de Trabajo Temporal",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=58026",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística del Fondo Social Europeo",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=59001",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Entidades de Economía Social Inscritas en la Seguridad Social",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=59002",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Enfermedades Profesionales",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=63013",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Políticas de Mercado de Trabajo",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=63014",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta Nacional de Condiciones de Trabajo",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=64050",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Muestra Continua de Vidas Laborales",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=64051",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Incapacidad Temporal",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=64052",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta de Gestión Preventiva en las Empresas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=64054",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Explotación de las Variables Educativas en la Encuesta de Población Activa: Nivel de Formación y Formación Permanente",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=41027",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Inversiones y Empleo Generados por los Incentivos Económicos Regionales",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=29101",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Indicadores de actividad del sector servicios",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176863&menu=ultiDatos&idp=1254735576778",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Índice de producción del sector servicios",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177099&menu=ultiDatos&idp=1254735576778",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Índices de precios del sector servicios",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176864&menu=resultados&idp=1254735576778",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Comercio Internacional de Servicios por Modos de Suministro (MoS)",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177111&menu=ultiDatos&idp=1254735576778",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Comercio Internacional de Servicios por Características de las Empresas (STEC)",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177112&menu=ultiDatos&idp=1254735576778",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de productos en el sector servicios",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176898&menu=resultados&idp=1254735576778",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta de comercio internacional de servicios",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736174702&menu=ultiDatos&idp=1254735576778",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadísticas de filiales de empresas extranjeras en el sector servicios",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176899&menu=resultados&idp=1254735576778",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta de servicios audiovisuales",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176974&menu=resultados&idp=1254735576778",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta de servicios personales",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176976&menu=resultados&idp=1254735576778",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta de servicios técnicos",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176975&menu=resultados&idp=1254735576778",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta de servicios postales y de telecomunicaciones",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176973&menu=resultados&idp=1254735576778",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta de servicios industriales de limpieza",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176978&menu=resultados&idp=1254735576778",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta de servicios informáticos",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176977&menu=resultados&idp=1254735576778",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Índices de comercio al por menor",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176900&menu=ultiDatos&idp=1254735576799",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de productos en el sector comercio",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176903&menu=resultados&idp=1254735576799",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta de comercio al por menor",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176904&menu=resultados&idp=1254735576799",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta de comercio al por mayor",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176905&menu=resultados&idp=1254735576799",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta de Coyuntura de la Exportación",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=14001",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Importación y Exportación de Especies Incluidas en Convenio CITES",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=15024",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística del Comercio Exterior por Sectores Económicos",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=15030",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Venta de Labores de Tabaco a Expendedurías en la Península e Illes Balears",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=28071",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística del Comercio Exterior de las Comunidades Autónomas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=32025",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Intercambio de Bienes entre Estados de la UE (Umbrales de Exención)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=32021",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Intercambio de Bienes entre Estados de la UE (Bajo el Umbral de Exención)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=32022",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Comercio Extracomunitario",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=32023",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Índices de Valor Unitario para el Comercio Exterior",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=29081",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de movimientos turísticos en frontera. Frontur",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176996&menu=ultiDatos&idp=1254735576863",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta de gasto turístico. Egatur",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177002&menu=ultiDatos&idp=1254735576863",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta de turismo de residentes",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176990&menu=ultiDatos&idp=1254735576863",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Hoteles: encuesta de ocupación, índice de precios e indicadores de rentabilidad",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177015&menu=ultiDatos&idp=1254735576863",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Campings: encuesta de ocupación e índice de precios",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176961&menu=ultiDatos&idp=1254735576863",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Apartamentos turísticos: encuesta de ocupación e índice de precios",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176962&menu=ultiDatos&idp=1254735576863",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Alojamientos de turismo rural: encuesta de ocupación e índice de precios",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176963&menu=ultiDatos&idp=1254735576863",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Albergues: encuesta de ocupación",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176964&menu=ultiDatos&idp=1254735576863",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Índice de ingresos hoteleros",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176966&menu=resultados&idp=1254735576863",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Movimiento de viajeros en establecimientos hoteleros",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177016&menu=resultados&idp=1254735576863",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Movimiento de viajeros en acampamentos turísticos",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177017&menu=resultados&idp=1254735576863",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Encuesta sobre la estructura de las empresas hoteleras",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176969&menu=resultados&idp=1254735576863",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Encuesta sobre la estructura de empresas de agencias de viajes",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176970&menu=resultados&idp=1254735576863",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Pasajeros Aéreos Internacionales",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=16035",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Estadística sobre transporte ferroviario",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177040&menu=ultiDatos&idp=1254735576820",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Estadística de transporte de personas",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176906&menu=ultiDatos&idp=1254735576820",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Encuestas sobre actividad de las empresas de transporte de viajeros",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176971&menu=resultados&idp=1254735576820",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Encuesta de turismos de servicio público",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176972&menu=resultados&idp=1254735576820",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Estadística del taxi",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176959&menu=resultados&idp=1254735576820",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Los Transportes y las Infraestructuras",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=20025",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Estadística de Tráfico en los Aeropuertos Españoles",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=22075",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Estadística del Programa Nacional de Aforos",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=21001",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Registro General de Transportistas y de Actividades Auxiliares y Complementarias del Transporte",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=22001",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Estadística sobre Transporte Internacional por Carretera",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=22009",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Registro de Buques y Registro de Empresas Navieras",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=22022",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Resumen General del Tráfico Portuario",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=22041",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Memorias de las Autoridades Portuarias",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=22043",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Anuario Estadístico de Puertos del Estado",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=22045",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Estadística sobre el Transporte Marítimo de Mercancías y Pasajeros",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=22046",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Estadísticas de Tráfico de Líneas Aéreas Regulares y no Regulares, Aeropuertos y Aeronaves para OACI",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=22073",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Estadística del Impuesto Especial sobre Determinados Medios de Transporte (anual)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=32065",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Estadística del Impuesto Especial sobre Determinados Medios de Transporte (avance mensual)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=32066",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Estadística de Matriculación de Vehículos",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=70041",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Estadística de Transferencia de Vehículos",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=70042",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Estadística de Bajas de Vehículos",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=70043",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Estadística del Parque Nacional de Vehículos",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=70044",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Encuesta Permanente de Transporte de Mercancías por Carretera",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=20061",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Índice de precios de consumo (IPC)",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176802&menu=ultiDatos&idp=1254735976607",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Índice de precios de consumo armonizado (IPCA)",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176803&menu=ultiDatos&idp=1254735976607",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Medición del turismo a partir de la posición de los teléfonos móviles"
+  },
+  {
+    "name": "Índice de garantía de competitividad",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177109&menu=ultiDatos&idp=1254735976607",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Índice de referencia de arrendamientos de vivienda",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177110&menu=ultiDatos&idp=1254735976607",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Estadística de Precios Públicos Universitarios",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=44048",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta de Condiciones de Vida (ECV)",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176807&menu=ultiDatos&idp=1254735976608",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta de presupuestos familiares. Base 2006",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176806&menu=ultiDatos&idp=1254735976608",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta de centros y servicios de atención a las personas sin hogar",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176925&menu=ultiDatos&idp=1254735976608",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Encuesta sobre las personas sin hogar",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176817&menu=ultiDatos&idp=1254735976608",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Índice de precios de la vivienda en alquiler"
+  },
+  {
+    "name": "Indicadores Urbanos",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176957&menu=ultiDatos&idp=1254735976608",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de calidad de vida"
+  },
+  {
+    "name": "Atlas de distribución de renta de los hogares",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177088&menu=ultiDatos&idp=1254735976608",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicadores de calidad de vida"
+  },
+  {
+    "name": "Encuesta de empleo del tiempo",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176815&menu=resultados&idp=1254735976608",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicador Multidimensional de Calidad de Vida (IMCV)"
+  },
+  {
+    "name": "Otras encuestas de presupuestos familiares",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176819&menu=resultados&idp=1254735976608",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicador Multidimensional de Calidad de Vida (IMCV)"
+  },
+  {
+    "name": "Panel de hogares de la UE",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176818&menu=resultados&idp=1254735976608",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicador Multidimensional de Calidad de Vida (IMCV)"
+  },
+  {
+    "name": "Consumo Alimentario Extradoméstico en España: Hábitos del Consumidor",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01152",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicador Multidimensional de Calidad de Vida (IMCV)"
+  },
+  {
+    "name": "Consumo Alimentario en Hogares en España",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=01153",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicador Multidimensional de Calidad de Vida (IMCV)"
+  },
+  {
+    "name": "Panel de Hogares",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=31066",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicador Multidimensional de Calidad de Vida (IMCV)"
+  },
+  {
+    "name": "Encuesta Financiera de las Familias (EFF)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=37143",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicador Multidimensional de Calidad de Vida (IMCV)"
+  },
+  {
+    "name": "Índice de Confianza del Consumidor (ICC)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=79004",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicador Multidimensional de Calidad de Vida (IMCV)"
+  },
+  {
+    "name": "Encuesta sobre la participación de la población adulta en las actividades de aprendizaje",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176759&menu=ultiDatos&idp=1254735573113",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicador Multidimensional de Calidad de Vida (IMCV)"
+  },
+  {
+    "name": "Encuesta de financiación y gastos de la enseñanza privada",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176760&menu=ultiDatos&idp=1254735573113",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicador Multidimensional de Calidad de Vida (IMCV)"
+  },
+  {
+    "name": "Encuesta sobre el gasto de los hogares en educación",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176983&menu=ultiDatos&idp=1254735573113",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicador Multidimensional de Calidad de Vida (IMCV)"
+  },
+  {
+    "name": "Encuesta sobre movilidad internacional de los estudiantes",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176982&menu=ultiDatos&idp=1254735573113",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicador Multidimensional de Calidad de Vida (IMCV)"
+  },
+  {
+    "name": "Estadística de producción editorial de libros",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176767&menu=ultiDatos&idp=1254735573113",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicador Multidimensional de Calidad de Vida (IMCV)"
+  },
+  {
+    "name": "Estadística de bibliotecas",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176768&menu=ultiDatos&idp=1254735573113",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicador Multidimensional de Calidad de Vida (IMCV)"
+  },
+  {
+    "name": "Estadística de enseñanza universitaria",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176744&menu=resultados&idp=1254735573113",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicador Multidimensional de Calidad de Vida (IMCV)"
+  },
+  {
+    "name": "Pruebas de acceso a la universidad",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176751&menu=resultados&idp=1254735573113",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicador Multidimensional de Calidad de Vida (IMCV)"
+  },
+  {
+    "name": "Avance de la estadística de la enseñanza universitaria",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176752&menu=resultados&idp=1254735573113",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Indicador Multidimensional de Calidad de Vida (IMCV)"
+  },
+  {
+    "name": "Estadística de Bibliotecas del Ministerio de Defensa",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=76014",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Explotación de la Encuesta de Población Activa en el Ámbito Deportivo",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=50058",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Archivos del Ministerio de Defensa",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=76017",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Actividades Musicales en las Fuerzas Armadas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=76018",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Centros de Enseñanza del Ministerio de Defensa",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=76019",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Cursos y Estudios en el Ministerio de Defensa",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=76020",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Enseñanzas No Universitarias (Centros, Matrícula, Graduación y Personal)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=41001",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Gasto Público en Educación",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=41012",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Las Cifras de la Educación en España. Estadísticas e Indicadores",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=41015",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Datos de la Educación al Inicio del Curso Escolar",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=41016",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Encuesta de Hábitos y Prácticas Culturales en España",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=41021",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Indicadores Estadísticos de la Educación",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=41023",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística del Alumnado de Formación Profesional del Sistema Educativo",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=41025",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Bibliotecas Escolares",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=41026",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Acción Educativa en el Exterior",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=41042",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Financiación y Gasto Público en Cultura",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=41050",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Movilidad del Profesorado de Enseñanzas No Universitarias en Centros Públicos",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=41103",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Becas y Ayudas al Estudio",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=42101",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Sistema Estatal de Indicadores de la Educación",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=42181",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de los Programas Educativos Europeos",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=42185",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Estudiantes Universitarios",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=44025",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Universidades, Centros y Titulaciones",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=44041",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Personal de las Universidades",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=44043",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Financiación y Gasto de las Universidades Públicas Españolas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=44045",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Deporte Federado",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=45021",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística del Control del Dopaje",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=45041",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Encuesta de Hábitos Deportivos en España",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=45061",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Explotación Estadística del Censo Nacional de Instalaciones Deportivas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=45101",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Formación de Entrenadoras y Entrenadores del Deporte",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=45124",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Anuario de Estadísticas Culturales",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=49005",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Explotación Estadística de la Base de Datos de Protección del Patrimonio Histórico Español (Bienes Muebles e Inmuebles)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=50001",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Archivos",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=50003",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Museos y Colecciones Museográficas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=50004",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Edición Española de Libros con ISBN",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=50026",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Explotación Estadística de las Bases de Datos de Recursos Musicales y de la Danza (Entidades y Profesionales)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=50041",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Explotación Estadística de las Bases de Datos de Recursos de las Artes Escénicas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=50044",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Edición Española de Música con ISMN",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=50050",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Banco de Datos CULTURAbase",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=50051",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Explotación Estadística del Registro General de Propiedad Intelectual",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=50053",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Explotación Estadística de los Datos de Derechos de Propiedad Intelectual Gestionados por las Entidades de Gestión",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=50054",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Cinematografía: Producción, Exhibición, Distribución y Fomento",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=50061",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Asuntos Taurinos",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=68023",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de las Pruebas de Acceso a la Universidad (PAU)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=44049",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Anuario de Estadísticas Deportivas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=50055",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Banco de Datos DEPORTEdata",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=50056",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Explotación de la Encuesta de Población Activa en el Ámbito Cultural",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=50057",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Museos y Colecciones Museográficas del Ministerio de Defensa",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=76015",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Encuesta de morbilidad hospitalaria",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176778&menu=ultiDatos&idp=1254735573175",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Encuesta de salud de España",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177114&menu=ultiDatos&idp=1254735573175",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de defunciones según la causa de muerte",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176780&menu=ultiDatos&idp=1254735573175",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de profesionales sanitarios colegiados",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176781&menu=ultiDatos&idp=1254735573175",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Encuestas de discapacidad",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176782&menu=ultiDatos&idp=1254735573175",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Encuesta europea de salud en España",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176784&menu=ultiDatos&idp=1254735573175",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Encuesta nacional de salud",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176783&menu=ultiDatos&idp=1254735573175",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Encuesta de integración social y salud",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176987&menu=resultados&idp=1254735573175",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Encuesta de salud y hábitos sexuales",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176785&menu=resultados&idp=1254735573175",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Establecimientos sanitarios con régimen de internado",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176786&menu=resultados&idp=1254735573175",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de indicadores hospitalarios",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176779&menu=resultados&idp=1254735573175",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2009 (EPA): Incorporación de los jóvenes al mercado laboral"
+  },
+  {
+    "name": "Estadística de Centros Sanitarios de Atención Especializada",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=30123",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2002 (EPA): Personas con discapacidad y su relación con el empleo"
+  },
+  {
+    "name": "Encuesta sobre Salud y Consumo de Drogas en Población Interna en Instituciones Penitenciarias en España (ESDIP)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=54103",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2002 (EPA): Personas con discapacidad y su relación con el empleo"
+  },
+  {
+    "name": "Estadística de Morbilidad Hospitalaria en Establecimientos Sanitarios Militares",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=76013",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2002 (EPA): Personas con discapacidad y su relación con el empleo"
+  },
+  {
+    "name": "Estadística Estatal de Actividad de Centros y Servicios de Transfusión",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=54008",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2002 (EPA): Personas con discapacidad y su relación con el empleo"
+  },
+  {
+    "name": "Explotación Estadística del Conjunto Mínimo Básico de Datos (RAE-CMBD): Demanda Hospitalaria y Morbilidad Atendida",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=54011",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2002 (EPA): Personas con discapacidad y su relación con el empleo"
+  },
+  {
+    "name": "Estadística de Vacunaciones Sistemáticas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=54022",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2002 (EPA): Personas con discapacidad y su relación con el empleo"
+  },
+  {
+    "name": "Indicadores de Salud",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=54023",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2002 (EPA): Personas con discapacidad y su relación con el empleo"
+  },
+  {
+    "name": "Estadística del Consumo Farmacéutico a través de Recetas Médicas del Sistema Nacional de Salud, Incluido el Mutualismo Administrativo",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=54042",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2002 (EPA): Personas con discapacidad y su relación con el empleo"
+  },
+  {
+    "name": "Estadística de Enfermedades de Declaración Obligatoria",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=54063",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2002 (EPA): Personas con discapacidad y su relación con el empleo"
+  },
+  {
+    "name": "Estadística Estatal de SIDA",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=54064",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2002 (EPA): Personas con discapacidad y su relación con el empleo"
+  },
+  {
+    "name": "Estadística Estatal de Encefalopatías Espongiformes Transmisibles Humanas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=54066",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2002 (EPA): Personas con discapacidad y su relación con el empleo"
+  },
+  {
+    "name": "Sistema de Información de Atención Primaria del Sistema Nacional de Salud",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=54086",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2002 (EPA): Personas con discapacidad y su relación con el empleo"
+  },
+  {
+    "name": "Barómetro Sanitario",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=54087",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2002 (EPA): Personas con discapacidad y su relación con el empleo"
+  },
+  {
+    "name": "Indicadores de Consumo de Sustancias Psicoactivas: Admisiones a Tratamiento",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=54098",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2002 (EPA): Personas con discapacidad y su relación con el empleo"
+  },
+  {
+    "name": "Indicadores de Consumo de Sustancias Psicoactivas: Mortalidad por Reacción Aguda",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=54099",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2002 (EPA): Personas con discapacidad y su relación con el empleo"
+  },
+  {
+    "name": "Indicadores de Consumo de Sustancias Psicoactivas: Urgencias Hospitalarias",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=54100",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2002 (EPA): Personas con discapacidad y su relación con el empleo"
+  },
+  {
+    "name": "Encuesta sobre Uso de Drogas en Enseñanzas Secundarias en España (ESTUDES)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=54101",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2002 (EPA): Personas con discapacidad y su relación con el empleo"
+  },
+  {
+    "name": "Encuesta sobre Alcohol y Drogas en Población General en España (EDADES)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=54102",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2002 (EPA): Personas con discapacidad y su relación con el empleo"
+  },
+  {
+    "name": "Estadística de Tráfico de Drogas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=68030",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2002 (EPA): Personas con discapacidad y su relación con el empleo"
+  },
+  {
+    "name": "Estadística de Establecimientos Sanitarios Militares con Régimen de Internado",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=76012",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2002 (EPA): Personas con discapacidad y su relación con el empleo"
+  },
+  {
+    "name": "Estadística de la Población Condenada Adulta",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176793&menu=ultiDatos&idp=1254735573206",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2002 (EPA): Personas con discapacidad y su relación con el empleo"
+  },
+  {
+    "name": "Estadística de la Población Condenada Menor de Edad",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176795&menu=ultiDatos&idp=1254735573206",
+    "group": "Inventario de Operaciones Estadísticas (IOE)",
+    "topic": "Módulo 2002 (EPA): Personas con discapacidad y su relación con el empleo"
+  },
+  {
+    "name": "Estadística de nulidades, separaciones y divorcios",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176798&menu=ultiDatos&idp=1254735573206",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Estadística de violencia doméstica y violencia de género",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176866&menu=ultiDatos&idp=1254735573206",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Estadística de Juzgados de Paz",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176794&menu=ultiDatos&idp=1254735573206",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Estadística sobre litigios en arrendamientos urbanos",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176796&menu=ultiDatos&idp=1254735573206",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Estadística de lo contencioso administrativo",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176799&menu=resultados&idp=1254735573206",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Estadística de suicidio en España",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176797&menu=resultados&idp=1254735573206",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Estadística de Agresiones en las Fuerzas Armadas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=76025",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Estadística del Sistema de Seguimiento Integral en los Casos de Violencia de Género (Sistema VioGén)",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=68025",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Estadística de Accidentes de Buques",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=22025",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Estadística de Accidentes de Aviación",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=22072",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Estadística de Seguridad: Actuaciones Policiales",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=68001",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Estadística de Seguridad: Responsables",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=68002",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Estadística General de la Población Reclusa. Periodicidad Mensual",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=68020",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Estadística de Expedición y Revisión de Permisos y Licencias para Conducir",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=70046",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Estadística de Accidentes de Tráfico con Víctimas",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=70048",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Estadística de Denuncias por Infracciones de Tráfico",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=70049",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Censo de Conductores",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=70051",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Estadística de la Actividad Judicial",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=71002",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Anuario Estadístico del Ministerio del Interior",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=68008",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Estadística de los Internos en los Centros Penitenciarios. Evolución Semanal",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=68021",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Estadística de Exámenes para la Obtención de Permisos y Licencias de Conducción",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=70045",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Sistema de Seguimiento por Medios Telemáticos de las Medidas de Alejamiento en el Ámbito de la Violencia de Género",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=65010",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Información Estadística de Penas y Medidas Alternativas a la Prisión",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=68024",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Estadística de Jurisdicción Militar",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=76033",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Indicadores sociales",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176825&menu=resultados&idp=1254735576508",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Barómetros de Opinión",
+    "href": "https://www.ine.es/dyngs/IOE/operacion.htm?numinv=79001",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Actuaciones de la Oficina del Censo Electoral",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176828&menu=resultados&idp=1254735576529",
+    "group": "Otros",
+    "topic": "Otros"
+  },
+  {
+    "name": "Panel de Indicadores de Comercio Internacional de Valor Añadido (TiVA)",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177122&menu=ultiDatos&idp=1254735976606",
+    "group": "Covid-19",
+    "topic": "ODS. Indicadores de la Agenda 2030 para el Desarrollo Sostenible"
+  },
+  {
+    "name": "Boletín mensual de estadística",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177024&menu=resultados&idp=1254735976606",
+    "group": "Covid-19",
+    "topic": "Península Ibérica en cifras"
+  },
+  {
+    "name": "Clasificación Nacional de Actividades Económicas. CNAE",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177032&menu=ultiDatos&idp=1254735976614",
+    "group": "Covid-19",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Clasificación Nacional de Ocupaciones. CNO",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177033&menu=ultiDatos&idp=1254735976614",
+    "group": "Covid-19",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Clasificación Nacional de Educación. CNED",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177034&menu=ultiDatos&idp=1254735976614",
+    "group": "Covid-19",
+    "topic": "Indicadores de desarrollo sostenible"
+  },
+  {
+    "name": "Clasificación de Productos por Actividades. CPA",
+    "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177035&menu=ultiDatos&idp=1254735976614",
+    "group": "Covid-19",
+    "topic": "Indicadores de desarrollo sostenible"
+  }
+]
