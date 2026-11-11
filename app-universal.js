@@ -155,6 +155,7 @@ function ineAddLevel(items,index,labelText){
  var box=$("eurostatLevels");if(!box)return;
  var list=(items||[]).filter(function(x){return x&&x.id&&x.label});
  if(!list.length)return;
+ box.hidden=false;
  var lab=document.createElement("label");
  lab.dataset.ineLevel=String(index);
  lab.textContent=labelText+" ";
