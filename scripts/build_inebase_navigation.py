@@ -62,62 +62,53 @@ for a in soup.select('a[href]'):
     if text and re.search(r"operacion\.htm", href, re.I):
         links.append((a, text, href))
 
-# Build a document-order list of useful text-bearing elements.
-elements = []
-for el in soup.find_all(["h1","h2","h3","h4","h5","h6","strong","b","dt","a"]):
-    text = re.sub(r"\s+", " ", el.get_text(" ", strip=True))
-    if text:
-        elements.append((el, text))
+# Use exact visible text nodes/elements so the navigation anchors in the
+# top menu do not override the actual hierarchy in the body.
+all_tags = soup.find_all(True)
+tag_pos = {id(el): i for i, el in enumerate(all_tags)}
+operation_ids = {id(a) for a, _, _ in links}
 
 records = []
 seen = set()
+
 for a, name, href in links:
-    # Find this anchor in the flattened element stream.
-    try:
-        pos = next(i for i, (el, _) in enumerate(elements) if el is a)
-    except StopIteration:
+    pos = tag_pos.get(id(a))
+    if pos is None:
         continue
 
     group = None
-    topic = None
-
-    # Look backwards far enough to cross the small table/list wrappers used
-    # by INEbase, but stop when a new major group is found.
-    for _, text in reversed(elements[max(0, pos - 500):pos]):
-        n = norm(text)
-        if n in group_by_norm:
-            group = group_by_norm[n]
+    group_pos = -1
+    for i in range(pos - 1, -1, -1):
+        el = all_tags[i]
+        text = re.sub(r"\s+", " ", el.get_text(" ", strip=True))
+        if len(text) <= 100 and norm(text) in group_by_norm:
+            group = group_by_norm[norm(text)]
+            group_pos = i
             break
 
-    if group:
-        gn = norm(group)
-        # Find the nearest plausible subtopic after the group and before the
-        # operation. Prefer heading/list labels and reject operational rows.
-        start = 0
-        for i in range(pos - 1, -1, -1):
-            if norm(elements[i][1]) == gn:
-                start = i + 1
-                break
-        candidates = []
-        for el, text in elements[start:pos]:
+    topic = None
+    if group_pos >= 0:
+        for i in range(group_pos + 1, pos):
+            el = all_tags[i]
+            text = re.sub(r"\s+", " ", el.get_text(" ", strip=True))
+            if not text or len(text) > 120:
+                continue
             n = norm(text)
-            if not text or n in GENERIC or n in group_by_norm:
+            if n in group_by_norm or n in {norm(x) for x in GENERIC}:
                 continue
-            if el.name == "a" and re.search(r"operacion\.htm", el.get("href",""), re.I):
+            if id(el) in operation_ids:
                 continue
-            if len(text) > 100:
+            # Prefer compact heading/list labels. Ignore metadata rows.
+            if " | " in text or "Últimos datos" in text or "Ultimos datos" in text:
                 continue
-            # Table header rows and update labels are not topics.
-            if " | " in text or "ÚLTIMOS DATOS" in n or "ULTIMOS DATOS" in n:
+            if n in {norm(x) for _, x, _ in links}:
                 continue
-            candidates.append(text)
-        if candidates:
-            topic = candidates[-1]
+            # A candidate must look like a navigation label, not a paragraph.
+            if len(text.split()) <= 10:
+                topic = text
 
-    if not group:
-        group = "Otros"
-    if not topic:
-        topic = "Otros"
+    group = group or "Otros"
+    topic = topic or "Otros"
 
     key = norm(name)
     if key in seen:
