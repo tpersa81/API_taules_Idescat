@@ -39,6 +39,8 @@ GENERIC = {
     "operaciones estadísticas que el ine elabora de forma periódica | últimos datos",
     "operaciones estadísticas sin periodicidad establecida o que el ine ha dejado de elaborar | últimos datos",
     "operaciones elaboradas por otros organismos del sistema estadistico nacional",
+    "operaciones estadísticas que el ine elabora de forma periódica",
+    "operaciones estadísticas sin periodicidad establecida o que el ine ha dejado de elaborar",
     "últimos datos",
 }
 
