@@ -62,7 +62,7 @@ function temporal(d){
  var named=id.indexOf("TIME")===0||id.indexOf("PER")===0||label==="PERIODO"||label.indexOf("PERIODO ")===0||r.indexOf("TIME")>=0||r.indexOf("TEMPOR")>=0;
  var temporalCodes=cats.length>0&&cats.every(function(c){
    var code=String(c&&c.code||"").trim();
-   return /^\d{4}$/.test(code)||/^\d{4}M\d{1,2}$/i.test(code)||/^\d{4}Q\d$/i.test(code)||/^\d{4}S\d$/i.test(code)||/^\d{4}B\d{1,2}$/i.test(code)||/^\d{4}W\d{1,2}$/i.test(code)||/^\d{4}D\d{1,3}$/i.test(code)||/^\d{4}-\d{2}(?:-\d{2})?$/.test(code);
+   return /^\d{4}$/.test(code)||/^\d{4}M\d{1,2}$/i.test(code)||/^\d{4}(?:Q|T)\d$/i.test(code)||/^\d{4}S\d$/i.test(code)||/^\d{4}B\d{1,2}$/i.test(code)||/^\d{4}W\d{1,2}$/i.test(code)||/^\d{4}D\d{1,3}$/i.test(code)||/^\d{4}-\d{2}(?:-\d{2})?$/.test(code);
  });
  return explicit||named||temporalCodes;
 }
@@ -70,7 +70,7 @@ function temporalCodeRank(code){
  var v=String(code==null?"":code).trim().toUpperCase(),m;
  if(/^\d{4}$/.test(v))return Number(v)*100000000;
  m=v.match(/^(\d{4})M(\d{1,2})$/);if(m)return Number(m[1])*100000000+Number(m[2])*1000000;
- m=v.match(/^(\d{4})Q(\d)$/);if(m)return Number(m[1])*100000000+Number(m[2])*10000000;
+ m=v.match(/^(\d{4})(?:Q|T)(\d)$/);if(m)return Number(m[1])*100000000+Number(m[2])*10000000;
  m=v.match(/^(\d{4})S(\d)$/);if(m)return Number(m[1])*100000000+Number(m[2])*10000000;
  m=v.match(/^(\d{4})B(\d{1,2})$/);if(m)return Number(m[1])*100000000+Number(m[2])*1000000;
  m=v.match(/^(\d{4})W(\d{1,2})$/);if(m)return Number(m[1])*100000000+Number(m[2])*1000000;
@@ -1104,7 +1104,7 @@ function temporalPeriodicity(categories){
   var code=codes[i];
   if(/^\d{4}$/.test(code))return"year";
   if(/^\d{4}M\d{1,2}$/i.test(code)||/^\d{4}-\d{2}$/.test(code))return"month";
-  if(/^\d{4}Q\d$/i.test(code))return"quarter";
+  if(/^\d{4}(?:Q|T)\d$/i.test(code))return"quarter";
   if(/^\d{4}S\d$/i.test(code))return"semester";
   if(/^\d{4}B\d{1,2}$/i.test(code))return"bimonth";
   if(/^\d{4}W\d{1,2}$/i.test(code))return"week";
