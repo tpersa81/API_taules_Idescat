@@ -848,58 +848,108 @@ function inePeriodCode(row){
   var b=p.match(/^B(\\d{1,2})$/);if(b)return y+"B"+String(Number(b[1])).padStart(2,"0");
   return y+"-"+p.replace(/\\s+/g,"_");
 }
-function ineDatosTablaToJsonStat(raw,metadata){
- var series=Array.isArray(raw)?raw:[];
- if(!series.length)return null;
- var baseDims=dims(metadata),timeDim=baseDims.find(function(d){return temporal(d)});
- var nonTime=baseDims.filter(function(d){return !timeDim||d.id!==timeDim.id});
- var timeMap=new Map(),rows=[];
- function norm(x){return String(x==null?"":x).normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").trim().toUpperCase()}
- function metaFor(s){return Array.isArray(s&&s.MetaData)?s.MetaData:[]}
- function categoryMatch(d,m){
-  if(!m)return null;
-  var name=norm(m.Nombre||""),code=String(m.Codigo==null?"":m.Codigo).trim(),id=String(m.Id==null?"":m.Id).trim();
-  var tv=norm(m.T3_Variable||"");
-  var dn=norm(d.label||d.id),dk=dn.replace(/[^A-Z0-9]/g,"");
-  var best=null,bestScore=-1;
-  (d.categories||[]).forEach(function(cat){
-   var cc=String(cat.code==null?"":cat.code),suffix=cc.indexOf("_")>=0?cc.slice(cc.lastIndexOf("_")+1):cc;
-   var score=0;
-   if(name&&norm(cat.label)===name)score=100;
-   else if(code&&cc===code)score=90;
-   else if(id&&cc===id)score=80;
-   else if(code&&suffix===code)score=70;
-   else if(id&&suffix===id)score=60;
-   if(score>0){
-    var ck=norm(cat.label||"").replace(/[^A-Z0-9]/g,"");
-    if(tv&&((tv===dn)||(tv===dk)))score+=10;
-    if(ck===dk)score+=2;
-    if(score>bestScore){bestScore=score;best=cat}
-   }
-  });
-  return best;
- }
- series.forEach(function(s){
-  var md=metaFor(s),data=Array.isArray(s.Data)?s.Data:[];
-  data.forEach(function(x){
-   var tc=inePeriodCode(x);if(!tc)return;
-   var key=[];
-   nonTime.forEach(function(d){
-    var best=null;
-    md.forEach(function(m){
-     var hit=categoryMatch(d,m);
-     if(!hit)return;
-     var name=norm(m.Nombre||""),code=String(m.Codigo==null?"":m.Codigo).trim(),id=String(m.Id==null?"":m.Id).trim();
-     var score=(norm(hit.label)===name?100:0)+(String(hit.code)===code?20:0)+(String(hit.code)===id?10:0);
-     if(!best||score>best.score)best={code:String(hit.code),score:score};
+function ineDatosTablaToJsonStat(raw, metadata){
+  var series = Array.isArray(raw) ? raw : [];
+  if(!series.length) return null;
+
+  var baseDims = dims(metadata);
+  var timeDim = baseDims.find(function(d){ return temporal(d); });
+  var nonTime = baseDims.filter(function(d){ return !timeDim || d.id !== timeDim.id; });
+
+  function norm(x){
+    return String(x == null ? "" : x)
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .trim().toUpperCase();
+  }
+  function metaFor(s){
+    return Array.isArray(s && s.MetaData) ? s.MetaData : [];
+  }
+
+  // Index de categories per dimensió: code → index
+  var catIndex = new Map();
+  nonTime.forEach(function(d){
+    var m = new Map();
+    (d.categories || []).forEach(function(c, i){
+      m.set(String(c.code), i);
+      // també indexem pel codi sense prefix per si de cas
+      var suf = String(c.code).indexOf("_") >= 0
+        ? String(c.code).slice(String(c.code).lastIndexOf("_") + 1)
+        : String(c.code);
+      if(suf && !m.has(suf)) m.set(suf, i);
     });
-    key.push(best?best.code:"");
-   });
-   timeMap.set(tc,{code:tc,label:(x.T3_Periodo?String(x.T3_Periodo)+" ":"")+String(x.Anyo||tc)});
-   rows.push({key:key,time:tc,value:x.Valor});
+    catIndex.set(d.id, m);
   });
- });
- if(!rows.length)return null;
+
+  function findCategory(d, m){
+    if(!m) return null;
+    var nombre = norm(m.Nombre || "");
+    var codigo = String(m.Codigo == null ? "" : m.Codigo).trim();
+    var id = String(m.Id == null ? "" : m.Id).trim();
+    var varName = norm(
+      (m.Variable && m.Variable.Nombre) || m.T3_Variable || ""
+    );
+
+    var best = null, bestScore = -1;
+    (d.categories || []).forEach(function(cat){
+      var cc = String(cat.code);
+      var suffix = cc.indexOf("_") >= 0 ? cc.slice(cc.lastIndexOf("_") + 1) : cc;
+      var cl = norm(cat.label || "");
+      var score = 0;
+
+      if(nombre && cl === nombre) score = 100;
+      else if(codigo && (cc === codigo || suffix === codigo)) score = 90;
+      else if(id && (cc === id || suffix === id)) score = 80;
+      else if(nombre && cl.replace(/[^A-Z0-9]/g,"") === nombre.replace(/[^A-Z0-9]/g,"")) score = 70;
+
+      // reforç si el nom de la variable Tempus3 s'assembla a la dimensió
+      var dn = norm(d.label || d.id);
+      if(varName && (varName === dn || varName.indexOf(dn) >= 0 || dn.indexOf(varName) >= 0))
+        score += 5;
+
+      if(score > bestScore){ bestScore = score; best = cat; }
+    });
+    return bestScore >= 70 ? best : null;
+  }
+
+  var timeMap = new Map();
+  var rows = [];
+
+  series.forEach(function(s){
+    var md = metaFor(s);
+    var data = Array.isArray(s.Data) ? s.Data : [];
+
+    data.forEach(function(x){
+      var tc = inePeriodCode(x);
+      if(!tc) return;
+
+      var key = [];
+      var ok = true;
+
+      nonTime.forEach(function(d){
+        var hit = null;
+        for(var i = 0; i < md.length; i++){
+          var cand = findCategory(d, md[i]);
+          if(cand){ hit = cand; break; }
+        }
+        if(!hit){
+          // fallback: si només hi ha un valor possible a la dimensió, l'usem
+          if((d.categories || []).length === 1) hit = d.categories[0];
+          else ok = false;
+        }
+        key.push(hit ? String(hit.code) : "");
+      });
+
+      if(!ok) return;   // descartem la fila si no hem pogut mapear totes les dimensions
+
+      timeMap.set(tc, {
+        code: tc,
+        label: (x.T3_Periodo || (x.Periodo && x.Periodo.Codigo) || "") + " " + (x.Anyo || tc)
+      });
+      rows.push({ key: key, time: tc, value: x.Valor });
+    });
+  });
+
+  if(!rows.length) return null;
  var td=timeDim||{id:"time",label:"Temps",role:"time",categories:[]};
  var timeCats=Array.from(timeMap.values()).sort(function(a,b){return String(a.code).localeCompare(String(b.code),"ca",{numeric:true})});
  var outDims=nonTime.concat([{id:td.id,label:td.label,role:td.role,categories:timeCats.map(function(c,i){return{code:c.code,label:c.label,index:i}})}]);
