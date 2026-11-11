@@ -200,27 +200,17 @@ function ineNormalizeUrl(url){
 function ineFindOperation(op){
  var ops=Array.isArray(state.ineOperations)?state.ineOperations:[];
  var target=ineNormalizeUrl(op&&op.href);
- var hit=ops.find(function(x){return x&&x.Url&&ineNormalizeUrl(x.Url)===target});
- if(hit)return hit;
- var name=String(op&&op.label||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().replace(/\\(.*?\\)/g," ").replace(/[^a-z0-9]+/g," ").trim();
- var words=name.split(/\\s+/).filter(function(w){return w.length>=4});
- var best=null,bestScore=0;
- ops.forEach(function(x){
-  var n=String(x&&x.Nombre||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().replace(/\\(.*?\\)/g," ").replace(/[^a-z0-9]+/g," ").trim();
-  var nw=n.split(/\\s+/).filter(function(w){return w.length>=4});
-  var score=words.reduce(function(z,w){return z+(nw.indexOf(w)>=0?1:0)},0);
-  if(score>bestScore){bestScore=score;best=x}
- });
- return bestScore>=Math.max(2,Math.ceil(words.length*.6))?best:null;
+ if(!target)return null;
+ return ops.find(function(x){return x&&x.Url&&ineNormalizeUrl(x.Url)===target})||null;
 }
-function ineOperationCode(op){
- return String(op&& (op.Codigo||op.Id)||"").trim();
+function ineOperationId(op){
+ return String(op&&op.Id!=null?op.Id:"").trim();
 }
 async function ineLoadTables(op){
  await loadIneOperations();
  var apiOp=ineFindOperation(op);
  if(!apiOp)throw new Error("INE: no s'ha pogut identificar l'operació a Tempus3.");
- var code=ineOperationCode(apiOp);
+ var code=ineOperationId(apiOp);
  if(!code)throw new Error("INE: l'operació identificada no té codi Tempus3.");
  var d=await fetchJson("https://servicios.ine.es/wstempus/js/ES/TABLAS_OPERACION/"+encodeURIComponent(code)+"?det=2");
  var rows=a(d),seen=new Set(),out=[];
@@ -1382,16 +1372,6 @@ function updateCells(){var n=1;state.filters.forEach(function(s){n*=s.size});var
 function buildEurostatParams(){var p=new URLSearchParams();p.set("format","JSON");p.set("lang","EN");var q=selectedFilters();Object.keys(q).forEach(function(k){q[k].forEach(function(v){p.append(k,v)})});return p}
 function ineNorm(s){
  return String(s==null?"":s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toUpperCase();
-}
-async function ineOperationCode(op){
- var key="OP|"+String(op||"").trim(),cached=state.ineVarCache.get(key);
- if(cached)return cached;
- var vars=a(await fetchJson(provider().base+"/ES/OPERACIONES_DISPONIBLES?det=1"));
- var x=vars.find(function(v){return String(f(v,"Id","id")).trim()===String(op).trim()});
- var code=String(f(x||{},"Codigo","codigo","Code","code")||"").trim();
- if(!code)throw new Error("No s'ha pogut identificar el codi de l'operació INE «"+String(op)+"».");
- state.ineVarCache.set(key,code);
- return code;
 }
 async function ineResolveFilters(filters){
   var tableId = String(state.selected.table || "").trim();
