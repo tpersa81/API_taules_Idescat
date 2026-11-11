@@ -53,83 +53,83 @@ r = requests.get(URL, timeout=60, headers={"User-Agent": "Mozilla/5.0"})
 r.raise_for_status()
 soup = BeautifulSoup(r.text, "html.parser")
 
-# INEbase uses the visible hierarchy of the page itself. We collect all
-# operation links and derive the nearest group/topic from the document order.
+# Parse each operation in document order. The last occurrence of a major
+# group before an operation belongs to the body section (the top navigation
+# repeats the group names earlier in the HTML). Then select the last compact
+# non-operation label after that group as the subtopic.
 links = []
-for a in soup.select('a[href]'):
-    href = urljoin(URL, a.get("href", ""))
-    text = re.sub(r"\s+", " ", a.get_text(" ", strip=True))
+for anchor in soup.select("a[href]"):
+    href = urljoin(URL, anchor.get("href", ""))
+    text = re.sub(r"\s+", " ", anchor.get_text(" ", strip=True))
     if text and re.search(r"operacion\.htm", href, re.I):
-        links.append((a, text, href))
+        links.append((anchor, text, href))
 
-# Parse the visible document stream. INEbase places the major group and
-# subtopic labels before the operation links, while the operation names
-# themselves are anchors. Tracking that stream reproduces the web hierarchy
-# without depending on INE's presentation CSS classes.
-operation_lookup = {}
-for anchor, name, href in links:
-    operation_lookup[id(anchor)] = (name, href)
-
+operation_names = {norm(name) for _, name, _ in links}
+raw = r.text
 records = []
 seen = set()
-current_group = None
-current_topic = None
 
-for node in soup.descendants:
-    if getattr(node, "name", None) == "a":
-        info = operation_lookup.get(id(node))
-        if info:
-            name, href = info
-            key = norm(name)
-            if key not in seen:
-                seen.add(key)
-                records.append({
-                    "name": name,
-                    "href": href,
-                    "group": current_group or "Otros",
-                    "topic": current_topic or "Otros",
-                })
+for anchor, name, href in links:
+    anchor_html = str(anchor)
+    pos = raw.find(anchor_html)
+    if pos < 0:
         continue
 
-    if not getattr(node, "strip", lambda: False)():
-        continue
+    prefix = raw[:pos]
+    prefix_soup = BeautifulSoup(prefix, "html.parser")
+    strings = [re.sub(r"\s+", " ", x).strip()
+               for x in prefix_soup.stripped_strings]
+    strings = [x for x in strings if x]
 
-    parent_a = getattr(node, "parent", None)
-    while parent_a is not None and getattr(parent_a, "name", None) != "a":
-        parent_a = getattr(parent_a, "parent", None)
-    if parent_a is not None and id(parent_a) in operation_lookup:
-        continue
+    group = None
+    group_index = -1
+    for i in range(len(strings) - 1, -1, -1):
+        g = group_by_norm.get(norm(strings[i]))
+        if g:
+            group = g
+            group_index = i
+            break
 
-    text = re.sub(r"\s+", " ", str(node)).strip()
-    if not text or len(text) > 120:
-        continue
+    topic = None
+    if group_index >= 0:
+        for text in reversed(strings[group_index + 1:]):
+            n = norm(text)
+            if n in group_by_norm:
+                continue
+            if n in operation_names:
+                continue
+            if n in {norm(x) for x in GENERIC}:
+                continue
+            if n in {
+                "¿QUE ES INEBASE?",
+                "ULTIMA MODIFICACION:",
+                "DIMENSIONES:",
+                "PERIODO:",
+                "FORMATOS DE DESCARGA DISPONIBLES",
+                "INFORMACION TABLA",
+                "AVISO SOBRE DISPONIBILIDAD DE DATOS",
+                "AVISO A LOS USUARIOS",
+            }:
+                continue
+            if " | " in text:
+                continue
+            if len(text) > 100 or len(text.split()) > 10:
+                continue
+            if re.match(r"^(Año|Serie|Trimestre|Desde|Publicado|Últimos datos|Acceso directo)\b", text, re.I):
+                continue
+            topic = text
+            break
 
-    n = norm(text)
-    if n in group_by_norm:
-        current_group = group_by_norm[n]
-        current_topic = None
+    key = norm(name)
+    if key in seen:
         continue
-
-    if n in {norm(x) for x in GENERIC}:
-        continue
-    if n in {
-        "¿QUE ES INEBASE?",
-        "ULTIMA MODIFICACION:",
-        "DIMENSIONES:",
-        "PERIODO:",
-        "FORMATOS DE DESCARGA DISPONIBLES",
-        "INFORMACION TABLA",
-        "AVISO SOBRE DISPONIBILIDAD DE DATOS",
-        "AVISO A LOS USUARIOS",
-    }:
-        continue
-
-    # Navigation subtopics are short labels such as "Actividad, ocupación y
-    # paro", "Agricultura" or "Construcción y vivienda". Ignore table/update
-    # metadata and long explanatory paragraphs.
-    if current_group and len(text.split()) <= 10:
-        if not re.match(r"^(Año|Serie|Trimestre|Desde|Publicado|Últimos datos|Acceso directo)\b", text, re.I):
-            current_topic = text
+    seen.add(key)
+    records.append({
+        "name": name,
+        "href": href,
+        "group": group or "Otros",
+        "topic": topic or "Otros",
+    })
 
 OUT.parent.mkdir(parents=True, exist_ok=True)
 OUT.write_text(json.dumps(records, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
