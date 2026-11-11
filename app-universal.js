@@ -870,7 +870,7 @@ function ineTvCandidates(d){
   var a=[String(d.id||"").trim(),String(d.label||"").trim(),String(d.id||"").trim().toUpperCase(),String(d.label||"").trim().toUpperCase(),String(d.label||"").trim().toLowerCase()];
   return a.filter(function(x,i){return x&&a.indexOf(x)===i});
 }
-function inePeriodCode(row){
+function inePeriodCode(row,timeDim){
   if(!row) return "";
   var y = String(row.Anyo != null ? row.Anyo : "").trim();
   if(!y) return "";
@@ -889,6 +889,11 @@ function inePeriodCode(row){
     }
   }
 
+  // El codi del període de les dades INE pot ser més fi que el de la
+  // dimensió temporal del JSON-stat. Si la metadata diu que el període
+  // és anual, per exemple, M01 s'ha de representar com l'any 2016.
+  var periodicity = timeDim ? temporalPeriodicity(timeDim.categories || []) : null;
+  if(periodicity === "year") return y;
   if(!p || p === "A" || p === "ANUAL") return y;
 
   var m = p.match(/^M?(\d{1,2})$/);
@@ -943,7 +948,7 @@ function ineDatosTablaToJsonStat(raw,metadata){
  series.forEach(function(s){
   var md=metaFor(s),data=Array.isArray(s.Data)?s.Data:[];
   data.forEach(function(x){
-   var tc=inePeriodCode(x);if(!tc)return;
+   var tc=inePeriodCode(x,timeDim);if(!tc)return;
    var key=[];
    nonTime.forEach(function(d){
     var best=null;
