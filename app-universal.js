@@ -1409,8 +1409,8 @@ function renderResults(ds){
  var start=(current-1)*state.pageSize,
      end=Math.min(start+state.pageSize,rows.length),
      page=rows.slice(start,end),
-     h="<div class=\"result-meta\">"+rows.length.toLocaleString("ca-ES")+" files · mostrant "+(rows.length?start+1:0)+"–"+end+"</div>"+
-       "<div class=\"table-wrap\"><table class=\"data-table\"><thead><tr>"+
+     h="<div class="result-meta">"+rows.length.toLocaleString("ca-ES")+" files · mostrant "+(rows.length?start+1:0)+"–"+end+"</div>"+
+       "<div class="table-wrap"><table class="data-table"><thead><tr>"+
        dd.map(function(d){return"<th>"+esc(d.id+"_Codi")+"</th><th>"+esc(d.id+"_Etiqueta")+"</th>"}).join("")+
        "<th>Valor</th></tr></thead><tbody>";
  page.forEach(function(r){
@@ -1419,13 +1419,16 @@ function renderResults(ds){
   h+='<td class="num">'+esc(fmt(r.value,decimals(ds)))+"</td></tr>";
  });
  h+="</tbody></table></div>";
- if(totalPages>1){
-  h+='<div class="pager"><button class="secondary" aria-label="Anterior" title="Anterior" data-page="'+(current-1)+'"'+(current<=1?" disabled":"")+'><span aria-hidden="true">◀</span></button>';
-  h+='<label>Pàgina <select data-page-select aria-label="Selecciona la pàgina">';
-  for(var p=1;p<=totalPages;p++)h+='<option value="'+p+'"'+(p===current?" selected":"")+'> '+p+" / "+totalPages+"</option>";
-  h+='</select></label>';
-  h+='<button class="secondary" aria-label="Següent" title="Següent" data-page="'+(current+1)+'"'+(current>=totalPages?" disabled":"")+'><span aria-hidden="true">▶</span></button></div>';
- }
+ h+='<div class="pager">'+
+    '<button class="secondary" aria-label="Anterior" title="Anterior" data-page="'+(current-1)+'"'+(current<=1?" disabled":"")+'><span aria-hidden="true">◀</span></button>'+
+    '<span>Pàgina '+current+" / "+totalPages+"</span>"+
+    '<button class="secondary" aria-label="Següent" title="Següent" data-page="'+(current+1)+'"'+(current>=totalPages?" disabled":"")+'><span aria-hidden="true">▶</span></button>'+
+    '<select data-page-size aria-label="Nombre de files per pàgina">'+
+      '<option value="50"'+(state.pageSize===50?" selected":"")+'>50</option>'+
+      '<option value="100"'+(state.pageSize===100?" selected":"")+'>100</option>'+
+      '<option value="250"'+(state.pageSize===250?" selected":"")+'>250</option>'+
+    '</select>'+
+    '</div>';
  $("results").innerHTML=h;
  renderPivotBuilder();
 }
@@ -1436,6 +1439,14 @@ function setResultPage(page){
  state.page=Math.min(Math.max(1,Number(page)||1),totalPages);
  renderResults(ds);
 }
+function setResultPageSize(size){
+ var ds=state.lastData;
+ if(!ds)return;
+ state.pageSize=Number(size)||100;
+ state.page=1;
+ renderResults(ds);
+}
+
 function exportCSV(){if(!state.lastData)return;var z=resultRows(state.lastData),h=z.dims.map(function(d){return[d.id+"_Codi",d.id+"_Etiqueta"]}).reduce(function(x,y){return x.concat(y)},[]).concat(["Valor"]),lines=[h].concat(z.rows.map(function(r){return z.dims.map(function(d){return[r[d.id].code,r[d.id].label]}).reduce(function(x,y){return x.concat(y)},[]).concat([r.value==null?"":r.value])})).map(function(row){return row.map(function(v){return'"'+String(v).replace(/"/g,'""')+'"'}).join(";")});var b=new Blob(["\uFEFF"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=state.provider+"_consulta.csv";a.click()}
 function exportXLSX(){if(!state.lastData||typeof XLSX==="undefined")return;var z=resultRows(state.lastData),info=exportInfo(),headers=z.dims.map(function(d){return[d.id+"_Codi",d.id+"_Etiqueta"]}).reduce(function(a,b){return a.concat(b)},[]).concat(["Valor"]),out=[[info.tableName],[info.source],["URL: "+info.queryUrl],["Data de consulta: "+info.exportDate],[],headers];z.rows.forEach(function(r){out.push(z.dims.map(function(d){return[r[d.id].code,r[d.id].label]}).reduce(function(a,b){return a.concat(b)},[]).concat([r.value==null?"":r.value]))});var wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(out);ws["!autofilter"]={ref:XLSX.utils.encode_range({s:{r:5,c:0},e:{r:out.length-1,c:headers.length-1}})};ws["!merges"]=[];if(ws.A1)ws.A1.s={font:{bold:true}};XLSX.utils.book_append_sheet(wb,ws,"Dades");var po=pivotExport();if(po){var pw=XLSX.utils.aoa_to_sheet(po),hr=4;if(po.length>hr)pw["!autofilter"]={ref:XLSX.utils.encode_range({s:{r:hr,c:0},e:{r:po.length-1,c:(po[hr]||[]).length-1}})};pw["!merges"]=[];if(pw.A1)pw.A1.s={font:{bold:true}};XLSX.utils.book_append_sheet(wb,pw,"Taula construïda")}XLSX.writeFile(wb,state.provider+"_"+state.selected.table+"_"+state.selected.geo+".xlsx")}
 
