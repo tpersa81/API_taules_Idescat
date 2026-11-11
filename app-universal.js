@@ -296,7 +296,7 @@ async function loadStats(){
 }
 else out=a(await fetchJson(c.base)).map(function(x){var id=String(f(x,"id","dbid","code","path"));return{value:id,label:String(f(x,"text","label","name","title")||id)}}).filter(function(x){return x.value});
  if(loadToken!==state.requestToken||loadProvider!==state.provider||(loadProvider==="pxweb"&&loadPreset!==state.pxPreset))return;
- out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});state.stats=out;fill($("stat"),out);$("stat").disabled=!out.length;
+ out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});state.stats=out;fill($("stat"),out);$("stat").disabled=!out.length;if(state.provider==="ine"){hideStatSelector(true);await ineSelectRoot()}else if(state.provider==="eurostat"){hideStatSelector(true);await eurostatAddRootLevel()}else{hideStatSelector(false)}
  var initial=new URLSearchParams(location.search).get("stat")||"";
  if(initial&&[].slice.call($("stat").options).some(function(o){return o.value===initial})){$("stat").value=initial;await onStatChange()}
 }
@@ -494,6 +494,30 @@ async function swedenLoadV1Table(path,tableId){
 function eurostatClearLevels(){
  var box=$("eurostatLevels");
  if(box){box.innerHTML="";box.hidden=true}
+}
+function hideStatSelector(hidden){
+ var lab=$("stat")&&$("stat").parentElement;
+ if(lab)lab.style.display=hidden?"none":"";
+}
+function eurostatAddRootLevel(){
+ var box=$("eurostatLevels");if(!box)return;
+ eurostatClearLevels();
+ var list=(state.eurostatRoots||[]).filter(function(x){return x&&x.code&&x.label});
+ if(!list.length)return;
+ box.hidden=false;
+ var label=document.createElement("label");
+ label.dataset.eurostatLevel="-1";
+ label.textContent="Tipus de dades ";
+ var sel=document.createElement("select");
+ sel.id="eurostatRootLevel";
+ sel.disabled=false;
+ sel.appendChild(new Option("— Selecciona —",""));
+ list.forEach(function(x){sel.appendChild(new Option(x.label,x.code))});
+ label.appendChild(sel);box.appendChild(label);
+ sel.onchange=async function(){
+  if(!sel.value)return;
+  try{await eurostatSelectRoot(sel.value)}catch(e){status(e&&e.message?e.message:String(e),"error")}
+ };
 }
 function eurostatLevelLabel(i){
  if(i===0)return "Tema";
