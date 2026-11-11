@@ -279,7 +279,7 @@ function ineNavPathFromHeads(heads){
  }
  return{group:group||"Otros",topic:topic||"Otros"};
 }
-async function loadIneNavigation(){
+async async function loadIneNavigation(){
  if(Array.isArray(state.ineNavigation)&&state.ineNavigation.length)return state.ineNavigation;
  var html=await ineFetchText("https://ine.es/dyngs/INEbase/listaoperaciones.htm");
  var doc=new DOMParser().parseFromString(html,"text/html");
