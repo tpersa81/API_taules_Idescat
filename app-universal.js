@@ -307,7 +307,17 @@ async function loadStats(){
  // INE: mostra la navegació jeràrquica abans de consultar Tempus3.
  if(state.provider==="ine"){
   hideStatSelector(true);
-  try{await ineSelectRoot()}catch(e){status("INE: "+(e&&e.message?e.message:String(e)),"error")}
+  try{
+   await ineSelectRoot();
+   // La navegació d'INE és local i jeràrquica; no continuem amb el
+   // carregador genèric d'estadístiques, que podria sobreescriure l'estat
+   // de navegació acabat de construir.
+   if(loadToken!==state.requestToken||loadProvider!==state.provider)return;
+   return;
+  }catch(e){
+   status("INE: "+(e&&e.message?e.message:String(e)),"error");
+   return;
+  }
  }
  var c=provider(),out=[];
  if(state.provider==="idescat")out=collection(await fetchJson(c.base+"?lang=ca")).map(function(x){return{value:x.id,label:x.id+" · "+x.label}});
