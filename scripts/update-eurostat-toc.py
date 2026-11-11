@@ -13,7 +13,7 @@ reader = csv.reader(io.StringIO(text), delimiter="\t", quotechar='"')
 for row in reader:
     if len(row) < 3:
         continue
-    title, code, typ = row[0].strip(), row[1].strip(), row[2].strip().lower()
+    title, code, typ = row[0].strip(), row[1].strip(), row[2].strip().lower().strip()
     if not title or not code or typ not in {"folder", "dataset", "table"}:
         continue
     raw_indent = len(row[0]) - len(row[0].lstrip(" "))
