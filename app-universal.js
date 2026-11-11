@@ -200,8 +200,31 @@ function ineNormalizeUrl(url){
 function ineFindOperation(op){
  var ops=Array.isArray(state.ineOperations)?state.ineOperations:[];
  var target=ineNormalizeUrl(op&&op.href);
- if(!target)return null;
- return ops.find(function(x){return x&&x.Url&&ineNormalizeUrl(x.Url)===target})||null;
+ if(target){
+  var hit=ops.find(function(x){return x&&x.Url&&ineNormalizeUrl(x.Url)===target});
+  if(hit)return hit;
+ }
+ // Si la URL no coincide exactament, utilitzem el cid de la URL
+ // de l'operació seleccionada. El cid és l'identificador estable
+ // que comparteixen la navegació INEbase i OPERACIONES_DISPONIBLES.
+ var cid="";
+ try{
+  var u=new URL(ineAbsoluteUrl(op&&op.href));
+  cid=String(u.searchParams.get("cid")||"").trim();
+ }catch(e){}
+ if(cid){
+  var byCid=ops.filter(function(x){
+   var url=String(x&&x.Url||"");
+   try{
+    var u2=new URL(ineAbsoluteUrl(url));
+    return String(u2.searchParams.get("cid")||"").trim()===cid;
+   }catch(e2){
+    return new RegExp("(?:[?&])cid="+cid+"(?:&|$)","i").test(url);
+   }
+  });
+  if(byCid.length===1)return byCid[0];
+ }
+ return null;
 }
 function ineOperationId(op){
  return String(op&&op.Id!=null?op.Id:"").trim();
