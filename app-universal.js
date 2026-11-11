@@ -1409,26 +1409,25 @@ function renderResults(ds){
  var start=(current-1)*state.pageSize,
      end=Math.min(start+state.pageSize,rows.length),
      page=rows.slice(start,end),
-     h='<div class="result-meta">"+rows.length.toLocaleString("ca-ES")+" files · mostrant "+(rows.length?start+1:0)+"–"+end+"</div>'+
+     h='<div class="result-meta">'+rows.length.toLocaleString("ca-ES")+' files · mostrant '+(rows.length?start+1:0)+'–'+end+'</div>'+
        '<div class="table-wrap"><table class="data-table"><thead><tr>'+
-       dd.map(function(d){return"<th>"+esc(d.id+"_Codi")+"</th><th>"+esc(d.id+"_Etiqueta")+"</th>"}).join("")+
-       "<th>Valor</th></tr></thead><tbody>";
+       dd.map(function(d){return'<th>'+esc(d.id+"_Codi")+'</th><th>'+esc(d.id+"_Etiqueta")+'</th>'}).join("")+
+       '<th>Valor</th></tr></thead><tbody>';
  page.forEach(function(r){
-  h+="<tr>";
-  dd.forEach(function(d){h+="<td>"+esc(r[d.id].code)+"</td><td>"+esc(r[d.id].label)+"</td>"});
-  h+='<td class="num">'+esc(fmt(r.value,decimals(ds)))+"</td></tr>";
+  h+='<tr>';
+  dd.forEach(function(d){h+='<td>'+esc(r[d.id].code)+'</td><td>'+esc(r[d.id].label)+'</td>'});
+  h+='<td class="num">'+esc(fmt(r.value,decimals(ds)))+'</td></tr>';
  });
- h+="</tbody></table></div>";
+ h+='</tbody></table></div>';
  h+='<div class="pager">'+
-    '<button class="secondary" aria-label="Anterior" title="Anterior" data-page="'+(current-1)+'"'+(current<=1?" disabled":"")+'><span aria-hidden="true">◀</span></button>'+
-    '<span>Pàgina '+current+" / "+totalPages+"</span>"+
-    '<button class="secondary" aria-label="Següent" title="Següent" data-page="'+(current+1)+'"'+(current>=totalPages?" disabled":"")+'><span aria-hidden="true">▶</span></button>'+
+    '<button class="secondary" aria-label="Anterior" title="Anterior" data-page="'+(current-1)+'"'+(current<=1?' disabled':'')+'><span aria-hidden="true">◀</span></button>'+
+    '<span>Pàgina '+current+' / '+totalPages+'</span>'+
+    '<button class="secondary" aria-label="Següent" title="Següent" data-page="'+(current+1)+'"'+(current>=totalPages?' disabled':'')+'><span aria-hidden="true">▶</span></button>'+
     '<select data-page-size aria-label="Nombre de files per pàgina">'+
-      '<option value="50"'+(state.pageSize===50?" selected":"")+'>50</option>'+
-      '<option value="100"'+(state.pageSize===100?" selected":"")+'>100</option>'+
-      '<option value="250"'+(state.pageSize===250?" selected":"")+'>250</option>'+
-    '</select>'+
-    '</div>';
+      '<option value="50"'+(state.pageSize===50?' selected':'')+'>50</option>'+
+      '<option value="100"'+(state.pageSize===100?' selected':'')+'>100</option>'+
+      '<option value="250"'+(state.pageSize===250?' selected':'')+'>250</option>'+
+    '</select></div>';
  $("results").innerHTML=h;
  renderPivotBuilder();
 }
