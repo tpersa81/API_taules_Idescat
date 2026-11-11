@@ -1,6 +1,7 @@
 import json
 import re
 import unicodedata
+from urllib.parse import urljoin
 from pathlib import Path
 
 import requests
@@ -44,7 +45,7 @@ GENERIC = {
 def norm(s):
     s = unicodedata.normalize("NFD", str(s or ""))
     s = "".join(c for c in s if unicodedata.category(c) != "Mn")
-    return re.sub(r"\\s+", " ", s).strip().upper()
+    return re.sub(r"\s+", " ", s).strip().upper()
 
 group_by_norm = {norm(x): x for x in GROUPS}
 
@@ -56,15 +57,15 @@ soup = BeautifulSoup(r.text, "html.parser")
 # operation links and derive the nearest group/topic from the document order.
 links = []
 for a in soup.select('a[href]'):
-    href = a.get("href", "")
-    text = re.sub(r"\\s+", " ", a.get_text(" ", strip=True))
-    if text and re.search(r"operacion\\.htm", href, re.I):
+    href = urljoin(URL, a.get("href", ""))
+    text = re.sub(r"\s+", " ", a.get_text(" ", strip=True))
+    if text and re.search(r"operacion\.htm", href, re.I):
         links.append((a, text, href))
 
 # Build a document-order list of useful text-bearing elements.
 elements = []
 for el in soup.find_all(["h1","h2","h3","h4","h5","h6","strong","b","dt","a"]):
-    text = re.sub(r"\\s+", " ", el.get_text(" ", strip=True))
+    text = re.sub(r"\s+", " ", el.get_text(" ", strip=True))
     if text:
         elements.append((el, text))
 
@@ -102,7 +103,7 @@ for a, name, href in links:
             n = norm(text)
             if not text or n in GENERIC or n in group_by_norm:
                 continue
-            if el.name == "a" and re.search(r"operacion\\.htm", el.get("href",""), re.I):
+            if el.name == "a" and re.search(r"operacion\.htm", el.get("href",""), re.I):
                 continue
             if len(text) > 100:
                 continue
