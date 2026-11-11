@@ -90,21 +90,28 @@ function sortedCats(c,d){
  return x;
 }
 async function fetchText(url,opt){
- opt=opt||{};var r;
- try{r=await fetch(url,opt)}
- catch(e){
-  var proxies=[
-   "https://api.allorigins.win/raw?url="+encodeURIComponent(url),
-   "https://corsproxy.io/?url="+encodeURIComponent(url),
-   "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(url)
-  ],ok=false,last=e;
-  for(var i=0;i<proxies.length&&!ok;i++){
-   try{var pr=await fetch(proxies[i],{cache:"no-store"});if(pr.ok){r=pr;ok=true}else last=new Error("HTTP "+pr.status)}catch(e2){last=e2}
-  }
-  if(!ok)throw new Error("No s'ha pogut carregar la pàgina. "+(last&&last.message||"Failed to fetch")+" · "+url);
+ opt=opt||{};var r=null,last=null;
+ try{r=await fetch(url,opt);if(r.ok)return await r.text();last=new Error("HTTP "+r.status)}catch(e){last=e}
+ var proxies=[
+  "https://api.allorigins.win/raw?url="+encodeURIComponent(url),
+  "https://api.allorigins.win/get?url="+encodeURIComponent(url),
+  "https://corsproxy.io/?url="+encodeURIComponent(url),
+  "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(url),
+  "https://cors.isomorphic-git.org/"+url
+ ];
+ for(var i=0;i<proxies.length;i++){
+  try{
+   var pr=await fetch(proxies[i],{cache:"no-store"});
+   if(!pr.ok){last=new Error("HTTP "+pr.status);continue}
+   var txt=await pr.text();
+   try{
+    var jd=JSON.parse(txt);
+    if(jd&&typeof jd.contents==="string")txt=jd.contents;
+   }catch(e){}
+   if(txt)return txt;
+  }catch(e2){last=e2}
  }
- if(!r.ok)throw new Error("Error HTTP "+r.status+" · "+url);
- return await r.text();
+ throw new Error("No s'ha pogut carregar la pàgina. "+(last&&last.message||"Failed to fetch")+" · "+url);
 }
 function ineClearNavigation(){
  state.inePath=[];state.ineItems.clear();
