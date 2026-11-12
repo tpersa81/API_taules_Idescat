@@ -292,46 +292,56 @@ async function ineLoadTablesFromBase(op){
  return out;
 }
 
+async function ineLoadBaseLevel(pageUrl){
+ var html=await fetchText(pageUrl,{cache:"no-store"});
+ var doc=new DOMParser().parseFromString(html,"text/html");
+ var currentCapsel="";
+ try{currentCapsel=new URL(pageUrl).searchParams.get("capsel")||""}catch(e){}
+ var out=[],seen=new Set();
+ Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
+  var raw=aEl.getAttribute("href")||"",abs;
+  try{abs=new URL(raw,pageUrl).href}catch(e){return}
+  var u;try{u=new URL(abs)}catch(e2){return}
+  var path=u.pathname.toLowerCase(),label=String(aEl.textContent||"").replace(/\s+/g," ").trim();
+  var tpx=u.searchParams.get("tpx"),t=u.searchParams.get("t");
+  if(tpx&&path.indexOf("/jaxi/")>=0){
+   var tid=String(tpx).trim(),key="tpx:"+tid;
+   if(tid&&!seen.has(key)){seen.add(key);out.push({id:tid,label:label||("Taula "+tid),type:"table",tableId:tid})}
+   return;
+  }
+  if(t&&path.indexOf("/jaxit3/")>=0){
+   var tid2=String(t).trim(),key2="table:"+tid2;
+   if(tid2&&!seen.has(key2)){seen.add(key2);out.push({id:tid2,label:label||("Taula "+tid2),type:"table",tableId:tid2})}
+   return;
+  }
+  var padre=u.searchParams.get("padre"),capsel=u.searchParams.get("capsel");
+  if(padre==="13720"&&capsel&&capsel!==currentCapsel){
+   var key3="capsel:"+capsel;
+   if(!seen.has(key3)){
+    seen.add(key3);
+    out.push({id:abs,label:label||("Apartat "+capsel),type:"capsel",url:abs,capsel:capsel});
+   }
+  }
+ });
+ return out;
+}
 async function ineLoadTablesFromBaseCatalog(op){
  var cid="";
  try{var u=new URL(ineAbsoluteUrl(op&&op.href));cid=String(u.searchParams.get("cid")||"").trim()}catch(e){}
- var roots={"1254736176979":{label:"Resultats",url:"https://www.ine.es/dynt3/inebase/index.htm?padre=13720",sections:[
+ var roots={"1254736176979":{label:"Resultats",sections:[
   {label:"Resultados nacionales",url:"https://www.ine.es/dynt3/inebase/index.htm?padre=13720&capsel=13721"},
   {label:"Resultados por comunidades autónomas",url:"https://www.ine.es/dynt3/inebase/index.htm?padre=13720&capsel=13722"}
  ]}};
  var root=roots[cid];if(!root)return null;
- async function scanTables(page,limit){
-  var queue=[page],visited=new Set(),out=[],seen=new Set(),steps=0;
-  while(queue.length&&steps++<limit){
-   var pageUrl=queue.shift();if(visited.has(pageUrl))continue;visited.add(pageUrl);
-   var html;try{html=await fetchText(pageUrl,{cache:"no-store"})}catch(e){continue}
-   var doc=new DOMParser().parseFromString(html,"text/html");
-   Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
-    var raw=aEl.getAttribute("href")||"",abs;try{abs=new URL(raw,pageUrl).href}catch(e){return}
-    var u2;try{u2=new URL(abs)}catch(e2){return}
-    var path=u2.pathname.toLowerCase(),tpx=u2.searchParams.get("tpx"),t=u2.searchParams.get("t"),label=String(aEl.textContent||"").replace(/\s+/g," ").trim();
-    if(tpx&&path.indexOf("/jaxi/")>=0){var id=String(tpx).trim();if(id&&!seen.has("tpx:"+id)){seen.add("tpx:"+id);out.push({id:id,label:label||("Taula "+id),type:"table",tableId:id})}return}
-    if(t&&path.indexOf("/jaxit3/")>=0){var id2=String(t).trim();if(id2&&!seen.has("table:"+id2)){seen.add("table:"+id2);out.push({id:id2,label:label||("Taula "+id2),type:"table",tableId:id2})}return}
-    var padre=u2.searchParams.get("padre"),capsel=u2.searchParams.get("capsel");
-    if(padre==="13720"&&capsel&&!visited.has(abs))queue.push(abs);
-   });
-  }
-  out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});return out;
+ var sections=[];
+ for(var i=0;i<root.sections.length;i++){
+  var s=root.sections[i],children=[];
+  try{children=await ineLoadBaseLevel(s.url)}catch(e){}
+  sections.push({id:s.url,label:s.label,type:"section",url:s.url,children:children});
  }
- var sections=root.sections.slice();
- try{
-  var html=await fetchText(root.url,{cache:"no-store"}),doc=new DOMParser().parseFromString(html,"text/html"),found=[];
-  Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
-   var raw=aEl.getAttribute("href")||"",abs;try{abs=new URL(raw,root.url).href}catch(e){return}
-   var u2;try{u2=new URL(abs)}catch(e2){return}
-   if(u2.searchParams.get("padre")!=="13720"||!u2.searchParams.get("capsel"))return;
-   var label=String(aEl.textContent||"").replace(/\s+/g," ").trim();
-   if(label&&/resultados nacionales|resultados por comunidades autónomas/i.test(label))found.push({label:label,url:abs});
-  });if(found.length)sections=found;
- }catch(e){}
- var out=[];for(var i=0;i<sections.length;i++)out.push({id:sections[i].url,label:sections[i].label,type:"section",url:sections[i].url,tables:await scanTables(sections[i].url,20)});
- return {label:root.label,sections:out};
+ return {label:root.label,sections:sections};
 }
+
 async function ineLoadTables(op){
  await loadIneOperations();
  var apiOp=ineFindOperation(op);
@@ -415,7 +425,19 @@ async function ineSelectLevel(index,val){
   return;
  }
  if(item.type==="section"){
-  ineAddLevel(item.tables||[],4,"Taula");
+  status("Consultant l'INE…");
+  var children=[];
+  try{children=await ineLoadBaseLevel(item.url)}catch(e){status("INE: "+(e&&e.message?e.message:String(e)),"error");return}
+  ineAddLevel(children,4,item.label||"Apartat");
+  status("");
+  return;
+ }
+ if(item.type==="capsel"){
+  status("Consultant l'INE…");
+  var sub=[];
+  try{sub=await ineLoadBaseLevel(item.url)}catch(e){status("INE: "+(e&&e.message?e.message:String(e)),"error");return}
+  ineAddLevel(sub,index+1,item.label||"Apartat");
+  status("");
   return;
  }
  if(item.type==="table"){
