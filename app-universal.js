@@ -206,7 +206,7 @@ function ineFindOperation(op){
   var hit=ops.find(function(x){return x&&x.Url&&ineNormalizeUrl(x.Url)===target});
   if(hit)return hit;
  }
- // Si la URL no coincide exactament, utilitzem el cid de la URL
+ // Si la URL no coincideix exactament, utilitzem el cid de la URL
  // de l'operació seleccionada. El cid és l'identificador estable
  // que comparteixen la navegació INEbase i OPERACIONES_DISPONIBLES.
  var cid="";
