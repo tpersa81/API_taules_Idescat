@@ -164,7 +164,9 @@ function ineAddLevel(items,index,labelText){
  var list=(items||[]).filter(function(x){return x&&x.id&&x.label});
  if(!list.length)return;
  box.hidden=false;
+ box.style.display="grid";
  var lab=document.createElement("label");
+ lab.style.display="block";
  lab.dataset.ineLevel=String(index);
  lab.textContent=labelText+" ";
  var sel=document.createElement("select");
@@ -177,6 +179,9 @@ function ineAddLevel(items,index,labelText){
   if(!sel.value)return;
   try{await ineSelectLevel(index,sel.value)}catch(e){status("INE: "+(e&&e.message?e.message:String(e)),"error")}
  };
+ sel.addEventListener("change",function(){
+  if(sel.value&&sel.onchange)return;
+ });
  if(list.length===1){sel.value=list[0].id;ineSelectLevel(index,list[0].id).catch(function(e){status("INE: "+(e&&e.message?e.message:String(e)),"error")})}
 }
 function ineTrimTitle(s){
