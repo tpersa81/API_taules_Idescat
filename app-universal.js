@@ -426,8 +426,10 @@ async function ineSelectLevel(index,val){
  }
  if(item.type==="section"){
   status("Consultant l'INE…");
-  var children=[];
-  try{children=await ineLoadBaseLevel(item.url)}catch(e){status("INE: "+(e&&e.message?e.message:String(e)),"error");return}
+  var children=item.children||[];
+  if(!children.length){
+   try{children=await ineLoadBaseLevel(item.url)}catch(e){status("INE: "+(e&&e.message?e.message:String(e)),"error");return}
+  }
   ineAddLevel(children,4,item.label||"Apartat");
   status("");
   return;
