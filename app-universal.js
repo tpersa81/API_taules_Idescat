@@ -361,21 +361,34 @@ async function ineLoadBaseLevel(pageUrl){
    var g=groups[gi];
    if(g.type!=="capsel-group")continue;
    try{
-    var parentHtml=await fetchText(g.children[0].url,{cache:"no-store"});
+    // El títol del grup no és a la pàgina del primer fill capsel:
+    // és a la pàgina INEbase del seu pare, ?padre=<id>.
+    // Això és genèric i evita dependre del contingut concret dels fills.
+    var parentUrl=new URL(pageUrl);
+    parentUrl.searchParams.delete("capsel");
+    parentUrl.searchParams.set("padre",g.padre);
+    var parentHtml=await fetchText(parentUrl.href,{cache:"no-store"});
     var parentDoc=new DOMParser().parseFromString(parentHtml,"text/html");
-    var h=parentDoc.querySelector("h1,h2");
-    var title=h&&h.textContent?String(h.textContent).replace(/\s+/g," ").trim():"";
+    var h=parentDoc.querySelector("h1.inebase_titulo,h1,h2");
+    var title=h&&h.textContent?String(h.textContent).replace(/\\s+/g," ").trim():"";
+    if(!title){
+     var spans=parentDoc.querySelectorAll(".title");
+     for(var si=0;si<spans.length;si++){
+      var st=String(spans[si].textContent||"").replace(/\\s+/g," ").trim();
+      if(st){title=st;break}
+     }
+    }
     if(!title){
      var tt=parentDoc.querySelector("title");
-     if(tt&&tt.textContent)title=String(tt.textContent).replace(/\s+/g," ").trim();
+     if(tt&&tt.textContent)title=String(tt.textContent).replace(/\\s+/g," ").trim();
     }
     if(!title){
      var raw=String(parentHtml||"");
-     var hm=raw.match(/(?:^|\r?\n)\s*#{1,2}\s+([^\r\n#]+)\s*/);
-     if(hm)title=String(hm[1]).replace(/[\*_`]/g,"").replace(/\s+/g," ").trim();
+     var hm=raw.match(/(?:^|\\r?\\n)\\s*#{1,2}\\s+([^\\r\\n#]+)\\s*/);
+     if(hm)title=String(hm[1]).replace(/[\\*_\`]/g,"").replace(/\\s+/g," ").trim();
     }
     if(title){
-     title=title.replace(/\s*[|·-]\s*(?:Instituto Nacional de Estadística|INE).*$/i,"").trim();
+     title=title.replace(/\\s*[|·-]\\s*(?:Instituto Nacional de Estadística|INE).*$/i,"").trim();
      g.label=title;
     }
    }catch(e){}
