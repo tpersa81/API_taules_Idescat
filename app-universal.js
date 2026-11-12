@@ -357,43 +357,34 @@ async function ineLoadBaseLevel(pageUrl){
    }
    byParent.get(p).children.push(x);
   });
+  // Els noms dels grups provenen de la pàgina pare d'INEbase.
+  // Fem una via directa per ?padre=<id> i una via de reserva amb els
+  // .title de la pàgina de Resultados. Així no mostrem "Apartat <id>"
+  // quan INE ha proporcionat el nom real.
+  var rootTitles=[];
+  try{
+   Array.from(doc.querySelectorAll(".title")).forEach(function(el){
+    var s=String(el.textContent||"").replace(/\s+/g," ").trim();
+    if(s&&rootTitles.indexOf(s)<0)rootTitles.push(s);
+   });
+  }catch(e){}
   for(var gi=0;gi<groups.length;gi++){
    var g=groups[gi];
    if(g.type!=="capsel-group")continue;
+   var title="";
    try{
-    // El títol del grup no és a la pàgina del primer fill capsel:
-    // és a la pàgina INEbase del seu pare, ?padre=<id>.
-    // Això és genèric i evita dependre del contingut concret dels fills.
-    // La pàgina pare d'INEbase és sempre /dynt3/inebase/index.htm?padre=...
-    // No reutilitzem la URL de l'operació (/dyngs/INEbase/operacion.htm),
-    // perquè aquesta no és la pàgina que conté el títol del grup.
     var parentUrl=new URL("https://www.ine.es/dynt3/inebase/index.htm");
-    parentUrl.searchParams.set("padre",g.padre);
+    parentUrl.searchParams.set("padre",String(g.padre));
     var parentHtml=await fetchText(parentUrl.href,{cache:"no-store"});
     var parentDoc=new DOMParser().parseFromString(parentHtml,"text/html");
-    var h=parentDoc.querySelector("h1.inebase_titulo,h1,h2");
-    var title=h&&h.textContent?String(h.textContent).replace(/\\s+/g," ").trim():"";
-    if(!title){
-     var spans=parentDoc.querySelectorAll(".title");
-     for(var si=0;si<spans.length;si++){
-      var st=String(spans[si].textContent||"").replace(/\\s+/g," ").trim();
-      if(st){title=st;break}
-     }
-    }
-    if(!title){
-     var tt=parentDoc.querySelector("title");
-     if(tt&&tt.textContent)title=String(tt.textContent).replace(/\\s+/g," ").trim();
-    }
-    if(!title){
-     var raw=String(parentHtml||"");
-     var hm=raw.match(/(?:^|\\r?\\n)\\s*#{1,2}\\s+([^\\r\\n#]+)\\s*/);
-     if(hm)title=String(hm[1]).replace(/[\\*_\`]/g,"").replace(/\\s+/g," ").trim();
-    }
-    if(title){
-     title=title.replace(/\\s*[|·-]\\s*(?:Instituto Nacional de Estadística|INE).*$/i,"").trim();
-     g.label=title;
-    }
+    var h=parentDoc.querySelector("h1.inebase_titulo")||parentDoc.querySelector("h1");
+    if(h)title=String(h.textContent||"").replace(/\s+/g," ").trim();
    }catch(e){}
+   if(!title&&rootTitles[gi])title=rootTitles[gi];
+   if(title){
+    title=title.replace(/\s*[|·-]\s*(?:Instituto Nacional de Estadística|INE).*$/i,"").trim();
+    if(title)g.label=title;
+   }
   }
   return groups;
  }
