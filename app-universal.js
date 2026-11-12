@@ -289,41 +289,29 @@ async function ineLoadTablesFromBase(op){
 }
 
 async function ineLoadTablesFromBaseCatalog(op){
- // Fallback per a operacions d'INEbase que tenen el contingut
- // organitzat en una pàgina dynt3/inebase amb capsel/padre.
- // El cid identifica l'operació, però no forma part de la URL de
- // la pàgina de taules; per això mantenim aquí només correspondències
- // verificades quan l'operació no és Tempus3.
+ // Algunes operacions d'INEbase no estan publicades com a operacions Tempus3.
+ // Per a aquestes, la pàgina d'operació conté les taules TPX directament.
+ // Aquesta correspondència és verificable a INEbase i evita dependre del
+ // contingut retornat per un proxy CORS.
  var cid="";
  try{
   var u=new URL(ineAbsoluteUrl(op&&op.href));
   cid=String(u.searchParams.get("cid")||"").trim();
  }catch(e){}
- var pages={
-  "1254736176979":"https://www.ine.es/dynt3/inebase/index.htm?capsel=11347&padre=11346"
+ var catalogs={
+  "1254736176979":[
+   ["80212","Ocupados en el sector de alta y media-alta tecnología por rama de actividad y sexo"],
+   ["80213","Ocupados en el sector de alta y media-alta tecnología por rama de actividad y grupos de edad"],
+   ["80214","Ganancia media por hora en el sector de alta y media-alta tecnología por rama de actividad"],
+   ["80215","Ganancia media por trabajador y mes en el sector de alta y media-alta tecnología por rama de actividad"],
+   ["80216","Indicadores estructurales para el sector de alta y media-alta tecnología por rama de actividad"]
+  ]
  };
- var page=pages[cid];
- if(!page)return [];
- var html=await fetchText(page,{cache:"no-store"});
- var doc=new DOMParser().parseFromString(html,"text/html");
- var out=[],seen=new Set();
- Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
-  var raw=aEl.getAttribute("href")||"",abs;
-  try{abs=new URL(raw,page).href}catch(e){return}
-  var u2;try{u2=new URL(abs)}catch(e2){return}
-  var path=u2.pathname.toLowerCase();
-  var tpx=u2.searchParams.get("tpx"),t=u2.searchParams.get("t"),id="",kind="";
-  if(tpx&&path.indexOf("/jaxi/")>=0){id=String(tpx).trim();kind="tpx"}
-  else if(t&&path.indexOf("/jaxit3/")>=0){id=String(t).trim();kind="table"}
-  if(!id)return;
-  var label=String(aEl.textContent||"").replace(/\s+/g," ").trim();
-  if(label&&!seen.has(kind+":"+id)){
-   seen.add(kind+":"+id);
-   out.push({id:id,label:id+" · "+label,type:"table",tableId:id});
-  }
+ var rows=catalogs[cid];
+ if(!Array.isArray(rows))return [];
+ return rows.map(function(x){
+  return {id:x[0],label:x[0]+" · "+x[1],type:"table",tableId:x[0]};
  });
- out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});
- return out;
 }
 
 async function ineLoadTables(op){
