@@ -291,43 +291,45 @@ async function ineLoadTablesFromBase(op){
 }
 
 async function ineLoadTablesFromBaseCatalog(op){
- // Fallback per a operacions d'INEbase que tenen el contingut
- // organitzat en una pàgina dynt3/inebase amb capsel/padre.
- // El cid identifica l'operació, però no forma part de la URL de
- // la pàgina de taules; per això mantenim aquí només correspondències
- // verificades quan l'operació no és Tempus3.
  var cid="";
- try{
-  var u=new URL(ineAbsoluteUrl(op&&op.href));
-  cid=String(u.searchParams.get("cid")||"").trim();
- }catch(e){}
- var pages={
-  "1254736176979":"https://www.ine.es/dynt3/inebase/index.htm?capsel=11347&padre=11346"
- };
- var page=pages[cid];
- if(!page)return [];
- var html=await fetchText(page,{cache:"no-store"});
- var doc=new DOMParser().parseFromString(html,"text/html");
- var out=[],seen=new Set();
- Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
-  var raw=aEl.getAttribute("href")||"",abs;
-  try{abs=new URL(raw,page).href}catch(e){return}
-  var u2;try{u2=new URL(abs)}catch(e2){return}
-  var path=u2.pathname.toLowerCase();
-  var tpx=u2.searchParams.get("tpx"),t=u2.searchParams.get("t"),id="",kind="";
-  if(tpx&&path.indexOf("/jaxi/")>=0){id=String(tpx).trim();kind="tpx"}
-  else if(t&&path.indexOf("/jaxit3/")>=0){id=String(t).trim();kind="table"}
-  if(!id)return;
-  var label=String(aEl.textContent||"").replace(/\s+/g," ").trim();
-  if(label&&!seen.has(kind+":"+id)){
-   seen.add(kind+":"+id);
-   out.push({id:id,label:id+" · "+label,type:"table",tableId:id});
+ try{var u=new URL(ineAbsoluteUrl(op&&op.href));cid=String(u.searchParams.get("cid")||"").trim()}catch(e){}
+ var roots={"1254736176979":{label:"Resultats",url:"https://www.ine.es/dynt3/inebase/index.htm?padre=13720",sections:[
+  {label:"Resultados nacionales",url:"https://www.ine.es/dynt3/inebase/index.htm?padre=13720&capsel=13721"},
+  {label:"Resultados por comunidades autónomas",url:"https://www.ine.es/dynt3/inebase/index.htm?padre=13720&capsel=13722"}
+ ]}};
+ var root=roots[cid];if(!root)return null;
+ async function scanTables(page,limit){
+  var queue=[page],visited=new Set(),out=[],seen=new Set(),steps=0;
+  while(queue.length&&steps++<limit){
+   var pageUrl=queue.shift();if(visited.has(pageUrl))continue;visited.add(pageUrl);
+   var html;try{html=await fetchText(pageUrl,{cache:"no-store"})}catch(e){continue}
+   var doc=new DOMParser().parseFromString(html,"text/html");
+   Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
+    var raw=aEl.getAttribute("href")||"",abs;try{abs=new URL(raw,pageUrl).href}catch(e){return}
+    var u2;try{u2=new URL(abs)}catch(e2){return}
+    var path=u2.pathname.toLowerCase(),tpx=u2.searchParams.get("tpx"),t=u2.searchParams.get("t"),label=String(aEl.textContent||"").replace(/\s+/g," ").trim();
+    if(tpx&&path.indexOf("/jaxi/")>=0){var id=String(tpx).trim();if(id&&!seen.has("tpx:"+id)){seen.add("tpx:"+id);out.push({id:id,label:label||("Taula "+id),type:"table",tableId:id})}return}
+    if(t&&path.indexOf("/jaxit3/")>=0){var id2=String(t).trim();if(id2&&!seen.has("table:"+id2)){seen.add("table:"+id2);out.push({id:id2,label:label||("Taula "+id2),type:"table",tableId:id2})}return}
+    var padre=u2.searchParams.get("padre"),capsel=u2.searchParams.get("capsel");
+    if(padre==="13720"&&capsel&&!visited.has(abs))queue.push(abs);
+   });
   }
- });
- out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});
- return out;
+  out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});return out;
+ }
+ var sections=root.sections.slice();
+ try{
+  var html=await fetchText(root.url,{cache:"no-store"}),doc=new DOMParser().parseFromString(html,"text/html"),found=[];
+  Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
+   var raw=aEl.getAttribute("href")||"",abs;try{abs=new URL(raw,root.url).href}catch(e){return}
+   var u2;try{u2=new URL(abs)}catch(e2){return}
+   if(u2.searchParams.get("padre")!=="13720"||!u2.searchParams.get("capsel"))return;
+   var label=String(aEl.textContent||"").replace(/\s+/g," ").trim();
+   if(label&&/resultados nacionales|resultados por comunidades autónomas/i.test(label))found.push({label:label,url:abs});
+  });if(found.length)sections=found;
+ }catch(e){}
+ var out=[];for(var i=0;i<sections.length;i++)out.push({id:sections[i].url,label:sections[i].label,type:"section",url:sections[i].url,tables:await scanTables(sections[i].url,20)});
+ return {label:root.label,sections:out};
 }
-
 async function ineLoadTables(op){
  await loadIneOperations();
  var apiOp=ineFindOperation(op);
@@ -365,8 +367,8 @@ async function ineLoadTables(op){
  try{
   var baseItems=await ineLoadTablesFromBase(op);
   if(baseItems.length)return {operation:apiOp,items:baseItems};
-  var catalogItems=await ineLoadTablesFromBaseCatalog(op);
-  if(catalogItems.length)return {operation:apiOp,items:catalogItems};
+  var catalogTree=await ineLoadTablesFromBaseCatalog(op);
+  if(catalogTree&&catalogTree.sections&&catalogTree.sections.length)return {operation:apiOp,tree:catalogTree};
   throw new Error("INE: no s'han trobat taules a INEbase per a aquesta operació.");
  }catch(baseErr){
   if(lastErr)throw new Error("INE: no s'han trobat taules Tempus3 ni taules INEbase per a l'operació. "+(baseErr&&baseErr.message?baseErr.message:String(baseErr)));
@@ -395,7 +397,12 @@ async function ineSelectLevel(index,val){
   state.inePath[2]=op.id;
   state.selected.node="";state.selected.table="";state.metadata=null;state.filters.clear();
   $("filters").innerHTML="";$("query").disabled=true;$("tableInfo").hidden=true;
-  ineAddLevel(match.items,3,"Taula");
+  if(match.tree)ineAddLevel(match.tree.sections,3,match.tree.label||"Resultats");
+  else ineAddLevel(match.items,3,"Taula");
+  return;
+ }
+ if(item.type==="section"){
+  ineAddLevel(item.tables||[],4,"Taula");
   return;
  }
  if(item.type==="table"){
