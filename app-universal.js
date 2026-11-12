@@ -297,49 +297,107 @@ async function ineLoadBaseLevel(pageUrl){
  var doc=new DOMParser().parseFromString(html,"text/html");
  var currentCapsel="";
  try{currentCapsel=new URL(pageUrl).searchParams.get("capsel")||""}catch(e){}
- var out=[],seen=new Set();
+ var capsels=[],tables=[],seenCapsel=new Set(),seenTable=new Set();
  Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
   var raw=aEl.getAttribute("href")||"",abs;
   try{abs=new URL(raw,pageUrl).href}catch(e){return}
   var u;try{u=new URL(abs)}catch(e2){return}
-  var path=u.pathname.toLowerCase(),label=String(aEl.textContent||"").replace(/\s+/g," ").trim();
+  var host=u.hostname.toLowerCase(),path=u.pathname.toLowerCase();
+  if(host!=="www.ine.es"&&host!=="ine.es")return;
+  var label=String(aEl.textContent||"").replace(/\\s+/g," ").trim();
   var tpx=u.searchParams.get("tpx"),t=u.searchParams.get("t");
+  var capsel=u.searchParams.get("capsel");
+  // Regla general d'INEbase: si el node conté capsel, aquests tenen prioritat absoluta.
+  // No depenem de cap valor concret de 'padre', perquè canvia segons l'operació.
+  if(path.indexOf("/dynt3/inebase/")>=0&&capsel&&capsel!==currentCapsel){
+   var key="capsel:"+capsel;
+   if(!seenCapsel.has(key)){
+    seenCapsel.add(key);
+    capsels.push({id:abs,label:label||("Apartat "+capsel),type:"capsel",url:abs,capsel:capsel});
+   }
+   return;
+  }
   if(tpx&&path.indexOf("/jaxi/")>=0){
-   var tid=String(tpx).trim(),key="tpx:"+tid;
-   if(tid&&!seen.has(key)){seen.add(key);out.push({id:tid,label:label||("Taula "+tid),type:"table",tableId:tid})}
+   var tid=String(tpx).trim(),tk="tpx:"+tid;
+   if(tid&&!seenTable.has(tk)){seenTable.add(tk);tables.push({id:tid,label:label||("Taula "+tid),type:"table",tableId:tid});}
    return;
   }
   if(t&&path.indexOf("/jaxit3/")>=0){
-   var tid2=String(t).trim(),key2="table:"+tid2;
-   if(tid2&&!seen.has(key2)){seen.add(key2);out.push({id:tid2,label:label||("Taula "+tid2),type:"table",tableId:tid2})}
-   return;
-  }
-  var padre=u.searchParams.get("padre"),capsel=u.searchParams.get("capsel");
-  if(padre==="13720"&&capsel&&capsel!==currentCapsel){
-   var key3="capsel:"+capsel;
-   if(!seen.has(key3)){
-    seen.add(key3);
-    out.push({id:abs,label:label||("Apartat "+capsel),type:"capsel",url:abs,capsel:capsel});
-   }
+   var tid2=String(t).trim(),tk2="table:"+tid2;
+   if(tid2&&!seenTable.has(tk2)){seenTable.add(tk2);tables.push({id:tid2,label:label||("Taula "+tid2),type:"table",tableId:tid2});}
   }
  });
- return out;
+ // Primer capsel; només si no n'hi ha, retornem les taules del node.
+ return capsels.length?capsels:tables;
 }
+
+async function ineLoadTablesFromBase(op){
+ var href=ineAbsoluteUrl(op&&op.href);
+ if(!href)throw new Error("INE: l'operació no té URL d'INEbase.");
+ var items=await ineLoadBaseLevel(href);
+ if(items.length)return items.filter(function(x){return x.type==="table"});
+ throw new Error("INE: no s'han trobat capsel ni taules a INEbase per a aquesta operació.");
+}
+
 async function ineLoadTablesFromBaseCatalog(op){
- var cid="";
- try{var u=new URL(ineAbsoluteUrl(op&&op.href));cid=String(u.searchParams.get("cid")||"").trim()}catch(e){}
- var roots={"1254736176979":{label:"Resultats",sections:[
-  {label:"Resultados nacionales",url:"https://www.ine.es/dynt3/inebase/index.htm?padre=13720&capsel=13721"},
-  {label:"Resultados por comunidades autónomas",url:"https://www.ine.es/dynt3/inebase/index.htm?padre=13720&capsel=13722"}
- ]}};
- var root=roots[cid];if(!root)return null;
- var sections=[];
- for(var i=0;i<root.sections.length;i++){
-  var s=root.sections[i],children=[];
-  try{children=await ineLoadBaseLevel(s.url)}catch(e){}
-  sections.push({id:s.url,label:s.label,type:"section",url:s.url,children:children});
+ // Mantingut només per compatibilitat amb versions anteriors; la navegació actual
+ // ja és genèrica i no depèn de cap cid concret.
+ var items=await ineLoadBaseLevel(ineAbsoluteUrl(op&&op.href));
+ return {label:"Resultats",sections:items};
+}
+
+async function ineLoadTables(op){
+ await loadIneOperations();
+ var apiOp=ineFindOperation(op);
+ if(!apiOp)throw new Error("INE: no s'ha pogut identificar l'operació a Tempus3.");
+
+ // Regla general: per a cada node d'INEbase primer busquem capsel.
+ // Si n'hi ha, la navegació continua per aquests apartats; només quan no n'hi ha
+ // busquem les taules. Això evita que les 'més consultades' saltin per davant
+ // de l'arbre de resultats real.
+ try{
+  var rootItems=await ineLoadBaseLevel(ineAbsoluteUrl(op&&op.href));
+  if(rootItems.length){
+   var hasCapsel=rootItems.some(function(x){return x.type==="capsel"});
+   if(hasCapsel)return {operation:apiOp,tree:{label:"Resultats",sections:rootItems}};
+  }
+ }catch(e){}
+
+ // Si el node inicial no té capsel, busquem directament les taules Tempus3.
+ var candidates=[];
+ [apiOp.Id,apiOp.Codigo,apiOp.Cod_IOE].forEach(function(v){
+  var s=String(v==null?"":v).trim();
+  if(s&&!candidates.includes(s))candidates.push(s);
+ });
+ var rows=[],lastErr=null;
+ for(var ci=0;ci<candidates.length;ci++){
+  try{
+   var d=await fetchJson("https://servicios.ine.es/wstempus/js/ES/TABLAS_OPERACION/"+encodeURIComponent(candidates[ci])+"?det=2");
+   var rr=a(d);
+   if(rr.length){rows=rr;break;}
+  }catch(e){lastErr=e;}
  }
- return {label:root.label,sections:sections};
+ if(rows.length){
+  var seen=new Set(),out=[];
+  rows.forEach(function(x){
+   var id=String(f(x,"Id","id","Codigo","codigo")).trim();
+   var name=String(f(x,"Nombre","nombre","Name","name","Titulo","titulo")||id).trim();
+   if(!id||seen.has(id))return;
+   seen.add(id);
+   out.push({id:id,label:id+" · "+name,type:"table",tableId:id});
+  });
+  if(out.length){
+   out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});
+   return {operation:apiOp,items:out};
+  }
+ }
+
+ // Darrer recurs: si Tempus3 no té taules, intentem les taules directes d'INEbase.
+ try{
+  var baseItems=await ineLoadTablesFromBase(op);
+  if(baseItems.length)return {operation:apiOp,items:baseItems};
+ }catch(e){lastErr=e;}
+ throw new Error(lastErr&&lastErr.message||"INE: no s'han trobat taules per a aquesta operació.");
 }
 
 async function ineLoadTables(op){
