@@ -175,12 +175,9 @@ function ineAddLevel(items,index,labelText){
  list.forEach(function(x){sel.appendChild(new Option(x.label,x.id))});
  lab.appendChild(sel);box.appendChild(lab);
  state.ineItems.set("ineLevel"+index,list);
- sel.onchange=async function(){
+ sel.addEventListener("change",async function(){
   if(!sel.value)return;
   try{await ineSelectLevel(index,sel.value)}catch(e){status("INE: "+(e&&e.message?e.message:String(e)),"error")}
- };
- sel.addEventListener("change",function(){
-  if(sel.value&&sel.onchange)return;
  });
  if(list.length===1){sel.value=list[0].id;ineSelectLevel(index,list[0].id).catch(function(e){status("INE: "+(e&&e.message?e.message:String(e)),"error")})}
 }
