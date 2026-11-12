@@ -354,29 +354,25 @@ async function ineLoadTables(op){
  var apiOp=ineFindOperation(op);
  if(!apiOp)throw new Error("INE: no s'ha pogut identificar l'operació a Tempus3.");
 
- // Regla general: per a cada node d'INEbase primer busquem capsel.
- // Si n'hi ha, la navegació continua per aquests apartats; només quan no n'hi ha
- // busquem les taules. Això evita que les 'més consultades' saltin per davant
- // de l'arbre de resultats real.
+ // INEbase: sempre entrem primer a la pàgina de Resultados.
+ // Només després busquem capsel; les taules només es consulten si el node
+ // de Resultados no conté capsel.
  try{
   var rootUrl=ineAbsoluteUrl(op&&op.href);
-  // La fitxa de l'operació sol estar a menu=ultiDatos. Per a la navegació
-  // estadística hem d'entrar al menú de Resultados abans d'inspeccionar el node.
-  try{
-   var ru=new URL(rootUrl);
-   if(ru.searchParams.get("menu")&&ru.searchParams.get("menu")!=="resultados"){
-    ru.searchParams.set("menu","resultados");
-    rootUrl=ru.href;
-   }
-  }catch(e0){}
+  var ru=new URL(rootUrl);
+  ru.searchParams.set("menu","resultados");
+  rootUrl=ru.href;
+
   var rootItems=await ineLoadBaseLevel(rootUrl);
   if(rootItems.length){
    var hasCapsel=rootItems.some(function(x){return x.type==="capsel"});
    if(hasCapsel)return {operation:apiOp,tree:{label:"Resultats",sections:rootItems}};
+   var hasTables=rootItems.some(function(x){return x.type==="table"});
+   if(hasTables)return {operation:apiOp,tree:{label:"Resultats",sections:rootItems}};
   }
  }catch(e){}
 
- // Si el node inicial no té capsel, busquem directament les taules Tempus3.
+ // Si el node de Resultados no té capsel ni taules, continuem amb Tempus3.
  var candidates=[];
  [apiOp.Id,apiOp.Codigo,apiOp.Cod_IOE].forEach(function(v){
   var s=String(v==null?"":v).trim();
@@ -405,67 +401,14 @@ async function ineLoadTables(op){
   }
  }
 
- // Darrer recurs: si Tempus3 no té taules, intentem les taules directes d'INEbase.
+ // Darrer recurs: taules directes d'INEbase, només si Resultados no ha
+ // proporcionat capsel ni taules.
  try{
   var baseItems=await ineLoadTablesFromBase(op);
   if(baseItems.length)return {operation:apiOp,items:baseItems};
  }catch(e){lastErr=e;}
+
  throw new Error(lastErr&&lastErr.message||"INE: no s'han trobat taules per a aquesta operació.");
-}
-
-async function ineLoadTables(op){
- await loadIneOperations();
- var apiOp=ineFindOperation(op);
- if(!apiOp)throw new Error("INE: no s'ha pogut identificar l'operació a Tempus3.");
- try{
-  var opUrl=new URL(ineAbsoluteUrl(op&&op.href));
-  if(opUrl.searchParams.get("cid")==="1254736176979"){
-   var directTree=await ineLoadTablesFromBaseCatalog(op);
-   if(directTree&&directTree.sections&&directTree.sections.length)return {operation:apiOp,tree:directTree};
-  }
- }catch(e){}
-
- if(!apiOp)throw new Error("INE: no s'ha pogut identificar l'operació a Tempus3.");
-
- var candidates=[];
- [apiOp.Id,apiOp.Codigo,apiOp.Cod_IOE].forEach(function(v){
-  var s=String(v==null?"":v).trim();
-  if(s&&!candidates.includes(s))candidates.push(s);
- });
- var rows=[],lastErr=null;
- for(var ci=0;ci<candidates.length;ci++){
-  try{
-   var d=await fetchJson("https://servicios.ine.es/wstempus/js/ES/TABLAS_OPERACION/"+encodeURIComponent(candidates[ci])+"?det=2");
-   var rr=a(d);
-   if(rr.length){rows=rr;break;}
-  }catch(e){lastErr=e;}
- }
- if(rows.length){
-  var seen=new Set(),out=[];
-  rows.forEach(function(x){
-   var id=String(f(x,"Id","id","Codigo","codigo")).trim();
-   var name=String(f(x,"Nombre","nombre","Name","name","Titulo","titulo")||id).trim();
-   if(!id||seen.has(id))return;
-   seen.add(id);
-   out.push({id:id,label:id+" · "+name,type:"table",tableId:id});
-  });
-  if(out.length){
-   out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});
-   return {operation:apiOp,items:out};
-  }
- }
- // Fallback per a operacions d'INEbase que no tenen taules Tempus3.
- // És especialment necessari per a operacions de síntesi amb taules tpx.
- try{
-  var baseItems=await ineLoadTablesFromBase(op);
-  if(baseItems.length)return {operation:apiOp,items:baseItems};
-  var catalogTree=await ineLoadTablesFromBaseCatalog(op);
-  if(catalogTree&&catalogTree.sections&&catalogTree.sections.length)return {operation:apiOp,tree:catalogTree};
-  throw new Error("INE: no s'han trobat taules a INEbase per a aquesta operació.");
- }catch(baseErr){
-  if(lastErr)throw new Error("INE: no s'han trobat taules Tempus3 ni taules INEbase per a l'operació. "+(baseErr&&baseErr.message?baseErr.message:String(baseErr)));
-  throw baseErr;
- }
 }
 function ineLevelLabel(index){return index===0?"Grup temàtic":index===1?"Tema":index===2?"Estadística":"Nivell "+(index-2)}
 async function ineSelectRoot(){
