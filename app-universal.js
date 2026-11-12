@@ -374,10 +374,10 @@ async function ineLoadTables(op){
  }
 }
 function ineLevelLabel(index){return index===0?"Grup temàtic":index===1?"Tema":index===2?"Estadística":"Nivell "+(index-2)}
-async async function ineSelectRoot(){
+async function ineSelectRoot(){
  await loadIneNavigation();ineClearNavigation();ineAddLevel(ineNavGroups(),0,ineLevelLabel(0));
 }
-async async function ineSelectLevel(index,val){
+async function ineSelectLevel(index,val){
  var items=state.ineItems.get("ineLevel"+index)||[],item=items.find(function(x){return String(x.id)===String(val)});
  if(!item)throw new Error("No s'ha trobat l'element de navegació seleccionat.");
  var box=$("eurostatLevels");
