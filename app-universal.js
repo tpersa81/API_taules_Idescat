@@ -397,17 +397,21 @@ async function ineLoadTables(op){
  // Només després busquem capsel; les taules només es consulten si el node
  // de Resultados no conté capsel.
  try{
+  // La navegació de Resultados s'ha de fer sempre sobre la URL d'INEbase
+  // amb menu=resultados. Si l'operació prové de listaoperaciones.htm porta
+  // habitualment menu=ultiDatos; si prové d'OPERACIONES_DISPONIBLES pot no
+  // portar menu. En tots dos casos construïm explícitament la URL correcta.
   var rootUrl=ineAbsoluteUrl(op&&op.href);
   var ru=new URL(rootUrl);
   ru.searchParams.set("menu","resultados");
   rootUrl=ru.href;
 
   var rootItems=await ineLoadBaseLevel(rootUrl);
+  // ineLoadBaseLevel ja aplica la regla genèrica: capsel primer i, només
+  // si no n'hi ha, taules. Per tant, qualsevol resultat no buit és navegació
+  // vàlida i no s'ha de substituir mai per les 5 taules més consultades.
   if(rootItems.length){
-   var hasCapsel=rootItems.some(function(x){return x.type==="capsel"});
-   if(hasCapsel)return {operation:apiOp,tree:{label:"Resultats",sections:rootItems}};
-   var hasTables=rootItems.some(function(x){return x.type==="table"});
-   if(hasTables)return {operation:apiOp,tree:{label:"Resultats",sections:rootItems}};
+   return {operation:apiOp,tree:{label:"Resultats",sections:rootItems}};
   }
  }catch(e){}
 
