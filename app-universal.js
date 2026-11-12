@@ -298,18 +298,16 @@ async function ineLoadBaseLevel(pageUrl){
  var currentCapsel="";
  try{currentCapsel=new URL(pageUrl).searchParams.get("capsel")||""}catch(e){}
  var capsels=[],tables=[],seenCapsel=new Set(),seenTable=new Set();
- Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
-  var raw=aEl.getAttribute("href")||"",abs;
-  try{abs=new URL(raw,pageUrl).href}catch(e){return}
+ function inspectLink(raw,label){
+  var abs;
+  try{abs=new URL(String(raw||"").replace(/&amp;/g,"&"),pageUrl).href}catch(e){return}
   var u;try{u=new URL(abs)}catch(e2){return}
   var host=u.hostname.toLowerCase(),path=u.pathname.toLowerCase();
   if(host!=="www.ine.es"&&host!=="ine.es")return;
-  var label=String(aEl.textContent||"").replace(/\\s+/g," ").trim();
-  var tpx=u.searchParams.get("tpx"),t=u.searchParams.get("t");
-  var capsel=u.searchParams.get("capsel");
+  label=String(label||"").replace(/\\s+/g," ").trim();
+  var tpx=u.searchParams.get("tpx"),t=u.searchParams.get("t"),capsel=u.searchParams.get("capsel");
   // Regla general d'INEbase: si el node conté capsel, aquests tenen prioritat absoluta.
-  // No depenem de cap valor concret de 'padre', perquè canvia segons l'operació.
-  if(path.indexOf("/dynt3/inebase/")>=0&&capsel&&capsel!==currentCapsel){
+  if(capsel&&capsel!==currentCapsel&&path.indexOf("/inebase/")>=0){
    var key="capsel:"+capsel;
    if(!seenCapsel.has(key)){
     seenCapsel.add(key);
@@ -326,8 +324,13 @@ async function ineLoadBaseLevel(pageUrl){
    var tid2=String(t).trim(),tk2="table:"+tid2;
    if(tid2&&!seenTable.has(tk2)){seenTable.add(tk2);tables.push({id:tid2,label:label||("Taula "+tid2),type:"table",tableId:tid2});}
   }
+ }
+ Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
+  inspectLink(aEl.getAttribute("href")||"",aEl.textContent||"");
  });
- // Primer capsel; només si no n'hi ha, retornem les taules del node.
+ // fetchText pot haver rebut Markdown via un proxy CORS; analitzem també aquests enllaços.
+ var md=/\\[([^\\]]+)\\]\\((https?:\\/\\/[^)]+|[^)]+)\\)/g,m;
+ while((m=md.exec(String(html||""))))inspectLink(m[2],m[1]);
  return capsels.length?capsels:tables;
 }
 
