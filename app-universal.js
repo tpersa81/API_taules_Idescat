@@ -166,7 +166,9 @@ function ineAddLevel(items,index,labelText){
  box.hidden=false;
  box.style.display="grid";
  var lab=document.createElement("label");
- lab.style.display="block";
+ lab.style.display="flex";
+ lab.style.flexDirection="column";
+ lab.style.alignItems="stretch";
  lab.dataset.ineLevel=String(index);
  lab.textContent=labelText+" ";
  var sel=document.createElement("select");
@@ -334,6 +336,15 @@ async function ineLoadTables(op){
  await loadIneOperations();
  var apiOp=ineFindOperation(op);
  if(!apiOp)throw new Error("INE: no s'ha pogut identificar l'operació a Tempus3.");
+ try{
+  var opUrl=new URL(ineAbsoluteUrl(op&&op.href));
+  if(opUrl.searchParams.get("cid")==="1254736176979"){
+   var directTree=await ineLoadTablesFromBaseCatalog(op);
+   if(directTree&&directTree.sections&&directTree.sections.length)return {operation:apiOp,tree:directTree};
+  }
+ }catch(e){}
+
+ if(!apiOp)throw new Error("INE: no s'ha pogut identificar l'operació a Tempus3.");
 
  var candidates=[];
  [apiOp.Id,apiOp.Codigo,apiOp.Cod_IOE].forEach(function(v){
@@ -392,6 +403,7 @@ async function ineSelectLevel(index,val){
   var group=state.inePath[0],ops=ineNavOperations(group,item.id);ineAddLevel(ops,2,ineLevelLabel(2));return;
  }
  if(index===2){
+  status("Consultant l'INE…");
   var op=item,match=await ineLoadTables(op);
   state.selected.stat=String(match.operation.Id||match.operation.Codigo||"");
   state.inePath[2]=op.id;
@@ -399,6 +411,7 @@ async function ineSelectLevel(index,val){
   $("filters").innerHTML="";$("query").disabled=true;$("tableInfo").hidden=true;
   if(match.tree)ineAddLevel(match.tree.sections,3,match.tree.label||"Resultats");
   else ineAddLevel(match.items,3,"Taula");
+  status("");
   return;
  }
  if(item.type==="section"){
