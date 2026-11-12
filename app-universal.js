@@ -245,13 +245,13 @@ async function ineLoadTablesFromBase(op){
  }
  function scanText(text,pageUrl){
   var s=String(text||"");
-  var re=/https?:\\/\\/(?:www\\.)?ine\\.es\\/jaxi\\/Tabla\\.htm\\?[^\\s)"'<>]*?tpx=([0-9]+)/gi,m;
+  var re=/https?:\/\/(?:www\.)?ine\.es\/jaxi\/Tabla\.htm\?[^\s)"'<>]*?tpx=([0-9]+)/gi,m;
   while((m=re.exec(s)))addTable(m[1],"", "tpx");
-  var re2=/\\/jaxi\\/Tabla\\.htm\\?[^\\s)"'<>]*?tpx=([0-9]+)/gi;
+  var re2=/\/jaxi\/Tabla\.htm\?[^\s)"'<>]*?tpx=([0-9]+)/gi;
   while((m=re2.exec(s)))addTable(m[1],"","tpx");
-  var re3=/\\/jaxiT3\\/Tabla\\.htm\\?[^\\s)"'<>]*?t=([0-9]+)/gi;
+  var re3=/\/jaxiT3\/Tabla\.htm\?[^\s)"'<>]*?t=([0-9]+)/gi;
   while((m=re3.exec(s)))addTable(m[1],"","table");
-  var links=[...s.matchAll(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g)];
+  var links=[...s.matchAll(/\[([^\]]+)\]\(([^)]+)\)/g)];
   links.forEach(function(x){
    var raw=x[2].replace(/&amp;/g,"&"),abs;
    try{abs=new URL(raw,pageUrl).href}catch(e){return}
