@@ -278,8 +278,8 @@ async function ineLoadTablesFromBase(op){
    var host=u.hostname.toLowerCase(),path=u.pathname.toLowerCase();
    if(host!=="www.ine.es"&&host!=="ine.es")return;
    var tpx=u.searchParams.get("tpx"),t=u.searchParams.get("t"),label=aEl.textContent||"";
-   if(tpx&&path.indexOf("/jaxi/")>=0){addTable(tpx,label,"tpx");return}
-   if(t&&path.indexOf("/jaxit3/")>=0){addTable(t,label,"table");return}
+   if(tpx&&path.indexOf("/jaxi/tabla.htm")>=0){addTable(tpx,label,"tpx");return}
+   if(t&&path.indexOf("/jaxit3/tabla.htm")>=0){addTable(t,label,"table");return}
    if(path.indexOf("/dynt3/inebase/")>=0&&!visited.has(abs))queue.push(abs);
   });
   if(out.length)break;
@@ -314,12 +314,12 @@ async function ineLoadBaseLevel(pageUrl){
    }
    return;
   }
-  if(tpx&&path.indexOf("/jaxi/")>=0){
+  if(tpx&&path.indexOf("/jaxi/tabla.htm")>=0){
    var tid=String(tpx).trim(),tk="tpx:"+tid;
    if(tid&&!seenTable.has(tk)){seenTable.add(tk);tables.push({id:tid,label:label||("Taula "+tid),type:"table",tableId:tid});}
    return;
   }
-  if(t&&path.indexOf("/jaxit3/")>=0){
+  if(t&&path.indexOf("/jaxit3/tabla.htm")>=0){
    var tid2=String(t).trim(),tk2="table:"+tid2;
    if(tid2&&!seenTable.has(tk2)){seenTable.add(tk2);tables.push({id:tid2,label:label||("Taula "+tid2),type:"table",tableId:tid2});}
   }
@@ -365,6 +365,10 @@ async function ineLoadBaseLevel(pageUrl){
     var parentDoc=new DOMParser().parseFromString(parentHtml,"text/html");
     var h=parentDoc.querySelector("h1,h2");
     var title=h&&h.textContent?String(h.textContent).replace(/\s+/g," ").trim():"";
+    if(!title){
+     var hm=String(parentHtml||"").match(/(?:^|\\n)#{1,2}\\s+([^\\n#]+)\\s*(?:\\n|$)/);
+     if(hm)title=String(hm[1]).replace(/[\\*_`]/g,"").replace(/\\s+/g," ").trim();
+    }
     if(title)g.label=title;
    }catch(e){}
   }
