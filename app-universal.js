@@ -329,7 +329,7 @@ async function ineLoadBaseLevel(pageUrl){
   inspectLink(aEl.getAttribute("href")||"",aEl.textContent||"");
  });
  // fetchText pot haver rebut Markdown via un proxy CORS; analitzem també aquests enllaços.
- var md=/\\[([^\\]]+)\\]\\(([^)]+)\\)/g,m;
+ var md=/\[([^\]]+)\]\(([^)]+)\)/g,m;
  while((m=md.exec(String(html||""))))inspectLink(m[2],m[1]);
  return capsels.length?capsels:tables;
 }
