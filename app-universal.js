@@ -427,6 +427,23 @@ async function ineLoadTablesFromBaseCatalog(op){
  return {label:"Resultats",sections:items};
 }
 
+function ineTableGroupLabel(code){
+ var c=String(code==null?"":code).trim();
+ if(!c)return "Altres";
+ var geoMap={
+  "NAC":"Resultats nacionals",
+  "NAC-CCAA":"Resultats per comunitats autònomes",
+  "NAC-PROV":"Resultats per províncies",
+  "CCAA":"Resultats per comunitats autònomes",
+  "PROV":"Resultats per províncies",
+  "MUN":"Resultats per municipis"
+ };
+ var parts=c.split("_"),geo=parts.pop()||"",cls=parts.join("_");
+ var geoLabel=geoMap[geo]||geo;
+ if(!cls)return geoLabel||c;
+ var clsLabel=cls.replace(/^CNAE(\d+)$/i,"CNAE $1").replace(/_/g," ");
+ return clsLabel+" — "+(geoLabel||geo||c);
+}
 async function ineLoadTables(op){
  await loadIneOperations();
  var apiOp=ineFindOperation(op);
@@ -452,12 +469,33 @@ async function ineLoadTables(op){
   rows.forEach(function(x){
    var id=String(f(x,"Id","id","Codigo","codigo")).trim();
    var name=String(f(x,"Nombre","nombre","Name","name","Titulo","titulo")||id).trim();
+   var codigo=String(f(x,"Codigo","codigo","Code","code")).trim();
    if(!id||seen.has(id))return;
    seen.add(id);
-   out.push({id:id,label:id+" · "+name,type:"table",tableId:id});
+   out.push({id:id,label:id+" · "+name,type:"table",tableId:id,codigo:codigo});
   });
   if(out.length){
    out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});
+   var codeMap=new Map();
+   out.forEach(function(x){
+    var key=x.codigo||"";
+    if(!codeMap.has(key))codeMap.set(key,[]);
+    codeMap.get(key).push(x);
+   });
+   var codes=Array.from(codeMap.keys());
+   if(codes.length>1){
+    var groups=codes.map(function(code){
+     return{
+      id:"table-group:"+code,
+      label:ineTableGroupLabel(code),
+      type:"table-group",
+      codigo:code,
+      children:codeMap.get(code)||[]
+     };
+    });
+    groups.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});
+    return {operation:apiOp,items:out,tableGroups:groups};
+   }
    return {operation:apiOp,items:out};
   }
  }
@@ -508,6 +546,7 @@ async function ineSelectLevel(index,val){
   state.selected.node="";state.selected.table="";state.metadata=null;state.filters.clear();
   $("filters").innerHTML="";$("query").disabled=true;$("tableInfo").hidden=true;
   if(match.tree)ineAddLevel(match.tree.sections,3,match.tree.label||"Resultats");
+  else if(match.tableGroups&&match.tableGroups.length>1)ineAddLevel(match.tableGroups,3,"Tipus de taula");
   else ineAddLevel(match.items,3,"Taula");
   status("");
   return;
@@ -532,6 +571,10 @@ async function ineSelectLevel(index,val){
   try{sub=await ineLoadBaseLevel(item.url)}catch(e){status("INE: "+(e&&e.message?e.message:String(e)),"error");return}
   ineAddLevel(sub,index+1,item.label||"Apartat");
   status("");
+  return;
+ }
+ if(item.type==="table-group"){
+  ineAddLevel(item.children||[],index+1,"Taula");
   return;
  }
  if(item.type==="table"){
