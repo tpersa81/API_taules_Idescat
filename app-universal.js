@@ -304,14 +304,13 @@ async function ineLoadBaseLevel(pageUrl){
   var u;try{u=new URL(abs)}catch(e2){return}
   var host=u.hostname.toLowerCase(),path=u.pathname.toLowerCase();
   if(host!=="www.ine.es"&&host!=="ine.es")return;
-  label=String(label||"").replace(/\\s+/g," ").trim();
-  var tpx=u.searchParams.get("tpx"),t=u.searchParams.get("t"),capsel=u.searchParams.get("capsel");
-  // Regla general d'INEbase: si el node conté capsel, aquests tenen prioritat absoluta.
+  label=String(label||"").replace(/\s+/g," ").trim();
+  var tpx=u.searchParams.get("tpx"),t=u.searchParams.get("t"),capsel=u.searchParams.get("capsel"),padre=u.searchParams.get("padre");
   if(capsel&&capsel!==currentCapsel&&path.indexOf("/inebase/")>=0){
    var key="capsel:"+capsel;
    if(!seenCapsel.has(key)){
     seenCapsel.add(key);
-    capsels.push({id:abs,label:label||("Apartat "+capsel),type:"capsel",url:abs,capsel:capsel});
+    capsels.push({id:abs,label:label||("Apartat "+capsel),type:"capsel",url:abs,capsel:capsel,padre:padre||""});
    }
    return;
   }
@@ -328,10 +327,39 @@ async function ineLoadBaseLevel(pageUrl){
  Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
   inspectLink(aEl.getAttribute("href")||"",aEl.textContent||"");
  });
- // fetchText pot haver rebut Markdown via un proxy CORS; analitzem també aquests enllaços.
  var md=/\[([^\]]+)\]\(([^)]+)\)/g,m;
  while((m=md.exec(String(html||""))))inspectLink(m[2],m[1]);
- return capsels.length?capsels:tables;
+
+ if(currentCapsel){
+  var children=capsels.filter(function(x){return x.padre===currentCapsel});
+  return children.length?children:tables;
+ }
+
+ if(capsels.length){
+  var groups=[],byParent=new Map();
+  capsels.forEach(function(x){
+   var p=x.padre||"";
+   if(!p){groups.push(x);return}
+   if(!byParent.has(p)){
+    var g={id:"capsel-group:"+p,label:"Apartat "+p,type:"capsel-group",padre:p,children:[]};
+    byParent.set(p,g);groups.push(g);
+   }
+   byParent.get(p).children.push(x);
+  });
+  for(var gi=0;gi<groups.length;gi++){
+   var g=groups[gi];
+   if(g.type!=="capsel-group")continue;
+   try{
+    var parentHtml=await fetchText(g.children[0].url,{cache:"no-store"});
+    var parentDoc=new DOMParser().parseFromString(parentHtml,"text/html");
+    var h=parentDoc.querySelector("h1,h2");
+    var title=h&&h.textContent?String(h.textContent).replace(/\s+/g," ").trim():"";
+    if(title)g.label=title;
+   }catch(e){}
+  }
+  return groups;
+ }
+ return tables;
 }
 
 async function ineLoadTablesFromBase(op){
@@ -446,6 +474,10 @@ async function ineSelectLevel(index,val){
   }
   ineAddLevel(children,4,item.label||"Apartat");
   status("");
+  return;
+ }
+ if(item.type==="capsel-group"){
+  ineAddLevel(item.children||[],index+1,item.label||"Apartat");
   return;
  }
  if(item.type==="capsel"){
