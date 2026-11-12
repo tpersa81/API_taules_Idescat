@@ -330,6 +330,17 @@ async function ineLoadBaseLevel(pageUrl){
  var md=/\[([^\]]+)\]\(([^)]+)\)/g,m;
  while((m=md.exec(String(html||""))))inspectLink(m[2],m[1]);
 
+ var capRe=new RegExp("https?:\\\\/\\\\/(?:www\\\\.)?ine\\\\.es\\\\/[^\\\\s\\\"'<>)]*?[?&]capsel=(\\\\d+)(?:&[^\\\\s\\\"'<>)]*)?","gi"),cm;
+ while((cm=capRe.exec(String(html||"")))){
+  var rawUrl=cm[0].replace(/[),.;]+$/,""),uu;
+  try{uu=new URL(rawUrl);var cc=uu.searchParams.get("capsel"),pp=uu.searchParams.get("padre")||"";if(cc&&cc!==currentCapsel&&!seenCapsel.has("capsel:"+cc)){seenCapsel.add("capsel:"+cc);capsels.push({id:uu.href,label:"Apartat "+cc,type:"capsel",url:uu.href,capsel:cc,padre:pp})}}catch(e){}
+ }
+ var capRe2=new RegExp("[?&]capsel=(\\\\d+)(?:&[^\\\\s\\\"'<>)]*)?","gi");
+ while((cm=capRe2.exec(String(html||"")))){
+  var cc2=cm[1],uu2;
+  try{uu2=new URL(pageUrl);uu2.searchParams.set("capsel",cc2);var pp2=uu2.searchParams.get("padre")||"";if(cc2&&cc2!==currentCapsel&&!seenCapsel.has("capsel:"+cc2)){seenCapsel.add("capsel:"+cc2);capsels.push({id:uu2.href,label:"Apartat "+cc2,type:"capsel",url:uu2.href,capsel:cc2,padre:pp2})}}catch(e){}
+ }
+
  if(currentCapsel){
   var children=capsels.filter(function(x){return x.padre===currentCapsel});
   return children.length?children:tables;
