@@ -432,29 +432,8 @@ async function ineLoadTables(op){
  var apiOp=ineFindOperation(op);
  if(!apiOp)throw new Error("INE: no s'ha pogut identificar l'operació a Tempus3.");
 
- // INEbase: sempre entrem primer a la pàgina de Resultados.
- // Només després busquem capsel; les taules només es consulten si el node
- // de Resultados no conté capsel.
- try{
-  // La navegació de Resultados s'ha de fer sempre sobre la URL d'INEbase
-  // amb menu=resultados. Si l'operació prové de listaoperaciones.htm porta
-  // habitualment menu=ultiDatos; si prové d'OPERACIONES_DISPONIBLES pot no
-  // portar menu. En tots dos casos construïm explícitament la URL correcta.
-  var rootUrl=ineAbsoluteUrl(op&&op.href);
-  var ru=new URL(rootUrl);
-  ru.searchParams.set("menu","resultados");
-  rootUrl=ru.href;
-
-  var rootItems=await ineLoadBaseLevel(rootUrl);
-  // ineLoadBaseLevel ja aplica la regla genèrica: capsel primer i, només
-  // si no n'hi ha, taules. Per tant, qualsevol resultat no buit és navegació
-  // vàlida i no s'ha de substituir mai per les 5 taules més consultades.
-  if(rootItems.length){
-   return {operation:apiOp,tree:{label:"Resultats",sections:rootItems}};
-  }
- }catch(e){}
-
- // Si el node de Resultados no té capsel ni taules, continuem amb Tempus3.
+ // Primer intentem sempre Tempus3. Si l'operació té taules en Tempus3,
+ // aquest és el flux preferent i no entrem a la navegació d'INEbase.
  var candidates=[];
  [apiOp.Id,apiOp.Codigo,apiOp.Cod_IOE].forEach(function(v){
   var s=String(v==null?"":v).trim();
@@ -482,6 +461,19 @@ async function ineLoadTables(op){
    return {operation:apiOp,items:out};
   }
  }
+
+ // Si Tempus3 no té taules per a l'operació, utilitzem el flux INEbase
+ // que ja tenim: Resultados -> capsel -> taules, de manera genèrica.
+ try{
+  var rootUrl=ineAbsoluteUrl(op&&op.href);
+  var ru=new URL(rootUrl);
+  ru.searchParams.set("menu","resultados");
+  rootUrl=ru.href;
+  var rootItems=await ineLoadBaseLevel(rootUrl);
+  if(rootItems.length){
+   return {operation:apiOp,tree:{label:"Resultats",sections:rootItems}};
+  }
+ }catch(e){}
 
  // Darrer recurs: taules directes d'INEbase, només si Resultados no ha
  // proporcionat capsel ni taules.
