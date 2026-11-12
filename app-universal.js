@@ -356,7 +356,17 @@ async function ineLoadTables(op){
  // busquem les taules. Això evita que les 'més consultades' saltin per davant
  // de l'arbre de resultats real.
  try{
-  var rootItems=await ineLoadBaseLevel(ineAbsoluteUrl(op&&op.href));
+  var rootUrl=ineAbsoluteUrl(op&&op.href);
+  // La fitxa de l'operació sol estar a menu=ultiDatos. Per a la navegació
+  // estadística hem d'entrar al menú de Resultados abans d'inspeccionar el node.
+  try{
+   var ru=new URL(rootUrl);
+   if(ru.searchParams.get("menu")&&ru.searchParams.get("menu")!=="resultados"){
+    ru.searchParams.set("menu","resultados");
+    rootUrl=ru.href;
+   }
+  }catch(e0){}
+  var rootItems=await ineLoadBaseLevel(rootUrl);
   if(rootItems.length){
    var hasCapsel=rootItems.some(function(x){return x.type==="capsel"});
    if(hasCapsel)return {operation:apiOp,tree:{label:"Resultats",sections:rootItems}};
