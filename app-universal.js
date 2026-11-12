@@ -368,6 +368,16 @@ async function ineLoadBaseLevel(pageUrl){
     if(s&&rootTitles.indexOf(s)<0)rootTitles.push(s);
    });
   }catch(e){}
+  // Si el proxy ha alterat el DOM, recuperem els títols directament de l'HTML.
+  if(!rootTitles.length){
+   try{
+    var titleRe=/<span\s+class=["'][^"']*\btitle\b[^"']*["'][^>]*>([\s\S]*?)<\/span>/gi,tm;
+    while((tm=titleRe.exec(String(html||"")))){
+     var ts=String(tm[1]||"").replace(/<[^>]+>/g," ").replace(/&nbsp;/gi," ").replace(/&amp;/gi,"&").replace(/\s+/g," ").trim();
+     if(ts&&rootTitles.indexOf(ts)<0)rootTitles.push(ts);
+    }
+   }catch(e){}
+  }
   var groupList=groups.filter(function(x){return x.type==="capsel-group"});
   if(rootTitles.length>=groupList.length&&groupList.length){
    groupList.forEach(function(g,idx){
