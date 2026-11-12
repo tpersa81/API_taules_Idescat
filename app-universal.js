@@ -366,10 +366,18 @@ async function ineLoadBaseLevel(pageUrl){
     var h=parentDoc.querySelector("h1,h2");
     var title=h&&h.textContent?String(h.textContent).replace(/\s+/g," ").trim():"";
     if(!title){
-     var hm=String(parentHtml||"").match(/(?:^|\\n)#{1,2}\\s+([^\\n#]+)\\s*(?:\\n|$)/);
-     if(hm)title=String(hm[1]).replace(/[\\*_`]/g,"").replace(/\\s+/g," ").trim();
+     var tt=parentDoc.querySelector("title");
+     if(tt&&tt.textContent)title=String(tt.textContent).replace(/\s+/g," ").trim();
     }
-    if(title)g.label=title;
+    if(!title){
+     var raw=String(parentHtml||"");
+     var hm=raw.match(/(?:^|\r?\n)\s*#{1,2}\s+([^\r\n#]+)\s*/);
+     if(hm)title=String(hm[1]).replace(/[\*_`]/g,"").replace(/\s+/g," ").trim();
+    }
+    if(title){
+     title=title.replace(/\s*[|·-]\s*(?:Instituto Nacional de Estadística|INE).*$/i,"").trim();
+     g.label=title;
+    }
    }catch(e){}
   }
   return groups;
