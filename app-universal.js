@@ -364,8 +364,10 @@ async function ineLoadBaseLevel(pageUrl){
     // El títol del grup no és a la pàgina del primer fill capsel:
     // és a la pàgina INEbase del seu pare, ?padre=<id>.
     // Això és genèric i evita dependre del contingut concret dels fills.
-    var parentUrl=new URL(pageUrl);
-    parentUrl.searchParams.delete("capsel");
+    // La pàgina pare d'INEbase és sempre /dynt3/inebase/index.htm?padre=...
+    // No reutilitzem la URL de l'operació (/dyngs/INEbase/operacion.htm),
+    // perquè aquesta no és la pàgina que conté el títol del grup.
+    var parentUrl=new URL("https://www.ine.es/dynt3/inebase/index.htm");
     parentUrl.searchParams.set("padre",g.padre);
     var parentHtml=await fetchText(parentUrl.href,{cache:"no-store"});
     var parentDoc=new DOMParser().parseFromString(parentHtml,"text/html");
