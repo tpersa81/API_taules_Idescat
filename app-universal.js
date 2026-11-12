@@ -368,6 +368,18 @@ async function ineLoadBaseLevel(pageUrl){
     if(s&&rootTitles.indexOf(s)<0)rootTitles.push(s);
    });
   }catch(e){}
+  // Alguns proxies transformen el document i poden fer desaparèixer
+  // les etiquetes del DOM. En aquest cas llegim directament els
+  // <span class="title ..."> de l'HTML original.
+  if(!rootTitles.length){
+   try{
+    var titleRe=/<span\\s+class=["'][^"']*\\btitle\\b[^"']*["'][^>]*>([\\s\\S]*?)<\\/span>/gi,tm;
+    while((tm=titleRe.exec(String(html||"")))){
+     var ts=String(tm[1]||"").replace(/<[^>]+>/g," ").replace(/&nbsp;/gi," ").replace(/&amp;/gi,"&").replace(/\\s+/g," ").trim();
+     if(ts&&rootTitles.indexOf(ts)<0)rootTitles.push(ts);
+    }
+   }catch(e){}
+  }
   for(var gi=0;gi<groups.length;gi++){
    var g=groups[gi];
    if(g.type!=="capsel-group")continue;
