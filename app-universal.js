@@ -1211,46 +1211,69 @@ function eustatAbsoluteUrl(href,base){try{return new URL(String(href||"").replac
 async function eustatLoadOperations(groupId){
  var group=(state.eustatGroups||[]).find(function(x){return String(x.id)===String(groupId)});
  if(!group)throw new Error("No s'ha trobat el grup d'Eustat seleccionat.");
- var sourceUrl="https://es.eustat.eus/estadisticas/opt_1/tipo_7/id_254/arbol.html";
- var jina="https://r.jina.ai/http://es.eustat.eus/estadisticas/opt_1/tipo_7/id_254/arbol.html";
+
+ // El Banco de Datos d'Eustat és l'arbre que realment relaciona
+ // àmbit -> operació -> taules. La pàgina antiga de "Productos por
+ // operaciones" pot retornar 410, però el Banco de Datos continua
+ // exposant els enllaços /banku/id_<codi>/indexlistaopera.html.
+ var sourceUrl="https://es.eustat.eus/banku/index.html";
+ var jina="https://r.jina.ai/http://es.eustat.eus/banku/index.html";
  var raw="";
  try{var jr=await fetch(jina,{cache:"no-store"});if(jr.ok)raw=await jr.text()}catch(e){}
- var ops=[],seen=new Set(),norm=function(s){return eustatCleanText(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()};
- var wanted=norm(group.label);
+ var norm=function(s){return eustatCleanText(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()};
+ var wanted=norm(group.label),ops=[],seen=new Set();
+
+ function add(label,href){
+  label=eustatCleanText(label);
+  href=eustatAbsoluteUrl(href,sourceUrl);
+  if(!label||!href)return;
+  var u;try{u=new URL(href)}catch(e){return}
+  var m=u.pathname.match(/\/banku\/id_(\d+)\/indexlistaopera\.html$/i);
+  if(!m)return;
+  if(seen.has(m[1]))return;
+  seen.add(m[1]);
+  ops.push({id:m[1],label:label,url:"https://es.eustat.eus/banku/id_"+m[1]+"/indexlistaopera.html",groupId:String(groupId)});
+ }
+
+ // Jina sol conservar els enllaços com [text](url). Busquem el bloc
+ // del grup seleccionat i només n'agafem les operacions fins al següent grup.
  if(raw){
   var lines=raw.split(/\r?\n/),inside=false;
   for(var li=0;li<lines.length;li++){
-   var line=lines[li],trim=line.trim();
-   if(/^#{0,3}\s*[-*]?\s*/.test(trim)){}
-   var plain=trim.replace(/^[-*]\s*/,"").replace(/^\[([^\]]+)\]\([^)]+\)\s*$/,"$1").trim();
-   var level=(line.match(/^\s*/)||[""])[0].length;
+   var line=lines[li],plain=line.replace(/^\s*[-*+]\s*/,"").replace(/^#+\s*/,"").replace(/^\[([^\]]+)\]\([^)]*\)\s*$/,"$1").trim();
    if(norm(plain)===wanted){inside=true;continue}
-   if(inside && level===0 && plain && norm(plain)!==wanted)break;
+   if(inside){
+    var stripped=line.replace(/^\s*/,"");
+    var isTop=/^[-*+]\s+/.test(line)&&/^[-*+]\s+/.test(line.replace(/^\s+/,""));
+    if(isTop&&plain&&norm(plain)!==wanted&&!/\[.*\]\(.*\/banku\/id_\d+\/indexlistaopera\.html/i.test(line))break;
+   }
    if(!inside)continue;
-   var m=line.match(/^\s*[-*]\s+\[([^\]]+)\]\(([^)]+)\)/);
-   if(!m)continue;
-   var label=eustatCleanText(m[1]),href=eustatAbsoluteUrl(m[2],sourceUrl);
-   if(!label||!href)continue;
-   var u;try{u=new URL(href)}catch(e){continue}
-   if(!/\/estadisticas\/tema_\d+\/opt_1\/ti_[^/]+\/temas\.html$/i.test(u.pathname))continue;
-   if(seen.has(href))continue;
-   seen.add(href);ops.push({id:href,label:label,url:href,groupId:String(groupId)});
+   var matches=[...line.matchAll(/\[([^\]]+)\]\(([^)]+)\)/g)];
+   matches.forEach(function(m){add(m[1],m[2])});
   }
  }
- if(!ops.length){
-  var html="";
-  try{var rr=await fetch(sourceUrl,{cache:"no-store"});if(rr.ok)html=await rr.text()}catch(e){}
-  if(html){
-   var doc=new DOMParser().parseFromString(html,"text/html");
-   var anchor=Array.from(doc.querySelectorAll("a[href]")).find(function(aEl){return norm(aEl.textContent||"")===wanted});
-   var root=anchor&&anchor.closest("li");
-   if(root)Array.from(root.querySelectorAll("a[href]")).forEach(function(aEl){
-    var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",sourceUrl),label=eustatCleanText(aEl.textContent||"");if(!href||!label)return;
-    var u;try{u=new URL(href)}catch(e){return}
-    if(/\/estadisticas\/tema_\d+\/opt_1\/ti_[^/]+\/temas\.html$/i.test(u.pathname)&&norm(label)!==wanted&&!seen.has(href)){seen.add(href);ops.push({id:href,label:label,url:href,groupId:String(groupId)})}
-   });
+
+ // Si el format de Jina no conserva l'estructura, parsegem tots els
+ // enllaços del document i usem la posició del grup com a delimitador.
+ if(!ops.length&&raw){
+  var allLines=raw.split(/\r?\n/),from=-1,to=raw.length,flat=allLines.join("\n");
+  var idx=flat.toLowerCase().indexOf(group.label.toLowerCase());
+  if(idx>=0){
+   var after=flat.slice(idx+group.label.length);
+   for(var gi=0;gi<(state.eustatGroups||[]).length;gi++){
+    var other=state.eustatGroups[gi];
+    if(String(other.id)===String(group.id))continue;
+    var oi=after.toLowerCase().indexOf(String(other.label).toLowerCase());
+    if(oi>=0&&oi<to)to=oi;
+   }
+   var segment=after.slice(0,to);
+   [...segment.matchAll(/\[([^\]]+)\]\(([^)]+)\)/g)].forEach(function(m){add(m[1],m[2])});
   }
  }
+
+ // Últim fallback: si tenim un enllaç de Banco de Datos per a l'operació
+ // seleccionada en la pròpia pàgina d'Eustat, el codi és estable i ens
+ // permet continuar amb la navegació sense dependre de /estadisticas/.
  ops.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
  state.eustatOperations=ops;
  fill($("concept"),ops.map(function(x){return{value:x.id,label:x.label}}));
