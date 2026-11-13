@@ -1200,8 +1200,43 @@ function isPxMetadata(d){
  var s=d&&d.dataset&&typeof d.dataset==="object"?d.dataset:d;
  return !!(s&&((Array.isArray(s.variables)&&s.variables.length)||(Array.isArray(s.id)&&s.dimension)));
 }
-async function loadEustatTree(){if(state.eustatTree&&state.eustatTree.groups&&state.eustatTree.groups.length)return state.eustatTree;var rootUrl="https://es.eustat.eus/estadisticas/opt_1/temalista.html",root="",wanted=["Demografía y hábitos sociales","Lenguas","Sanidad y salud","Educación","Mercado de trabajo y costes laborales","Protección social y servicios sociales","Cultura, ocio y deportes","Justicia y seguridad","Medio ambiente","Sector primario","Industria y energía","Construcción y vivienda","Sector servicios","Comercio y servicios del automóvil","Administración pública","Cuentas económicas","Precios","Economía social","Infraestructura estadística","Sociedad de la información e I+D+i","Otros"],doc=new DOMParser().parseFromString(root,"text/html"),links=[];Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){var label=String(aEl.textContent||"").replace(/\s+/g," ").trim(),href=aEl.getAttribute("href")||"";if(wanted.indexOf(label)>=0&&/\/estadisticas\//i.test(href))links.push({label:label,href:new URL(href,rootUrl).href})});var by={};links.forEach(function(x){by[x.label]=x});var groups=wanted.map(function(label){var x=by[label];return{id:label,label:label,url:x?x.href:"",operations:[]};});for(var gi=0;gi<groups.length;gi++){var html="";try{html=await fetchText(groups[gi].url,{cache:"no-store"})}catch(e){continue}var d=new DOMParser().parseFromString(html,"text/html"),found=[];Array.from(d.querySelectorAll("a[href]")).forEach(function(aEl){var href=aEl.getAttribute("href")||"",label=String(aEl.textContent||"").replace(/\s+/g," ").trim();if(!/\/estadisticas\/tema_\d+\/opt_[01]\/ti_[^/]+\/temas\.html/i.test(href))return;var abs;try{abs=new URL(href,groups[gi].url).href}catch(e){return}if(!found.some(function(x){return x.url===abs}))found.push({id:abs,label:label,url:abs})});groups[gi].operations=found}state.eustatTree={groups:groups};return state.eustatTree}
-async function eustatLoadOperationTables(op){if(!op||!op.url)return[];if(state.eustatOperationTables.has(op.id))return state.eustatOperationTables.get(op.id);var m=op.url.match(/\/ti_([^/]+)\/temas\.html$/i);if(!m)return[];var slug=m[1],url=op.url.replace("/ti_"+slug+"/","/tipo_4/ti_"+slug+"/"),html="";try{html=await fetchText(url,{cache:"no-store"})}catch(e){state.eustatOperationTables.set(op.id,[]);return[]}var d=new DOMParser().parseFromString(html,"text/html"),out=[],seen=new Set();Array.from(d.querySelectorAll("a[href]")).forEach(function(aEl){var href=aEl.getAttribute("href")||"",label=String(aEl.textContent||"").replace(/\s+/g," ").trim(),abs;try{abs=new URL(href,url).href}catch(e){return}var m2=abs.match(/\/bankupx\/pxweb\/[^/]+\/DB\/\-\/((?:PX_)[^/?#]+\.px)/i);if(m2&&!seen.has(m2[1])){seen.add(m2[1]);out.push({id:m2[1],label:label||m2[1],type:"px",url:abs})}});state.eustatOperationTables.set(op.id,out);return out}
+async function loadEustatTree(){
+ if(state.eustatTree&&state.eustatTree.groups&&state.eustatTree.groups.length)return state.eustatTree;
+ var rootUrl="https://es.eustat.eus/estadisticas/opt_1/temalista.html";
+ var wanted=["Demografía y hábitos sociales","Lenguas","Sanidad y salud","Educación","Mercado de trabajo y costes laborales","Protección social y servicios sociales","Cultura, ocio y deportes","Justicia y seguridad","Medio ambiente","Sector primario","Industria y energía","Construcción y vivienda","Sector servicios","Comercio y servicios del automóvil","Administración pública","Cuentas económicas","Precios","Economía social","Infraestructura estadística","Sociedad de la información e I+D+i","Otros"];
+ function norm(s){return String(s||"").replace(/\\s+/g," ").trim().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase();}
+ var root="";
+ try{root=await fetchText(rootUrl,{cache:"no-store"})}catch(e){}
+ var doc=new DOMParser().parseFromString(root||"","text/html"),by={};
+ Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
+  var label=String(aEl.textContent||"").replace(/\\s+/g," ").trim(),href=aEl.getAttribute("href")||"";
+  if(!href||!/\\/estadisticas\\//i.test(href))return;
+  var key=norm(label);
+  if(wanted.some(function(x){return norm(x)===key})){
+   try{by[key]=new URL(href,rootUrl).href}catch(e){}
+  }
+ });
+ var groups=wanted.map(function(label){
+  return{id:label,label:label,url:by[norm(label)]||"",operations:[]};
+ });
+ for(var gi=0;gi<groups.length;gi++){
+  if(!groups[gi].url)continue;
+  var html="";
+  try{html=await fetchText(groups[gi].url,{cache:"no-store"})}catch(e){continue}
+  var d=new DOMParser().parseFromString(html,"text/html"),found=[];
+  Array.from(d.querySelectorAll("a[href]")).forEach(function(aEl){
+   var href=aEl.getAttribute("href")||"",label=String(aEl.textContent||"").replace(/\\s+/g," ").trim();
+   if(!/\\/estadisticas\\/tema_\\d+\\/opt_[01]\\/ti_[^/]+\\/temas\\.html/i.test(href))return;
+   var abs;
+   try{abs=new URL(href,groups[gi].url).href}catch(e){return}
+   if(!found.some(function(x){return x.url===abs}))found.push({id:abs,label:label,url:abs});
+  });
+  found.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
+  groups[gi].operations=found;
+ }
+ state.eustatTree={groups:groups};
+ return state.eustatTree;
+}
 function eustatClassifyTable(label){
  var s=String(label||"").toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"");
  var theme="Sociedad",concept="Otros";
