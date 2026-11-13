@@ -1,6 +1,6 @@
 
 const MAX_CELLS=20000;
-const state={provider:"idescat",pxPreset:"finland",stats:[],metadata:null,lastData:null,lastQueryUrl:"",finlandTableUrl:"",ineVarCache:new Map(),filters:new Map(),page:1,pageSize:100,temporalOrder:"desc",requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],ineNav:null,ineNavLoaded:false,ineOperations:null,inePath:[],ineItems:new Map(),swedenV2Tables:null,swedenV2Table:false,swedenPath:[],eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[]};
+const state={provider:"idescat",pxPreset:"finland",stats:[],metadata:null,lastData:null,lastQueryUrl:"",finlandTableUrl:"",ineVarCache:new Map(),filters:new Map(),page:1,pageSize:100,temporalOrder:"desc",requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],ineNav:null,ineNavLoaded:false,ineOperations:null,inePath:[],ineItems:new Map(),swedenV2Tables:null,swedenV2Table:false,swedenPath:[],eustatCatalog:[],eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[]};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]});
 async function fetchJson(url,opt){opt=opt||{};var r;try{r=await fetch(url,opt)}catch(e){
@@ -609,7 +609,7 @@ function collection(d){
 }
 function clearBelow(keepStat){state.pivot={rows:[],columns:[]};if(state.provider==="ine")ineClearNavigation();if(!keepStat)fill($("stat"),[]);["concept","cross","node","table","geo"].forEach(resetSelect);eurostatClearLevels();state.metadata=null;state.lastData=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;$("resultCount").textContent="";if($("temporalOrderWrap"))$("temporalOrderWrap").hidden=true}
 function setLabels(){var p=state.provider,ls=p==="idescat"?["Organisme","Estadística","Tema","Encreuament","Entrada","Taula","Geografia"]:p==="pxweb"&&state.pxPreset==="sweden"?["Organisme","Tema","Nivell 2","Nivell 3","Taula","Geografia"]:p==="pxweb"?["Organisme","Nivell 1","Nivell 2","Nivell 3","Taula","Geografia"]:p==="ine"?["Organisme","Nivell de navegació","","","","",""]:["Organisme","Tipus de dades","Tema","Subtema","Estadística","—"];var l=document.querySelectorAll("#step2 label");document.querySelector("#step1 label:nth-child(1)").firstChild.textContent=ls[0]+" ";l.forEach(function(x,i){x.firstChild.textContent=ls[i+1]+" "})}
-function setProviderUI(){setLabels();var isEuro=state.provider==="eurostat",isIne=state.provider==="ine",isSweden=state.provider==="pxweb"&&state.pxPreset==="sweden",isFlatPx=state.provider==="pxweb"&&(state.pxPreset==="eustat"||state.pxPreset==="norway"),sl=document.querySelector("#step1 .grid label:nth-child(2)");if(sl)sl.firstChild.textContent=(isEuro?"Tipus de dades":isFlatPx?"Taula":"Estadística")+" ";var fixedGrid=document.querySelector("#step2>.grid"),euroBox=$("eurostatLevels");if(fixedGrid)fixedGrid.style.display="";if(euroBox)euroBox.hidden=!(isEuro||isSweden||isIne);if((isEuro||isIne||isFlatPx)&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if((isEuro||isFlatPx)&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}else if(fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display=""})}var tl=$("table")&&$("table").parentElement,gl=$("geo")&&$("geo").parentElement;if(tl)tl.style.display=(isEuro||isIne||isFlatPx)?"none":"";if(gl)gl.style.display=(isEuro||isIne||isFlatPx)?"none":"";$("docLink").href=provider().doc;var sel=state.provider==="pxweb"?"pxweb:"+state.pxPreset:state.provider;if($("provider")&&[].slice.call($("provider").options).some(function(o){return o.value===sel}))$("provider").value=sel}
+function setProviderUI(){setLabels();var isEuro=state.provider==="eurostat",isIne=state.provider==="ine",isSweden=state.provider==="pxweb"&&state.pxPreset==="sweden",isEustat=state.provider==="pxweb"&&state.pxPreset==="eustat",isFlatPx=state.provider==="pxweb"&&(state.pxPreset==="eustat"||state.pxPreset==="norway"),sl=document.querySelector("#step1 .grid label:nth-child(2)");if(sl)sl.firstChild.textContent=(isEuro?"Tipus de dades":isEustat?"Tema":isFlatPx?"Taula":"Estadística")+" ";var fixedGrid=document.querySelector("#step2>.grid"),euroBox=$("eurostatLevels");if(fixedGrid)fixedGrid.style.display="";if(euroBox)euroBox.hidden=!(isEuro||isSweden||isIne);if((isEuro||isIne)&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isEustat&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i<3?"":"none"});if(fixedGrid.querySelector("label:nth-child(2)"))fixedGrid.querySelector("label:nth-child(2)").firstChild.textContent="Subtema ";if(fixedGrid.querySelector("label:nth-child(3)"))fixedGrid.querySelector("label:nth-child(3)").firstChild.textContent="Taula "}else if(isFlatPx&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}else if(fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display=""})}var tl=$("table")&&$("table").parentElement,gl=$("geo")&&$("geo").parentElement;if(tl)tl.style.display=(isEuro||isIne||isFlatPx)?"none":"";if(gl)gl.style.display=(isEuro||isIne||isFlatPx)?"none":"";$("docLink").href=provider().doc;var sel=state.provider==="pxweb"?"pxweb:"+state.pxPreset:state.provider;if($("provider")&&[].slice.call($("provider").options).some(function(o){return o.value===sel}))$("provider").value=sel}
 async function loadStats(){
  var loadToken=state.requestToken,loadProvider=state.provider,loadPreset=state.pxPreset;
  state.swedenPath=[];state.swedenV2Table=false;
@@ -639,7 +639,15 @@ async function loadStats(){
 }
  else if(state.provider==="eurostat"){await loadEurostatTOC();out=state.eurostatRoots.map(function(x){return{value:x.code,label:x.label}})}
  else if(state.pxPreset==="sweden"){out=a(await fetchJson(c.base)).map(function(x){return{id:String(f(x,"id","code","dbid","path")),label:String(f(x,"text","label","name","title")||f(x,"id","code","dbid","path")),type:String(f(x,"type","class"))}}).filter(function(x){return x.id}).map(function(x){return{value:x.id,label:x.id+" · "+x.label}})}
- else if(state.pxPreset==="eustat"){var euCatalog=await fetchJson(c.base);out=a(euCatalog).filter(function(x){return String(f(x,"type","class")).toLowerCase()==="t"||!f(x,"type","class")}).map(function(x){var id=String(f(x,"id","code","dbid","path")).trim();return{value:id,label:String(f(x,"text","label","name","title")||id).trim()}}).filter(function(x){return x.value})}
+ else if(state.pxPreset==="eustat"){
+ var euCatalog=await fetchJson(c.base);
+ state.eustatCatalog=a(euCatalog).filter(function(x){return String(f(x,"type","class")).toLowerCase()==="t"||!f(x,"type","class")}).map(function(x){
+   var id=String(f(x,"id","code","dbid","path")).trim(),label=String(f(x,"text","label","name","title")||id).trim();
+   var g=eustatClassifyTable(label);
+   return{value:id,label:label,id:id,name:label,theme:g.theme,concept:g.concept,cross:g.cross};
+ }).filter(function(x){return x.value});
+ out=[...new Set(state.eustatCatalog.map(function(x){return x.theme}))].map(function(x){return{value:x,label:x}});
+}
  else if(state.pxPreset==="norway"){var noAll=[],noPage=1,noSize=500;for(var ng=0;ng<20;ng++,noPage++){var nu=c.base+"/tables?pageNumber="+noPage+"&pageSize="+noSize+"&lang=en",nd=await fetchJson(nu),nr=Array.isArray(nd&&nd.tables)?nd.tables:a(nd);noAll=noAll.concat(nr);var np=nd&&nd.page||nd&&nd.pagination||{},nt=Number(f(np,"totalPages","pages","pageCount"));if(nt&&noPage>=nt)break;if(!nr.length||nr.length<noSize)break}out=noAll.map(function(x){var id=String(f(x,"id","tableId","code","tableCode")).trim();return{value:id,label:id+" · "+String(f(x,"label","title","text","name")||id).trim()}}).filter(function(x){return x.value})}
  else if(state.pxPreset==="finland"){
   var finCatalog=null;
@@ -764,7 +772,14 @@ async function onStatChange(){
   else if(state.provider==="ine"){await ineSelectRoot();$("stat").disabled=true;$("concept").disabled=true;$("cross").disabled=true;$("node").disabled=true;$("table").disabled=true;$("geo").disabled=true}
   else if(state.provider==="eurostat"){await eurostatSelectRoot(state.selected.stat)}
   else if(state.pxPreset==="sweden"){await swedenSelectRoot(state.selected.stat)}
-  else if(state.pxPreset==="eustat"||state.pxPreset==="norway"){await pxFlatSelectTable(state.selected.stat)}
+  else if(state.pxPreset==="eustat"){
+ state.selected.concept="";state.selected.cross="";state.selected.node="";state.selected.table="";
+ ["concept","cross","node","table","geo"].forEach(resetSelect);
+ var er=(state.eustatCatalog||[]).filter(function(r){return r.theme===state.selected.stat});
+ var subs=[...new Set(er.map(function(r){return r.concept}).filter(Boolean))];
+ fill($("concept"),subs.map(function(x){return{value:x,label:x}}));$("concept").disabled=!subs.length;
+ if(subs.length===1){$("concept").value=subs[0];await $("concept").onchange()}
+}else if(state.pxPreset==="norway"){await pxFlatSelectTable(state.selected.stat)}
   else{state.pxPath=[state.selected.stat];await pxChildren(state.pxPath,"concept")}
  }catch(e){status(e.message,"error")}finally{busy(false)}
 }
@@ -1188,6 +1203,64 @@ function finlandTableUrl(path){return finlandTableUrls(path)[0]}
 function isPxMetadata(d){
  var s=d&&d.dataset&&typeof d.dataset==="object"?d.dataset:d;
  return !!(s&&((Array.isArray(s.variables)&&s.variables.length)||(Array.isArray(s.id)&&s.dimension)));
+}
+function eustatClassifyTable(label){
+ var s=String(label||"").toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"");
+ var theme="Sociedad",concept="Otros";
+ var rules=[
+  ["Población",["poblacion","demograf","nacimiento","defuncion","mortalidad","fecund","matrimonio","migracion","inmigr","hogar","familia","vivienda","residente","proyeccion de poblacion","territorio historico"],[
+   ["Población",["poblacion","habitantes","residente","censo","padron","empadron"]],
+   ["Familias",["familia","hogar","vivienda","vivir solo"]],
+   ["Origen y procedencia",["nacionalidad","origen","procedencia","extranj"]],
+   ["Movimiento de la población",["nacimiento","defuncion","mortalidad","fecund","matrimonio","divorcio","movimiento natural"]],
+   ["Movilidad",["migracion","migratorio","movilidad"]],
+   ["Proyecciones de población",["proyeccion"]],
+   ["Indicadores demográficos",["demograf","esperanza de vida"]]
+  ]],
+  ["Economía",["pib","producto interior","cuentas econom","input-output","administracion publica","agric","ganader","pesca","industr","energia","construccion","edificio","vivienda","turismo","alojamiento","empresa","establecimiento","precio","ipc","consumo","comercio exterior","export","import","economia social","ventas","comercio"],[
+   ["Cuentas económicas y Marco Input-Output",["pib","producto interior","cuentas econom","input-output","renta","ahorro"]],
+   ["Administración Pública",["administracion publica","presupuesto","gasto publico","deuda publica"]],
+   ["Sector primario",["agric","ganader","pesca","forestal"]],
+   ["Industria y Energía",["industr","energia","electricidad","gas"]],
+   ["Construcción",["construccion","edificio"]],
+   ["Viviendas y Edificios",["vivienda","edificio","inmobili"]],
+   ["Servicios y Turismo",["turismo","alojamiento","hosteler","servicios"]],
+   ["Empresas y establecimientos",["empresa","establecimiento","demografia empresarial"]],
+   ["Precios",["precio","ipc","coste","indice de precios"]],
+   ["Consumo familiar",["consumo familiar","gasto familiar","presupuesto familiar"]],
+   ["Comercio exterior",["comercio exterior","export","import"]],
+   ["Economía social",["economia social","cooperativa"]]
+  ]],
+  ["Sociedad",["trabajo","empleo","paro","ocupacion","educacion","euskera","cultura","salud","sanidad","habitos","renta","pobreza","proteccion social","eleccion","justicia","delito"],[
+   ["Mercado de trabajo",["trabajo","empleo","paro","ocupacion","salari","coste laboral","actividad economica"]],
+   ["Educación",["educacion","enseñanza","alumno","estudiante","universidad","escolar"]],
+   ["Euskera",["euskera","lengua vasca","vasco"]],
+   ["Cultura",["cultura","lectura","museo","biblioteca","deporte","ocio"]],
+   ["Salud",["salud","sanidad","hospital","mortalidad","enfermedad"]],
+   ["Hábitos sociales y renta",["habitos","renta","pobreza","condiciones de vida","calidad de vida"]],
+   ["Protección social",["proteccion social","dependencia","pensiones","servicios sociales"]],
+   ["Elecciones",["eleccion","electoral","voto"]],
+   ["Justicia y seguridad",["justicia","delito","criminal","seguridad"]]
+  ]],
+  ["Territorio y Medio Ambiente",["territorio","urbanismo","suelo","medio ambiente","ambient","residuo","agua","aire","cambio climatico","emision","energia renovable"],[
+   ["Planificación territorial y urbanismo",["territorio","urbanismo","suelo"]],
+   ["Calidad ambiental",["calidad ambiental","aire","agua","emision","contaminacion"]],
+   ["Residuos",["residuo","reciclaje"]],
+   ["Cambio climático",["cambio climatico","emision","gases de efecto"]],
+   ["Cuentas ambientales",["cuentas ambientales","economia ambiental"]],
+   ["Medio ambiente - Familias",["medio ambiente","familias","hogares"]]
+  ]],
+  ["Sociedad de la información, I+D+i",["sociedad de la informacion","internet","tic","tecnologia","investigacion","innovacion","i+d","patente"],[
+   ["Sociedad de la información",["sociedad de la informacion","internet","tic","ordenador","comercio electronico"]],
+   ["Investigación científica y desarrollo tecnológico (I+D) e Innovación",["investigacion","desarrollo tecnologico","i+d","innovacion","patente"]]
+  ]]
+ ];
+ for(var i=0;i<rules.length;i++){
+  var rr=rules[i];
+  if(rr[1].some(function(k){return s.indexOf(k)>=0})){theme=rr[0];var sr=rr[2]||[];for(var j=0;j<sr.length;j++)if(sr[j][1].some(function(k){return s.indexOf(k)>=0})){concept=sr[j][0];break}break}
+ }
+ if(theme==="Sociedad"&&concept==="Otros"&&/poblacion|habitante|demograf/.test(s)){theme="Población";concept="Población"}
+ return{theme:theme,concept:concept,cross:label};
 }
 async function pxFlatSelectTable(tableId){
  tableId=String(tableId||"").trim();
@@ -2156,8 +2229,8 @@ function bind(){
  $("provider").onchange=async function(){var v=$("provider").value;if(v.indexOf("pxweb:")===0){state.provider="pxweb";state.pxPreset=v.slice(6)}else{state.provider=v}state.requestToken++;clearBelow();state.selected.stat="";fill($("stat"),[]);$("stat").disabled=true;setProviderUI();status("Carregant estadístiques…");try{await loadStats();status("")}catch(e){status(e.message,"error")}updateUrl()};
  
   $("stat").onchange=async function(){await onStatChange();updateUrl()};
- $("concept").onchange=async function(){if(state.provider==="ine")return;if(state.provider==="pxweb")await pxSelect("concept");else if(state.provider==="eurostat")await eurostatSelectLevel("concept");else{state.selected.concept=$("concept").value;state.selected.cross="";state.selected.node="";state.selected.table="";state.selected.geo="";["cross","node","table","geo"].forEach(resetSelect);state.metadata=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;var c=state.selected.concept,rows=(state.catalog||[]).filter(function(r){return r.concept===c}),x=[...new Set(rows.map(function(r){return r.cross}).filter(Boolean))];fill($("cross"),x.map(function(v){return{value:v,label:v}}));$("cross").disabled=!x.length;if(x.length===1){$("cross").value=x[0];await $("cross").onchange()}else if(x.length===0){var ids=[...new Set(rows.map(function(r){return String(r.node)}).filter(Boolean))];fill($("node"),ids.map(function(id){var q=rows.find(function(r){return String(r.node)===id});return{value:id,label:id+" · "+q.name}}));$("node").disabled=!ids.length;if(ids.length===1){$("node").value=ids[0];await onNodeChange()}}}};
- $("cross").onchange=async function(){if(state.provider==="pxweb")await pxSelect("cross");else if(state.provider==="eurostat")await eurostatSelectLevel("cross");else{var c=$("concept").value,x=$("cross").value;state.selected.cross=x;state.selected.node="";state.selected.table="";state.selected.geo="";resetSelect("node");resetSelect("table");resetSelect("geo");state.metadata=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;var r=(state.catalog||[]).filter(function(v){return v.concept===c&&v.cross===x}),ids=[...new Set(r.map(function(v){return v.node}))];fill($("node"),ids.map(function(id){var q=r.find(function(v){return v.node===id});return{value:id,label:id+" · "+q.name}}));$("node").disabled=!ids.length;if(ids.length===1){$("node").value=ids[0];await onNodeChange()}}};
+ $("concept").onchange=async function(){if(state.provider==="ine")return;if(state.provider==="pxweb"&&state.pxPreset!=="eustat")await pxSelect("concept");else if(state.provider==="eurostat")await eurostatSelectLevel("concept");else if(state.provider==="pxweb"&&state.pxPreset==="eustat"){state.selected.concept=$("concept").value;state.selected.cross="";state.selected.node="";state.selected.table="";resetSelect("cross");resetSelect("node");resetSelect("table");resetSelect("geo");var ec=(state.eustatCatalog||[]).filter(function(r){return r.theme===state.selected.stat&&r.concept===state.selected.concept}),et=[...new Set(ec.map(function(r){return r.cross}))];fill($("cross"),et.map(function(x){return{value:x,label:x}}));$("cross").disabled=!et.length;if(et.length===1){$("cross").value=et[0];await $("cross").onchange()}}else{state.selected.concept=$("concept").value;state.selected.cross="";state.selected.node="";state.selected.table="";state.selected.geo="";["cross","node","table","geo"].forEach(resetSelect);state.metadata=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;var c=state.selected.concept,rows=(state.catalog||[]).filter(function(r){return r.concept===c}),x=[...new Set(rows.map(function(r){return r.cross}).filter(Boolean))];fill($("cross"),x.map(function(v){return{value:v,label:v}}));$("cross").disabled=!x.length;if(x.length===1){$("cross").value=x[0];await $("cross").onchange()}else if(x.length===0){var ids=[...new Set(rows.map(function(r){return String(r.node)}).filter(Boolean))];fill($("node"),ids.map(function(id){var q=rows.find(function(r){return String(r.node)===id});return{value:id,label:id+" · "+q.name}}));$("node").disabled=!ids.length;if(ids.length===1){$("node").value=ids[0];await onNodeChange()}}}};
+ $("cross").onchange=async function(){if(state.provider==="pxweb"&&state.pxPreset!=="eustat")await pxSelect("cross");else if(state.provider==="eurostat")await eurostatSelectLevel("cross");else if(state.provider==="pxweb"&&state.pxPreset==="eustat"){var et=(state.eustatCatalog||[]).find(function(r){return r.theme===state.selected.stat&&r.concept===state.selected.concept&&r.cross===$("cross").value});if(et){state.selected.cross=et.cross;state.selected.node=et.id;state.selected.table=et.id;await pxFlatSelectTable(et.id)}}else{var c=$("concept").value,x=$("cross").value;state.selected.cross=x;state.selected.node="";state.selected.table="";state.selected.geo="";resetSelect("node");resetSelect("table");resetSelect("geo");state.metadata=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;var r=(state.catalog||[]).filter(function(v){return v.concept===c&&v.cross===x}),ids=[...new Set(r.map(function(v){return v.node}))];fill($("node"),ids.map(function(id){var q=r.find(function(v){return v.node===id});return{value:id,label:id+" · "+q.name}}));$("node").disabled=!ids.length;if(ids.length===1){$("node").value=ids[0];await onNodeChange()}}};
  $("node").onchange=async function(){if(state.provider==="ine")return;if(state.provider==="eurostat")await eurostatSelectLevel("node");else await onNodeChange()};$("table").onchange=onTableChange;$("geo").onchange=onGeoChange;$("tabData").onclick=function(){$("tabData").classList.add("active");$("tabPivot").classList.remove("active");$("results").hidden=false;$("pivotBuilder").hidden=true};$("tabPivot").onclick=function(){$("tabPivot").classList.add("active");$("tabData").classList.remove("active");$("results").hidden=true;$("pivotBuilder").hidden=false;renderPivotBuilder()};$("results").addEventListener("click",function(e){var b=e.target.closest("button[data-page]");if(b&&!b.disabled)setResultPage(Number(b.dataset.page))});$("results").addEventListener("change",function(e){if(e.target.matches("select[data-page-select]"))setResultPage(Number(e.target.value));if(e.target.matches("select[data-page-size]"))setResultPageSize(Number(e.target.value))});$("temporalOrder").onchange=function(){setTemporalOrder(this.value)};$("query").onclick=runQuery;$("exportCsv").onclick=exportCSV;$("exportXlsx").onclick=exportXLSX;$("addToCart").onclick=addCart;$("cartExport").onclick=exportCart;$("cartClear").onclick=function(){state.cart=[];renderCart()};$("cartToggle").onclick=function(){var p=$("cartPanel");p.hidden=false;$("cartToggle").setAttribute("aria-expanded","true");p.scrollIntoView({behavior:"smooth",block:"start"})};$("clear").onclick=function(){if(state.metadata)renderMetadata(state.metadata)}
 }
 function updateUrl(){var q=new URLSearchParams();q.set("provider",state.provider);if(state.provider==="pxweb")q.set("px",state.pxPreset);if(state.selected.stat)q.set("stat",state.selected.stat);history.replaceState(null,"","?"+q.toString())}
