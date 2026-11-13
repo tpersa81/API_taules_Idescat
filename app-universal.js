@@ -1203,113 +1203,61 @@ function isPxMetadata(d){
  return !!(s&&((Array.isArray(s.variables)&&s.variables.length)||(Array.isArray(s.id)&&s.dimension)));
 }
 function eustatGroupList(){
- var rows=[
-  ["10044","Demografía y hábitos sociales"],["","Lenguas"],["10046","Sanidad y salud"],["10047","Educación"],
-  ["10048","Mercado de trabajo y costes laborales"],["10049","Protección social y servicios sociales"],["10050","Cultura, ocio y deportes"],
-  ["10062","Justicia y seguridad"],["10051","Medio ambiente"],["10052","Sector primario"],["10010","Industria y energía"],
-  ["10053","Construcción y vivienda"],["10054","Sector servicios"],["10055","Comercio y servicios del automóvil"],["10056","Administración pública"],
-  ["10008","Cuentas económicas"],["10058","Precios"],["10059","Economía social"],["10057","Infraestructura estadística"],
-  ["10030","Sociedad de la información e I+D+i"],["10061","Otros"]
- ];
- return rows.map(function(x,i){return{id:"eustat-group-"+(i+1),bankuId:x[0],label:x[1],type:"group"}});
+ var names=["Demografía y hábitos sociales","Lenguas","Sanidad y salud","Educación","Mercado de trabajo y costes laborales","Protección social y servicios sociales","Cultura, ocio y deportes","Justicia y seguridad","Medio ambiente","Sector primario","Industria y energía","Construcción y vivienda","Sector servicios","Comercio y servicios del automóvil","Administración pública","Cuentas económicas","Precios","Economía social","Infraestructura estadística","Sociedad de la información e I+D+i","Otros"];
+ return names.map(function(label,i){return{id:"eustat-group-"+(i+1),label:label,type:"group"}});
 }
 function eustatCleanText(s){return String(s||"").replace(/\s+/g," ").trim()}
 function eustatAbsoluteUrl(href,base){try{return new URL(String(href||"").replace(/&amp;/g,"&"),base).href}catch(e){return""}}
 function eustatNorm(s){return eustatCleanText(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()}
 function eustatIsOperationUrl(href){
- try{return /^\/banku\/id_\d+\/indexlistaopera\.html$/i.test(new URL(href).pathname)}
+ try{return /^\/estadisticas\/tema_\d+\/opt_1\/ti_[^/]+\/temas\.html$/i.test(new URL(href).pathname)}
  catch(e){return false}
-}
-function eustatAddOperationsFromBankuDoc(doc,sourceUrl,group,ops,seen){
- var target=eustatNorm(group.label);
- var spans=Array.from(doc.querySelectorAll("span.ramaArbol")),node=null;
- for(var i=0;i<spans.length;i++){
-  var label=eustatCleanText(spans[i].textContent||""),onclick=String(spans[i].getAttribute("onclick")||"");
-  if(eustatNorm(label)===target&&(!group.bankuId||onclick.indexOf("mostrarArbol("+group.bankuId)===0)){node=spans[i];break}
- }
- if(!node)node=spans.find(function(el){return eustatNorm(el.textContent||"")===target});
- if(!node)return;
- var li=node.closest("li");if(!li)return;
- var list=li.querySelector("ul.eustplantlista");
- if(!list)return;
- Array.from(list.querySelectorAll("li > a[href]")).forEach(function(aEl){
-  var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",sourceUrl),label=eustatCleanText(aEl.textContent||"");
-  if(!label||!href||!eustatIsOperationUrl(href)||seen.has(href))return;
-  seen.add(href);ops.push({id:href,label:label,url:href,groupId:String(group.id)});
- });
 }
 async function eustatLoadOperations(groupId){
  var group=(state.eustatGroups||[]).find(function(x){return String(x.id)===String(groupId)});
  if(!group)throw new Error("No s'ha trobat el grup d'Eustat seleccionat.");
- var ops=[],seen=new Set();
- function addOperation(label,href){
-  label=eustatCleanText(label);href=eustatAbsoluteUrl(href,"https://es.eustat.eus/");
+ var sourceUrl="https://es.eustat.eus/tema_76/opt_1/tipo_4/estad/temalista.html",raw="";
+ try{raw=await fetchText(sourceUrl,{cache:"no-store"})}
+ catch(e){throw new Error("Eustat: no s'ha pogut carregar el catàleg de Productes per operacions. "+(e&&e.message||""))}
+ var wanted=eustatNorm(group.label),ops=[],seen=new Set();
+ function add(aEl){
+  var label=eustatCleanText(aEl.textContent||""),href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",sourceUrl);
   if(!label||!href||!eustatIsOperationUrl(href)||seen.has(href))return;
-  seen.add(href);ops.push({id:href,label:label,url:href,groupId:String(group.id)});
+  seen.add(href);ops.push({id:href,label:label,url:href,groupId:String(groupId)});
  }
- function parseMarkdown(raw){
-  var lines=String(raw||"").split(/\\r?\\n/),currentGroup="";
+ var doc=new DOMParser().parseFromString(raw,"text/html");
+ var exact=Array.from(doc.querySelectorAll("span,div,li,p,h1,h2,h3,h4,h5,h6")).find(function(el){return eustatNorm(el.textContent||"")===wanted});
+ if(exact){
+  var li=exact.closest("li");
+  if(li)Array.from(li.querySelectorAll("a[href]")).forEach(add);
+ }
+ if(!ops.length){
+  var lines=String(raw||"").split(/\r?\n/),currentGroup="";
   for(var i=0;i<lines.length;i++){
-   var line=lines[i].replace(/\\t/g,"    "),trim=line.trim();
-   if(!trim)continue;
-   var lm=trim.match(/^(?:[-*+]\\s+)?\\[([^\\]]+)\\]\\(([^)]+)\\)/);
-   if(lm){
-    var linkedLabel=eustatCleanText(lm[1]),linkedHref=lm[2];
-    if(eustatIsOperationUrl(eustatAbsoluteUrl(linkedHref,"https://es.eustat.eus/"))){
-     if(eustatNorm(currentGroup)===eustatNorm(group.label))addOperation(linkedLabel,linkedHref);
-    }
-    continue;
+   var line=lines[i];
+   var mGroup=line.match(/^\s*[*-]\s+([^\[\r\n]+)\s*$/);
+   if(mGroup){
+    var g=eustatCleanText(mGroup[1]);
+    if(eustatNorm(g)===wanted){currentGroup=g;continue}
+    if(currentGroup&&/^\s*[*-]\s+/.test(line)&&!/^\s+[*-]\s+\[/.test(line))currentGroup="";
    }
-   var plain=trim.replace(/^(?:[-*+]\\s+)/,"").trim();
-   if(eustatNorm(plain)==="desplegar todo"||eustatNorm(plain)==="plegar todo")continue;
-   if((state.eustatGroups||[]).some(function(g){return eustatNorm(g.label)===eustatNorm(plain)}))currentGroup=plain;
+   var mOp=line.match(/^\s+[*-]\s+\[([^\]]+)\]\(([^)]+)\)/);
+   if(currentGroup&&mOp){
+    var href=eustatAbsoluteUrl(mOp[2],sourceUrl);
+    if(eustatIsOperationUrl(href)&&!seen.has(href)){seen.add(href);ops.push({id:href,label:eustatCleanText(mOp[1]),url:href,groupId:String(groupId)})}
+   }
   }
  }
- }
- function parseHtml(raw){
-  var doc=new DOMParser().parseFromString(String(raw||""),"text/html");
-  var labels=(state.eustatGroups||[]).map(function(g){return eustatNorm(g.label)});
+ if(!ops.length){
   Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
-   var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"","https://es.eustat.eus/"),label=eustatCleanText(aEl.textContent||"");
+   var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",sourceUrl);
    if(!eustatIsOperationUrl(href))return;
-   var li=aEl.closest("li"),groupText="";
-   if(li){
-    var parent=li.parentElement;
-    while(parent&&!groupText){
-     var prev=parent.previousElementSibling;
-     if(prev){
-      var spans=Array.from(prev.querySelectorAll("span.ramaArbol"));
-      for(var k=0;k<spans.length;k++){var tx=eustatCleanText(spans[k].textContent||"");if(labels.indexOf(eustatNorm(tx))>=0){groupText=tx;break}}
-     }
-     parent=parent.parentElement;
-    }
-   }
-   if(!groupText){
-    var p=aEl.closest("ul");
-    if(p){
-     var owner=p.closest("li");
-     var span=owner&&owner.querySelector(":scope > span.ramaArbol");
-     if(span)groupText=eustatCleanText(span.textContent||"");
-    }
-   }
-   if(eustatNorm(groupText)===eustatNorm(group.label))addOperation(label,href);
+   var p=aEl.parentElement;
+   while(p){if(eustatNorm(p.textContent||"")===wanted){add(aEl);break}p=p.parentElement}
   });
  }
- var sources=[
-  "https://es.eustat.eus/estadisticas/tema_76/opt_1/tipo_4/temas.html",
-  "https://es.eustat.eus/banku/index.html"
- ];
- for(var si=0;si<sources.length&&!ops.length;si++){
-  try{
-   var raw=await fetchText(sources[si],{cache:"no-store"});
-   parseHtml(raw);
-   if(!ops.length)parseMarkdown(raw);
-  }catch(e){}
- }
  ops.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
- state.eustatOperations=ops;
- fill($("concept"),ops.map(function(x){return{value:x.id,label:x.label}}));
- $("concept").disabled=!ops.length;
+ state.eustatOperations=ops;fill($("concept"),ops.map(function(x){return{value:x.id,label:x.label}}));$("concept").disabled=!ops.length;
  if(!ops.length)throw new Error("Eustat: no s'han trobat operacions per a "+group.label+".");
  return ops;
 }
