@@ -1211,39 +1211,46 @@ function eustatAbsoluteUrl(href,base){try{return new URL(String(href||"").replac
 async function eustatLoadOperations(groupId){
  var group=(state.eustatGroups||[]).find(function(x){return String(x.id)===String(groupId)});
  if(!group)throw new Error("No s'ha trobat el grup d'Eustat seleccionat.");
- var sourceUrl="https://es.eustat.eus/estadisticas/tema_0/opt_1/ti_0/temas.html";
- var html="";
- var urls=[
-  sourceUrl,
-  "https://api.allorigins.win/raw?url="+encodeURIComponent(sourceUrl),
-  "https://corsproxy.io/?url="+encodeURIComponent(sourceUrl)
- ];
- for(var ui=0;ui<urls.length&&!html;ui++)try{
-  var rr=await fetch(urls[ui],{cache:"no-store"});
-  if(rr.ok){var tt=await rr.text();if(/<html|<body|<a[\s>]/i.test(tt))html=tt}
- }catch(e){}
- if(!html)throw new Error("Eustat: no s'ha pogut carregar l'arbre d'operacions.");
- var doc=new DOMParser().parseFromString(html,"text/html"),seen=new Set(),ops=[];
- var norm=function(s){return eustatCleanText(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()};
+ var sourceUrl="https://es.eustat.eus/estadisticas/opt_1/tipo_7/id_254/arbol.html";
+ var jina="https://r.jina.ai/http://es.eustat.eus/estadisticas/opt_1/tipo_7/id_254/arbol.html";
+ var raw="";
+ try{var jr=await fetch(jina,{cache:"no-store"});if(jr.ok)raw=await jr.text()}catch(e){}
+ var ops=[],seen=new Set(),norm=function(s){return eustatCleanText(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()};
  var wanted=norm(group.label);
- var groupAnchor=Array.from(doc.querySelectorAll("a[href]")).find(function(aEl){return norm(aEl.textContent||"")===wanted});
- var groupHref=groupAnchor?eustatAbsoluteUrl(groupAnchor.getAttribute("href")||"",sourceUrl):"";
- if(!groupHref)throw new Error("Eustat: no s'ha trobat la pàgina del grup "+group.label+".");
- var gh="";
- var gu=[groupHref,"https://api.allorigins.win/raw?url="+encodeURIComponent(groupHref),"https://corsproxy.io/?url="+encodeURIComponent(groupHref)];
- for(var gi=0;gi<gu.length&&!gh;gi++)try{
-  var gr=await fetch(gu[gi],{cache:"no-store"});
-  if(gr.ok){var gt=await gr.text();if(/<html|<body|<a[\s>]/i.test(gt))gh=gt}
- }catch(e){}
- if(!gh)throw new Error("Eustat: no s'ha pogut carregar el grup "+group.label+".");
- var gd=new DOMParser().parseFromString(gh,"text/html");
- Array.from(gd.querySelectorAll("a[href]")).forEach(function(aEl){
-  var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",groupHref);if(!href)return;
-  var u;try{u=new URL(href)}catch(e){return}
-  if(!/\/estadisticas\/tema_\d+\/opt_1\/ti_[^/]+\/temas\.html$/i.test(u.pathname))return;
-  var label=eustatCleanText(aEl.textContent||"");if(!label||norm(label)===wanted||seen.has(href))return;
-  seen.add(href);ops.push({id:href,label:label,url:href,groupId:String(groupId)});
- });
+ if(raw){
+  var lines=raw.split(/\r?\n/),inside=false;
+  for(var li=0;li<lines.length;li++){
+   var line=lines[li],trim=line.trim();
+   if(/^#{0,3}\s*[-*]?\s*/.test(trim)){}
+   var plain=trim.replace(/^[-*]\s*/,"").replace(/^\[([^\]]+)\]\([^)]+\)\s*$/,"$1").trim();
+   var level=(line.match(/^\s*/)||[""])[0].length;
+   if(norm(plain)===wanted){inside=true;continue}
+   if(inside && level===0 && plain && norm(plain)!==wanted)break;
+   if(!inside)continue;
+   var m=line.match(/^\s*[-*]\s+\[([^\]]+)\]\(([^)]+)\)/);
+   if(!m)continue;
+   var label=eustatCleanText(m[1]),href=eustatAbsoluteUrl(m[2],sourceUrl);
+   if(!label||!href)continue;
+   var u;try{u=new URL(href)}catch(e){continue}
+   if(!/\/estadisticas\/tema_\d+\/opt_1\/ti_[^/]+\/temas\.html$/i.test(u.pathname))continue;
+   if(seen.has(href))continue;
+   seen.add(href);ops.push({id:href,label:label,url:href,groupId:String(groupId)});
+  }
+ }
+ if(!ops.length){
+  var html="";
+  try{var rr=await fetch(sourceUrl,{cache:"no-store"});if(rr.ok)html=await rr.text()}catch(e){}
+  if(html){
+   var doc=new DOMParser().parseFromString(html,"text/html");
+   var anchor=Array.from(doc.querySelectorAll("a[href]")).find(function(aEl){return norm(aEl.textContent||"")===wanted});
+   var root=anchor&&anchor.closest("li");
+   if(root)Array.from(root.querySelectorAll("a[href]")).forEach(function(aEl){
+    var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",sourceUrl),label=eustatCleanText(aEl.textContent||"");if(!href||!label)return;
+    var u;try{u=new URL(href)}catch(e){return}
+    if(/\/estadisticas\/tema_\d+\/opt_1\/ti_[^/]+\/temas\.html$/i.test(u.pathname)&&norm(label)!==wanted&&!seen.has(href)){seen.add(href);ops.push({id:href,label:label,url:href,groupId:String(groupId)})}
+   });
+  }
+ }
  ops.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
  state.eustatOperations=ops;
  fill($("concept"),ops.map(function(x){return{value:x.id,label:x.label}}));
