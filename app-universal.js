@@ -1216,7 +1216,7 @@ function eustatIsOperationUrl(href){
 async function eustatLoadOperations(groupId){
  var group=(state.eustatGroups||[]).find(function(x){return String(x.id)===String(groupId)});
  if(!group)throw new Error("No s'ha trobat el grup d'Eustat seleccionat.");
- var sourceUrl="https://es.eustat.eus/tema_16/opt_1/tipo_4/estad/temalista.html",raw="";
+ var sourceUrl="https://es.eustat.eus/tema_76/opt_1/tipo_4/estad/temalista.html",raw="";
  try{raw=await fetchText(sourceUrl,{cache:"no-store"})}
  catch(e){throw new Error("Eustat: no s'ha pogut carregar el catàleg de Productes per operacions. "+(e&&e.message||""))}
  var wanted=eustatNorm(group.label),ops=[],seen=new Set();
