@@ -1,6 +1,6 @@
 
 const MAX_CELLS=20000;
-const state={provider:"idescat",pxPreset:"finland",stats:[],metadata:null,lastData:null,lastQueryUrl:"",finlandTableUrl:"",ineVarCache:new Map(),filters:new Map(),page:1,pageSize:100,temporalOrder:"desc",requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],ineNav:null,ineNavLoaded:false,ineOperations:null,inePath:[],ineItems:new Map(),swedenV2Tables:null,swedenV2Table:false,swedenPath:[],eustatCatalog:[],eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[]};
+const state={provider:"idescat",pxPreset:"finland",stats:[],metadata:null,lastData:null,lastQueryUrl:"",finlandTableUrl:"",ineVarCache:new Map(),filters:new Map(),page:1,pageSize:100,temporalOrder:"desc",requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],ineNav:null,ineNavLoaded:false,ineOperations:null,inePath:[],ineItems:new Map(),swedenV2Tables:null,swedenV2Table:false,swedenPath:[],eustatCatalog:[],eustatTree:null,eustatOperationTables:new Map(),eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[]};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]});
 async function fetchJson(url,opt){opt=opt||{};var r;try{r=await fetch(url,opt)}catch(e){
@@ -609,7 +609,7 @@ function collection(d){
 }
 function clearBelow(keepStat){state.pivot={rows:[],columns:[]};if(state.provider==="ine")ineClearNavigation();if(!keepStat)fill($("stat"),[]);["concept","cross","node","table","geo"].forEach(resetSelect);eurostatClearLevels();state.metadata=null;state.lastData=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;$("resultCount").textContent="";if($("temporalOrderWrap"))$("temporalOrderWrap").hidden=true}
 function setLabels(){var p=state.provider,ls=p==="idescat"?["Organisme","Estadística","Tema","Encreuament","Entrada","Taula","Geografia"]:p==="pxweb"&&state.pxPreset==="sweden"?["Organisme","Tema","Nivell 2","Nivell 3","Taula","Geografia"]:p==="pxweb"?["Organisme","Nivell 1","Nivell 2","Nivell 3","Taula","Geografia"]:p==="ine"?["Organisme","Nivell de navegació","","","","",""]:["Organisme","Tipus de dades","Tema","Subtema","Estadística","—"];var l=document.querySelectorAll("#step2 label");document.querySelector("#step1 label:nth-child(1)").firstChild.textContent=ls[0]+" ";l.forEach(function(x,i){x.firstChild.textContent=ls[i+1]+" "})}
-function setProviderUI(){setLabels();var isEuro=state.provider==="eurostat",isIne=state.provider==="ine",isSweden=state.provider==="pxweb"&&state.pxPreset==="sweden",isEustat=state.provider==="pxweb"&&state.pxPreset==="eustat",isFlatPx=state.provider==="pxweb"&&(state.pxPreset==="eustat"||state.pxPreset==="norway"),sl=document.querySelector("#step1 .grid label:nth-child(2)");if(sl)sl.firstChild.textContent=(isEuro?"Tipus de dades":isEustat?"Tema":isFlatPx?"Taula":"Estadística")+" ";var fixedGrid=document.querySelector("#step2>.grid"),euroBox=$("eurostatLevels");if(fixedGrid)fixedGrid.style.display="";if(euroBox)euroBox.hidden=!(isEuro||isSweden||isIne);if((isEuro||isIne)&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isEustat&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i<3?"":"none"});if(fixedGrid.querySelector("label:nth-child(2)"))fixedGrid.querySelector("label:nth-child(2)").firstChild.textContent="Subtema ";if(fixedGrid.querySelector("label:nth-child(3)"))fixedGrid.querySelector("label:nth-child(3)").firstChild.textContent="Taula "}else if(isFlatPx&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}else if(fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display=""})}var tl=$("table")&&$("table").parentElement,gl=$("geo")&&$("geo").parentElement;if(tl)tl.style.display=(isEuro||isIne||isFlatPx)?"none":"";if(gl)gl.style.display=(isEuro||isIne||isFlatPx)?"none":"";$("docLink").href=provider().doc;var sel=state.provider==="pxweb"?"pxweb:"+state.pxPreset:state.provider;if($("provider")&&[].slice.call($("provider").options).some(function(o){return o.value===sel}))$("provider").value=sel}
+function setProviderUI(){setLabels();var isEuro=state.provider==="eurostat",isIne=state.provider==="ine",isSweden=state.provider==="pxweb"&&state.pxPreset==="sweden",isEustat=state.provider==="pxweb"&&state.pxPreset==="eustat",isFlatPx=state.provider==="pxweb"&&(state.pxPreset==="eustat"||state.pxPreset==="norway"),sl=document.querySelector("#step1 .grid label:nth-child(2)");if(sl)sl.firstChild.textContent=(isEuro?"Tipus de dades":isEustat?"Tema":isFlatPx?"Taula":"Estadística")+" ";var fixedGrid=document.querySelector("#step2>.grid"),euroBox=$("eurostatLevels");if(fixedGrid)fixedGrid.style.display="";if(euroBox)euroBox.hidden=!(isEuro||isSweden||isIne);if((isEuro||isIne)&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isEustat&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i<3?"":"none"});if(fixedGrid.querySelector("label:nth-child(2)"))fixedGrid.querySelector("label:nth-child(2)").firstChild.textContent="Operació ";if(fixedGrid.querySelector("label:nth-child(3)"))fixedGrid.querySelector("label:nth-child(3)").firstChild.textContent="Taula "}else if(isFlatPx&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}else if(fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display=""})}var tl=$("table")&&$("table").parentElement,gl=$("geo")&&$("geo").parentElement;if(tl)tl.style.display=(isEuro||isIne||isFlatPx)?"none":"";if(gl)gl.style.display=(isEuro||isIne||isFlatPx)?"none":"";$("docLink").href=provider().doc;var sel=state.provider==="pxweb"?"pxweb:"+state.pxPreset:state.provider;if($("provider")&&[].slice.call($("provider").options).some(function(o){return o.value===sel}))$("provider").value=sel}
 async function loadStats(){
  var loadToken=state.requestToken,loadProvider=state.provider,loadPreset=state.pxPreset;
  state.swedenPath=[];state.swedenV2Table=false;
@@ -640,146 +640,11 @@ async function loadStats(){
  else if(state.provider==="eurostat"){await loadEurostatTOC();out=state.eurostatRoots.map(function(x){return{value:x.code,label:x.label}})}
  else if(state.pxPreset==="sweden"){out=a(await fetchJson(c.base)).map(function(x){return{id:String(f(x,"id","code","dbid","path")),label:String(f(x,"text","label","name","title")||f(x,"id","code","dbid","path")),type:String(f(x,"type","class"))}}).filter(function(x){return x.id}).map(function(x){return{value:x.id,label:x.id+" · "+x.label}})}
  else if(state.pxPreset==="eustat"){
- var euCatalog=await fetchJson(c.base);
- state.eustatCatalog=a(euCatalog).filter(function(x){return String(f(x,"type","class")).toLowerCase()==="t"||!f(x,"type","class")}).map(function(x){
-   var id=String(f(x,"id","code","dbid","path")).trim(),label=String(f(x,"text","label","name","title")||id).trim();
-   var g=eustatClassifyTable(label);
-   return{value:id,label:label,id:id,name:label,theme:g.theme,concept:g.concept,cross:g.cross};
- }).filter(function(x){return x.value});
- out=[...new Set(state.eustatCatalog.map(function(x){return x.theme}))].map(function(x){return{value:x,label:x}});
-}
- else if(state.pxPreset==="norway"){var noAll=[],noPage=1,noSize=500;for(var ng=0;ng<20;ng++,noPage++){var nu=c.base+"/tables?pageNumber="+noPage+"&pageSize="+noSize+"&lang=en",nd=await fetchJson(nu),nr=Array.isArray(nd&&nd.tables)?nd.tables:a(nd);noAll=noAll.concat(nr);var np=nd&&nd.page||nd&&nd.pagination||{},nt=Number(f(np,"totalPages","pages","pageCount"));if(nt&&noPage>=nt)break;if(!nr.length||nr.length<noSize)break}out=noAll.map(function(x){var id=String(f(x,"id","tableId","code","tableCode")).trim();return{value:id,label:id+" · "+String(f(x,"label","title","text","name")||id).trim()}}).filter(function(x){return x.value})}
- else if(state.pxPreset==="finland"){
-  var finCatalog=null;
-  try{finCatalog=await fetchJson(c.base)}
-  catch(finErr){
-   // Statistics Finland pot rebutjar la petició directa des de GitHub Pages
-   // segons el CORS de la resposta. Per a la navegació GET del catàleg,
-   // disposem d'un fallback de lectura.
-   try{
-    var finProxy="https://api.allorigins.win/raw?url="+encodeURIComponent(c.base);
-    finCatalog=await fetchJson(finProxy);
-   }catch(e){throw finErr}
-  }
-  out=a(finCatalog).map(function(x){
-   var id=String(f(x,"id","dbid","code","path")).trim();
-   return{value:id,label:String(f(x,"text","label","name","title")||id).trim()}
-  }).filter(function(x){return x.value});
-}
-else out=a(await fetchJson(c.base)).map(function(x){var id=String(f(x,"id","dbid","code","path"));return{value:id,label:String(f(x,"text","label","name","title")||id)}}).filter(function(x){return x.value});
- if(loadToken!==state.requestToken||loadProvider!==state.provider||(loadProvider==="pxweb"&&loadPreset!==state.pxPreset))return;
- out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});state.stats=out;fill($("stat"),out);$("stat").disabled=!out.length;
- if(state.provider==="eurostat"){hideStatSelector(true);await eurostatAddRootLevel()}
- else if(state.provider!=="ine"){hideStatSelector(false)}
- var initial=new URLSearchParams(location.search).get("stat")||"";
- if(state.provider!=="ine"&&state.provider!=="eurostat"&&initial&&[].slice.call($("stat").options).some(function(o){return o.value===initial})){$("stat").value=initial;await onStatChange()}
-}
-async function loadEurostatTOC(){
- if(state.eurostatTOC&&state.eurostatTOC.length)return;
-
- // The Eurostat Catalogue API is not a reliable browser-CORS source.
- // A GitHub Action mirrors its small navigation index into the repository,
- // so GitHub Pages can load it from the same origin without a proxy.
- var local="data/eurostat-toc.json";
- var d=null;
- try{
-  var lr=await fetch(local,{cache:"no-store"});
-  if(lr.ok)d=await lr.json();
- }catch(e){}
-
- // Keep a short-lived fallback for the first deployment while the scheduled
- // catalogue file is being generated by GitHub Actions.
- if(!Array.isArray(d)||!d.length){
-  var u="https://ec.europa.eu/eurostat/api/dissemination/catalogue/toc/txt?lang=en";
-  var r,txt="";
-  try{
-   r=await fetch(u);
-   if(r.ok)txt=await r.text();
-  }catch(e){}
-  if(!txt){
-   var proxy="https://api.allorigins.win/raw?url="+encodeURIComponent(u);
-   try{
-    r=await fetch(proxy);
-    if(r.ok)txt=await r.text();
-   }catch(e){}
-  }
-  if(txt){
-   d=[];
-   txt.split(/\r?\n/).forEach(function(line){
-    if(!line.trim())return;
-    var p=line.split("\t");
-    if(p.length<3)return;
-    var clean=function(v){return String(v==null?"":v).replace(/^"|"$/g,"").trim()};
-    var rawTitle=clean(p[0]),title=rawTitle.trim(),code=clean(p[1]),type=clean(p[2]).toLowerCase();
-    var hierarchy=Number(clean(p[8]));
-    if(!Number.isFinite(hierarchy))hierarchy=Math.floor((rawTitle.match(/^ */)||[""])[0].length/4);
-    if(title&&code&&(type==="folder"||type==="dataset"||type==="table"))
-      d.push({title:title,code:code,type:type,hierarchy:hierarchy});
-   });
-  }
- }
- if(!Array.isArray(d)||!d.length)
-  throw new Error("No s'ha pogut carregar el catàleg d'Eurostat. Comprova la connexió o torna-ho a provar.");
-
- var rows=d.map(function(x){
-  return {
-   title:String(x.title||"").trim(),
-   code:String(x.code||"").trim(),
-   type:String(x.type||"").toLowerCase(),
-   hierarchy:Number(x.hierarchy)
-  };
- }).filter(function(x){
-  return x.title&&x.code&&(x.type==="folder"||x.type==="dataset"||x.type==="table")&&Number.isFinite(x.hierarchy);
- });
- if(!rows.length)throw new Error("El catàleg d'Eurostat no conté elements navegables.");
-
- state.eurostatTOC=rows;
- var roots=[],stack=[];
- rows.forEach(function(x){
-  while(stack.length&&stack[stack.length-1].level>=x.hierarchy)stack.pop();
-  var node={label:x.title,code:x.code,type:x.type,hierarchy:x.hierarchy,path:[],children:[]};
-  if(stack.length){
-   var parent=stack[stack.length-1].node;
-   parent.children.push(node);
-   node.path=parent.path.concat([node.code]);
-  }
-  if(x.type==="folder"){
-   if(!stack.length)roots.push(node);
-   stack.push({node:node,level:x.hierarchy});
-  }
- });
- function fixPaths(n,path){
-  n.path=path;
-  n.children.forEach(function(c){fixPaths(c,path.concat([c.code]))});
- }
- roots.forEach(function(r){fixPaths(r,[r.code])});
- state.eurostatRoots=roots;
- state.eurostatNodes=[];
- function flatten(n){state.eurostatNodes.push(n);n.children.forEach(flatten)}
- roots.forEach(flatten);
-}
-function eurostatNodeByPath(path){
- if(!path||!path.length)return null;var cur=state.eurostatRoots.find(function(r){return r.code===path[0]});if(!cur)return null;
- for(var i=1;i<path.length;i++){cur=(cur.children||[]).find(function(x){return x.code===path[i]});if(!cur)return null}return cur;
-}
-
-function deriveConcept(s){s=String(s||"");var p=s.indexOf(".");return p>=0?s.slice(0,p):s}
-function deriveCross(s){s=String(s||"").trim();var p=s.indexOf(". ");if(p<0)return"";var r=s.slice(p+2),q=r.indexOf(". A");return(q>=0?r.slice(0,q):r).trim()}
-async function onStatChange(){
- state.selected.stat=$("stat").value;clearBelow(true);if(!state.selected.stat)return;busy(true);
- try{
-  if(state.provider==="idescat"){var d=await fetchJson(provider().base+"/"+encodeURIComponent(state.selected.stat)+"?lang=ca");state.catalog=collection(d).map(function(x){return{node:x.id,name:x.label,concept:deriveConcept(x.label),cross:deriveCross(x.label)}});var cs=[...new Set(state.catalog.map(function(x){return x.concept}).filter(Boolean))];fill($("concept"),cs.map(function(x){return{value:x,label:x}}));$("concept").disabled=!cs.length}
-  else if(state.provider==="ine"){await ineSelectRoot();$("stat").disabled=true;$("concept").disabled=true;$("cross").disabled=true;$("node").disabled=true;$("table").disabled=true;$("geo").disabled=true}
-  else if(state.provider==="eurostat"){await eurostatSelectRoot(state.selected.stat)}
-  else if(state.pxPreset==="sweden"){await swedenSelectRoot(state.selected.stat)}
-  else if(state.pxPreset==="eustat"){
- state.selected.concept="";state.selected.cross="";state.selected.node="";state.selected.table="";
- ["concept","cross","node","table","geo"].forEach(resetSelect);
- var er=(state.eustatCatalog||[]).filter(function(r){return r.theme===state.selected.stat});
- var subs=[...new Set(er.map(function(r){return r.concept}).filter(Boolean))];
- fill($("concept"),subs.map(function(x){return{value:x,label:x}}));$("concept").disabled=!subs.length;
- if(subs.length===1){$("concept").value=subs[0];await $("concept").onchange()}
-}else if(state.pxPreset==="norway"){await pxFlatSelectTable(state.selected.stat)}
+    state.selected.concept="";state.selected.cross="";state.selected.node="";state.selected.table="";["concept","cross","node","table","geo"].forEach(resetSelect);
+    var tree=await loadEustatTree(),group=tree.groups.find(function(x){return x.id===state.selected.stat}),ops=group&&group.operations||[];
+    fill($("concept"),ops.map(function(x){return{value:x.id,label:x.label}}));$("concept").disabled=!ops.length;
+    if(ops.length===1){$("concept").value=ops[0].id;await $("concept").onchange()}
+   }}else if(state.pxPreset==="norway"){await pxFlatSelectTable(state.selected.stat)}
   else{state.pxPath=[state.selected.stat];await pxChildren(state.pxPath,"concept")}
  }catch(e){status(e.message,"error")}finally{busy(false)}
 }
@@ -1204,6 +1069,8 @@ function isPxMetadata(d){
  var s=d&&d.dataset&&typeof d.dataset==="object"?d.dataset:d;
  return !!(s&&((Array.isArray(s.variables)&&s.variables.length)||(Array.isArray(s.id)&&s.dimension)));
 }
+async function loadEustatTree(){if(state.eustatTree&&state.eustatTree.groups&&state.eustatTree.groups.length)return state.eustatTree;var rootUrl="https://es.eustat.eus/estadisticas/tema_0/opt_1/ti_0/temas.html",root=await fetchText(rootUrl,{cache:"no-store"}),wanted=["Demografía y hábitos sociales","Lenguas","Sanidad y salud","Educación","Mercado de trabajo y costes laborales","Protección social y servicios sociales","Cultura, ocio y deportes","Justicia y seguridad","Medio ambiente","Sector primario","Industria y energía","Construcción y vivienda","Sector servicios","Comercio y servicios del automóvil","Administración pública","Cuentas económicas","Precios","Economía social","Infraestructura estadística","Sociedad de la información e I+D+i","Otros"],doc=new DOMParser().parseFromString(root,"text/html"),links=[];Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){var label=String(aEl.textContent||"").replace(/\s+/g," ").trim(),href=aEl.getAttribute("href")||"";if(wanted.indexOf(label)>=0&&/\/estadisticas\//i.test(href))links.push({label:label,href:new URL(href,rootUrl).href})});var by={};links.forEach(function(x){by[x.label]=x});var groups=wanted.map(function(label){var x=by[label];return{id:label,label:label,url:x?x.href:"",operations:[]}}).filter(function(x){return x.url});for(var gi=0;gi<groups.length;gi++){var html="";try{html=await fetchText(groups[gi].url,{cache:"no-store"})}catch(e){continue}var d=new DOMParser().parseFromString(html,"text/html"),found=[];Array.from(d.querySelectorAll("a[href]")).forEach(function(aEl){var href=aEl.getAttribute("href")||"",label=String(aEl.textContent||"").replace(/\s+/g," ").trim();if(!/\/estadisticas\/tema_\d+\/opt_[01]\/ti_[^/]+\/temas\.html/i.test(href))return;var abs;try{abs=new URL(href,groups[gi].url).href}catch(e){return}if(!found.some(function(x){return x.url===abs}))found.push({id:abs,label:label,url:abs})});groups[gi].operations=found}state.eustatTree={groups:groups};return state.eustatTree}
+async function eustatLoadOperationTables(op){if(!op||!op.url)return[];if(state.eustatOperationTables.has(op.id))return state.eustatOperationTables.get(op.id);var m=op.url.match(/\/ti_([^/]+)\/temas\.html$/i);if(!m)return[];var slug=m[1],url=op.url.replace("/ti_"+slug+"/","/tipo_4/ti_"+slug+"/"),html="";try{html=await fetchText(url,{cache:"no-store"})}catch(e){state.eustatOperationTables.set(op.id,[]);return[]}var d=new DOMParser().parseFromString(html,"text/html"),out=[],seen=new Set();Array.from(d.querySelectorAll("a[href]")).forEach(function(aEl){var href=aEl.getAttribute("href")||"",label=String(aEl.textContent||"").replace(/\s+/g," ").trim(),abs;try{abs=new URL(href,url).href}catch(e){return}var m2=abs.match(/\/bankupx\/pxweb\/[^/]+\/DB\/\-\/((?:PX_)[^/?#]+\.px)/i);if(m2&&!seen.has(m2[1])){seen.add(m2[1]);out.push({id:m2[1],label:label||m2[1],type:"px",url:abs})}});state.eustatOperationTables.set(op.id,out);return out}
 function eustatClassifyTable(label){
  var s=String(label||"").toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"");
  var theme="Sociedad",concept="Otros";
