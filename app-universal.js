@@ -1203,20 +1203,25 @@ function isPxMetadata(d){
  return !!(s&&((Array.isArray(s.variables)&&s.variables.length)||(Array.isArray(s.id)&&s.dimension)));
 }
 async function eustatLoadOperationTree(){
- var url="https://es.eustat.eus/web/comun/ExtractorArbolOperacionesBanco.ashx?id=All&idioma=c",raw="",last=null;
+ var remote="https://es.eustat.eus/web/comun/ExtractorArbolOperacionesBanco.ashx?id=All&idioma=c",raw="",last=null;
+ // L'arbre d'Eustat no disposa d'un endpoint CORS adequat per a GitHub Pages.
+ // Utilitzem primer la còpia local capturada de la resposta real de
+ // ExtractorArbolOperacionesBanco.ashx i deixem els accessos remots només
+ // com a actualització/fallback.
  var urls=[
-   url,
-   "https://api.allorigins.win/raw?url="+encodeURIComponent(url),
-   "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(url),
-   "https://corsproxy.io/?url="+encodeURIComponent(url),
-   "https://cors.isomorphic-git.org/"+url
+   "data/eustat-tree.html",
+   remote,
+   "https://api.allorigins.win/raw?url="+encodeURIComponent(remote),
+   "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(remote),
+   "https://corsproxy.io/?url="+encodeURIComponent(remote),
+   "https://cors.isomorphic-git.org/"+remote
  ];
  for(var i=0;i<urls.length;i++){
    try{
      var rr=await fetch(urls[i],{cache:"no-store"});
      if(rr.ok){
        var txt=await rr.text();
-       if(/eustNodoNoHoja|ramaArbol|ExtractorArbolOperacionesBanco/i.test(txt)){raw=txt;break}
+       if(/eustNodoNoHoja|ramaArbol/i.test(txt)){raw=txt;break}
        last=new Error("La resposta no conté l'arbre HTML d'Eustat");
      }else last=new Error("HTTP "+rr.status);
    }catch(e){last=e}
@@ -1232,7 +1237,7 @@ async function eustatLoadOperationTree(){
    Array.from(li.children).forEach(function(child){
      if(String(child.tagName).toLowerCase()!=="ul")return;
      Array.from(child.querySelectorAll(":scope > li > a[href]")).forEach(function(aEl){
-       var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",url),opLabel=eustatCleanText(aEl.textContent||"");
+       var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",remote),opLabel=eustatCleanText(aEl.textContent||"");
        if(!href||!opLabel||seen.has(href))return;
        var m=href.match(/\/banku\/id_([^/]+)\/indexlistaopera\.html/i);
        if(!m)return;
