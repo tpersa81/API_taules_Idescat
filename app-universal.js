@@ -1216,85 +1216,48 @@ function eustatIsOperationUrl(href){
 async function eustatLoadOperations(groupId){
  var group=(state.eustatGroups||[]).find(function(x){return String(x.id)===String(groupId)});
  if(!group)throw new Error("No s'ha trobat el grup d'Eustat seleccionat.");
-
- // La pàgina actual de "Productos por operaciones" conté l'arbre complet.
- // No depenem de mostrarArbol("All","c"): si la petició directa és bloquejada
- // per CORS, fetchText utilitza els seus proxies i pot retornar HTML o Markdown.
- var sourceUrl="https://es.eustat.eus/estadisticas/opt_1/temalista.html",raw="";
+ var sourceUrl="https://es.eustat.eus/tema_76/opt_1/tipo_4/estad/temalista.html",raw="";
  try{raw=await fetchText(sourceUrl,{cache:"no-store"})}
- catch(e){throw new Error("Eustat: no s'ha pogut carregar l'arbre de Productos por operaciones. "+(e&&e.message||""))}
-
+ catch(e){throw new Error("Eustat: no s'ha pogut carregar el catàleg de Productes per operacions. "+(e&&e.message||""))}
  var wanted=eustatNorm(group.label),ops=[],seen=new Set();
-
- function addHref(label,href){
-  label=eustatCleanText(label);
-  href=eustatAbsoluteUrl(href,sourceUrl);
+ function add(aEl){
+  var label=eustatCleanText(aEl.textContent||""),href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",sourceUrl);
   if(!label||!href||!eustatIsOperationUrl(href)||seen.has(href))return;
-  seen.add(href);
-  ops.push({id:href,label:label,url:href,groupId:String(groupId)});
+  seen.add(href);ops.push({id:href,label:label,url:href,groupId:String(groupId)});
  }
-
- // 1) HTML real: localitzem el <li> del grup i només en llegim els enllaços
- // descendents. Això manté exactament la jerarquia publicada per Eustat.
- var doc=new DOMParser().parseFromString(String(raw||""),"text/html");
- var exact=Array.from(doc.querySelectorAll("li,span,div,h1,h2,h3,h4,h5,h6")).find(function(el){
-  return eustatNorm(el.textContent||"")===wanted;
- });
+ var doc=new DOMParser().parseFromString(raw,"text/html");
+ var exact=Array.from(doc.querySelectorAll("span,div,li,p,h1,h2,h3,h4,h5,h6")).find(function(el){return eustatNorm(el.textContent||"")===wanted});
  if(exact){
   var li=exact.closest("li");
-  if(li){
-   Array.from(li.querySelectorAll("a[href]")).forEach(function(aEl){
-    addHref(aEl.textContent||"",aEl.getAttribute("href")||"");
-   });
-  }
+  if(li)Array.from(li.querySelectorAll("a[href]")).forEach(add);
  }
-
- // 2) Markdown/text (habitual quan entra per r.jina.ai): detectem el grup
- // pel seu nivell d'indentació i capturem els enllaços dels seus fills fins
- // al següent grup del mateix nivell.
  if(!ops.length){
-  var lines=String(raw||"").split(/\r?\n/),groupIndent=-1,inGroup=false;
+  var lines=String(raw||"").split(/\r?\n/),currentGroup="";
   for(var i=0;i<lines.length;i++){
-   var line=lines[i],trim=line.trim();
-   if(!trim)continue;
-   var indent=(line.match(/^\s*/)||[""])[0].length;
-   var headingMatch=trim.match(/^[-*+]\\s+(?:\\[([^\\]]+)\\]\\([^)]*\\)|(.+?))\\s*$/);
-   if(headingMatch){
-    var heading=eustatCleanText(headingMatch[1]||headingMatch[2]||"");
-    var headingNorm=eustatNorm(heading);
-    if(!inGroup&&headingNorm===wanted){
-     groupIndent=indent;inGroup=true;continue;
-    }
-    if(inGroup&&indent<=groupIndent){
-     break;
-    }
+   var line=lines[i];
+   var mGroup=line.match(/^\s*[*-]\s+([^\[\r\n]+)\s*$/);
+   if(mGroup){
+    var g=eustatCleanText(mGroup[1]);
+    if(eustatNorm(g)===wanted){currentGroup=g;continue}
+    if(currentGroup&&/^\s*[*-]\s+/.test(line)&&!/^\s+[*-]\s+\[/.test(line))currentGroup="";
    }
-   if(!inGroup||indent<=groupIndent)continue;
-   var lm=trim.match(/^[-*+]\\s+\\[([^\\]]+)\\]\\(([^)]+)\\)/);
-   if(lm)addHref(lm[1],lm[2]);
+   var mOp=line.match(/^\s+[*-]\s+\[([^\]]+)\]\(([^)]+)\)/);
+   if(currentGroup&&mOp){
+    var href=eustatAbsoluteUrl(mOp[2],sourceUrl);
+    if(eustatIsOperationUrl(href)&&!seen.has(href)){seen.add(href);ops.push({id:href,label:eustatCleanText(mOp[1]),url:href,groupId:String(groupId)})}
+   }
   }
  }
-
- // 3) Darrer recurs: alguns mirrors eliminen la indentació Markdown però
- // conserven el text del grup en un contenidor. En aquest cas busquem els
- // enllaços d'operació dins del primer contenidor que contingui el grup.
  if(!ops.length){
   Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
+   var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",sourceUrl);
+   if(!eustatIsOperationUrl(href))return;
    var p=aEl.parentElement;
-   while(p){
-    if(eustatNorm(p.textContent||"")===wanted){
-     addHref(aEl.textContent||"",aEl.getAttribute("href")||"");
-     break;
-    }
-    p=p.parentElement;
-   }
+   while(p){if(eustatNorm(p.textContent||"")===wanted){add(aEl);break}p=p.parentElement}
   });
  }
-
  ops.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
- state.eustatOperations=ops;
- fill($("concept"),ops.map(function(x){return{value:x.id,label:x.label}}));
- $("concept").disabled=!ops.length;
+ state.eustatOperations=ops;fill($("concept"),ops.map(function(x){return{value:x.id,label:x.label}}));$("concept").disabled=!ops.length;
  if(!ops.length)throw new Error("Eustat: no s'han trobat operacions per a "+group.label+".");
  return ops;
 }
