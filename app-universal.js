@@ -1216,7 +1216,7 @@ async function eustatLoadOperationTree(){
    Array.from(li.querySelectorAll("ul.eustplantlista > li > a[href]")).forEach(function(aEl){
      var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",url),opLabel=eustatCleanText(aEl.textContent||"");
      if(!href||!opLabel||seen.has(href))return;
-     var m=href.match(/\\/banku\\/id_([^/]+)\\/indexlistaopera\\.html/i);
+     var m=href.match(/\/banku\/id_([^/]+)\/indexlistaopera\.html/i);
      if(!m)return;
      seen.add(href);
      operations.push({id:href,label:opLabel,url:href,groupId:id,code:m[1]});
@@ -1230,11 +1230,11 @@ async function eustatLoadOperationTree(){
  return groups;
 }
 function eustatGroupList(){return Array.isArray(state.eustatGroups)?state.eustatGroups:[]}
-function eustatCleanText(s){return String(s||"").replace(/\\s+/g," ").trim()}
+function eustatCleanText(s){return String(s||"").replace(/\s+/g," ").trim()}
 function eustatAbsoluteUrl(href,base){try{return new URL(String(href||"").replace(/&amp;/g,"&"),base).href}catch(e){return""}}
-function eustatNorm(s){return eustatCleanText(s).normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase()}
+function eustatNorm(s){return eustatCleanText(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()}
 function eustatIsOperationUrl(href){
- try{return /^\\/estadisticas\\/tema_\\d+\\/opt_1\\/ti_[^/]+\\/temas\\.html$/i.test(new URL(href).pathname)}
+ try{return /^\/estadisticas\/tema_\d+\/opt_1\/ti_[^/]+\/temas\.html$/i.test(new URL(href).pathname)}
  catch(e){return false}
 }
 async function eustatLoadOperations(groupId){
@@ -1243,7 +1243,7 @@ async function eustatLoadOperations(groupId){
  if(!group)throw new Error("No s'ha trobat el grup d'Eustat seleccionat.");
  ops.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
  state.eustatOperations=ops;
- fill($("concept"),ops.map(function(x){return{value:x.url,label:x.label}}));
+ fill($("concept"),ops.map(function(x){return{value:x.id,label:x.label}}));
  $("concept").disabled=!ops.length;
  if(!ops.length)throw new Error("Eustat: no s'han trobat operacions per a "+group.label+".");
  return ops;
