@@ -26,7 +26,8 @@ const state = {
   pivot: {
     rows: [],
     columns: []
-  }
+  },
+  temporalOrder: 'desc'
 };
 
 const $ = id => document.getElementById(id);
@@ -1202,68 +1203,68 @@ function sortCategories(categories, dim = null) {
     : sorted;
 }
 
+function temporalCodeRank(code) {
+  const v = String(code ?? '').trim().toUpperCase();
+  let m;
+  if ((m = v.match(/^(\\d{4})$/))) return Number(m[1]) * 100000000;
+  if ((m = v.match(/^(\\d{4})M(\\d{1,2})$/))) return Number(m[1]) * 100000000 + Number(m[2]) * 1000000;
+  if ((m = v.match(/^(\\d{4})(?:Q|T)(\\d)$/))) return Number(m[1]) * 100000000 + Number(m[2]) * 10000000;
+  if ((m = v.match(/^(\\d{4})S(\\d)$/))) return Number(m[1]) * 100000000 + Number(m[2]) * 10000000;
+  if ((m = v.match(/^(\\d{4})B(\\d{1,2})$/))) return Number(m[1]) * 100000000 + Number(m[2]) * 1000000;
+  if ((m = v.match(/^(\\d{4})W(\\d{1,2})$/))) return Number(m[1]) * 100000000 + Number(m[2]) * 1000000;
+  if ((m = v.match(/^(\\d{4})D(\\d{1,3})$/))) return Number(m[1]) * 100000000 + Number(m[2]) * 1000000;
+  if ((m = v.match(/^(\\d{4})-(\\d{2})(?:-(\\d{2}))?$/))) return Number(m[1]) * 100000000 + Number(m[2]) * 1000000 + Number(m[3] || 0);
+  return null;
+}
+
+function temporalSortDescending() {
+  return state.temporalOrder !== 'asc';
+}
+
 function sortRowsByJsonStatIndex(
   rows,
   dims
 ) {
   const ranks = new Map();
-
   for (const dim of dims) {
-    const categories =
-      dim.categories ??
-      dim.cats ??
-      [];
-
     const rank = new Map();
-
-    for (const cat of categories) {
-      rank.set(
-        String(cat.code),
-        Number(cat.index)
-      );
-    }
-
-    ranks.set(
-      dim.id,
-      rank
-    );
+    for (const cat of (dim.categories ?? dim.cats ?? [])) rank.set(String(cat.code), Number(cat.index));
+    ranks.set(dim.id, rank);
   }
-
-  return [...rows].sort(
-    (a, b) => {
-      for (const dim of dims) {
-        const rank =
-          ranks.get(dim.id);
-
-        const ac =
-          String(
-            a[dim.id]?.code ?? ''
-          );
-
-        const bc =
-          String(
-            b[dim.id]?.code ?? ''
-          );
-
-        const ai =
-          rank?.get(ac) ??
-          Number.MAX_SAFE_INTEGER;
-
-        const bi =
-          rank?.get(bc) ??
-          Number.MAX_SAFE_INTEGER;
-
-        if (ai !== bi) {
-          return isTemporalDimension(dim)
-            ? bi - ai
-            : ai - bi;
-        }
+  return [...rows].sort((a, b) => {
+    for (const dim of dims) {
+      const rank = ranks.get(dim.id);
+      const ac = String(a[dim.id]?.code ?? ''), bc = String(b[dim.id]?.code ?? '');
+      if (isTemporalDimension(dim)) {
+        const ar = temporalCodeRank(ac), br = temporalCodeRank(bc);
+        if (ar != null && br != null && ar !== br) return temporalSortDescending() ? br - ar : ar - br;
       }
-
-      return 0;
+      const ai = rank?.get(ac) ?? Number.MAX_SAFE_INTEGER, bi = rank?.get(bc) ?? Number.MAX_SAFE_INTEGER;
+      if (ai !== bi) return ai - bi;
     }
-  );
+    return 0;
+  });
 }
+
+function renderTemporalOrderControl(ds) {
+  const wrap = $('temporalOrderWrap'), sel = $('temporalOrder');
+  if (!wrap || !sel) return;
+  const hasTemporal = (ds?.id ?? []).some(id => isTemporalDimension({id, ...(ds.dimension?.[id] || {})}));
+  wrap.hidden = !hasTemporal;
+  if (hasTemporal) sel.value = state.temporalOrder;
+}
+
+function setTemporalOrder(value) {
+  state.temporalOrder = value === 'asc' ? 'asc' : 'desc';
+  if (state.lastData) {
+    const p = state.pivot || {rows: [], columns: []};
+    state.page = 1;
+    renderResults(state.lastData);
+    state.pivot = {rows: p.rows.slice(), columns: p.columns.slice()};
+    renderPivotBuilder();
+  }
+}
+
 
 
 /* =====================================================
@@ -2278,6 +2279,8 @@ function renderResults(ds) {
     rows
   } = resultRows(ds);
 
+  renderTemporalOrderControl(ds);
+
   state.pivot.rows = [];
   state.pivot.columns = [];
 
@@ -3179,12 +3182,13 @@ function pivotCombinationMap(
     if (!dim) continue;
 
     const categories =
-      sortCategories(
-        dim.categories ??
-        dim.cats ??
-        [],
-        dim
-      );
+      (dim.categories ?? dim.cats ?? []).slice().sort((a, b) => {
+        if (isTemporalDimension(dim)) {
+          const ar = temporalCodeRank(a.code), br = temporalCodeRank(b.code);
+          if (ar != null && br != null && ar !== br) return temporalSortDescending() ? br - ar : ar - br;
+        }
+        return Number(a.index) - Number(b.index);
+      });
 
     const rank =
       new Map();
@@ -5226,6 +5230,9 @@ function bind() {
 
   $('query').onclick =
     runQuery;
+
+  $('temporalOrder').onchange =
+    e => setTemporalOrder(e.target.value);
 
   $('exportCsv').onclick =
     exportCSV;
