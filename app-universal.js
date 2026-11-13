@@ -1977,9 +1977,15 @@ function sortRowsByJsonStatIndex(rows,dims,temporalDesc){
  return rows.slice().sort(function(a,b){
   for(var i=0;i<dims.length;i++){
    var dim=dims[i],rank=ranks.get(dim.id),
-       ai=rank&&rank.has(String(a[dim.id]&&a[dim.id].code))?rank.get(String(a[dim.id].code)):Number.MAX_SAFE_INTEGER,
-       bi=rank&&rank.has(String(b[dim.id]&&b[dim.id].code))?rank.get(String(b[dim.id].code)):Number.MAX_SAFE_INTEGER;
-   if(ai!==bi)return temporal(dim)?(temporalDesc?bi-ai:ai-bi):ai-bi;
+       ac=String(a[dim.id]&&a[dim.id].code||""),
+       bc=String(b[dim.id]&&b[dim.id].code||""),
+       ai=rank&&rank.has(ac)?rank.get(ac):Number.MAX_SAFE_INTEGER,
+       bi=rank&&rank.has(bc)?rank.get(bc):Number.MAX_SAFE_INTEGER;
+   if(temporal(dim)){
+    var ar=temporalCodeRank(ac),br=temporalCodeRank(bc);
+    if(ar!=null&&br!=null&&ar!==br)return temporalDesc?br-ar:ar-br;
+   }
+   if(ai!==bi)return ai-bi;
   }
   return 0;
  });
@@ -2052,7 +2058,7 @@ function exportXLSX(){if(!state.lastData||typeof XLSX==="undefined")return;var z
 function pivotLabel(d){return String(d&&d.label||d&&d.id||'')}
 function pivotDims(){return dims(state.lastData||{}).filter(function(d){return !(d.categories&&d.categories.length===1)})}
 function pivotKey(row,ids){return ids.map(function(id){return row[id]&&row[id].code||''}).join('¦')}
-function pivotComb(rows,ids){var m=new Map();rows.forEach(function(r){var k=pivotKey(r,ids);if(!m.has(k))m.set(k,{key:k,row:r})});var dsx=dims(state.lastData||{}),rank=new Map();ids.forEach(function(id){var d=dsx.find(function(x){return x.id===id}),m2=new Map();(d&&d.categories||[]).slice().sort(function(a,b){return temporal(d)?(temporalSortDescending()?Number(b.index)-Number(a.index):Number(a.index)-Number(b.index)):Number(a.index)-Number(b.index)}).forEach(function(c,i){m2.set(String(c.code),i)});rank.set(id,m2)});return Array.from(m.values()).sort(function(a,b){for(var i=0;i<ids.length;i++){var id=ids[i],ra=rank.get(id),x=ra&&ra.has(String(a.row[id]&&a.row[id].code))?ra.get(String(a.row[id].code)):999999,y=ra&&ra.has(String(b.row[id]&&b.row[id].code))?ra.get(String(b.row[id].code)):999999;if(x!==y)return x-y}return 0})}
+function pivotComb(rows,ids){var m=new Map();rows.forEach(function(r){var k=pivotKey(r,ids);if(!m.has(k))m.set(k,{key:k,row:r})});var dsx=dims(state.lastData||{}),rank=new Map();ids.forEach(function(id){var d=dsx.find(function(x){return x.id===id}),m2=new Map();(d&&d.categories||[]).slice().sort(function(a,b){if(temporal(d)){var ar=temporalCodeRank(a.code),br=temporalCodeRank(b.code);if(ar!=null&&br!=null&&ar!==br)return temporalSortDescending()?br-ar:ar-br}return Number(a.index)-Number(b.index)}).forEach(function(c,i){m2.set(String(c.code),i)});rank.set(id,m2)});return Array.from(m.values()).sort(function(a,b){for(var i=0;i<ids.length;i++){var id=ids[i],ra=rank.get(id),x=ra&&ra.has(String(a.row[id]&&a.row[id].code))?ra.get(String(a.row[id].code)):999999,y=ra&&ra.has(String(b.row[id]&&b.row[id].code))?ra.get(String(b.row[id].code)):999999;if(x!==y)return x-y}return 0})}
 function pivotMove(id,target){state.pivot=state.pivot||{rows:[],columns:[]};state.pivot.rows=state.pivot.rows.filter(function(x){return x!==id});state.pivot.columns=state.pivot.columns.filter(function(x){return x!==id});if(target==="rows")state.pivot.rows.push(id);else state.pivot.columns.push(id);renderPivotBuilder()}
 function pivotRemove(id){state.pivot.rows=state.pivot.rows.filter(function(x){return x!==id});state.pivot.columns=state.pivot.columns.filter(function(x){return x!==id});renderPivotBuilder()}
 function pivotDragStart(e,id){e.dataTransfer.setData("text/plain",id);e.dataTransfer.effectAllowed="move"}
