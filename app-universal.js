@@ -1204,78 +1204,114 @@ function isPxMetadata(d){
 }
 function eustatGroupList(){
  var names=["Demografía y hábitos sociales","Lenguas","Sanidad y salud","Educación","Mercado de trabajo y costes laborales","Protección social y servicios sociales","Cultura, ocio y deportes","Justicia y seguridad","Medio ambiente","Sector primario","Industria y energía","Construcción y vivienda","Sector servicios","Comercio y servicios del automóvil","Administración pública","Cuentas económicas","Precios","Economía social","Infraestructura estadística","Sociedad de la información e I+D+i","Otros"];
- return names.map(function(label,i){return{id:String(10044+i),label:label,url:"https://es.eustat.eus/estadisticas/opt_1/tema_"+String(10044+i)+"/temas.html"}});
+ return names.map(function(label,i){return{id:"eustat-group-"+(i+1),label:label,type:"group"}});
 }
 function eustatCleanText(s){return String(s||"").replace(/\s+/g," ").trim()}
 function eustatAbsoluteUrl(href,base){try{return new URL(String(href||"").replace(/&amp;/g,"&"),base).href}catch(e){return""}}
+function eustatNorm(s){return eustatCleanText(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()}
+function eustatIsOperationUrl(href){
+ try{return /^\/estadisticas\/tema_\d+\/opt_1\/ti_[^/]+\/temas\.html$/i.test(new URL(href).pathname)}
+ catch(e){return false}
+}
 async function eustatLoadOperations(groupId){
  var group=(state.eustatGroups||[]).find(function(x){return String(x.id)===String(groupId)});
  if(!group)throw new Error("No s'ha trobat el grup d'Eustat seleccionat.");
- var sourceUrl="https://es.eustat.eus/estadisticas/opt_1/temalista.html";
- var raw="";
- try{raw=await fetchText(sourceUrl,{cache:"no-store"})}catch(e){throw new Error("Eustat: no s'ha pogut carregar l'arbre d'operacions. "+(e&&e.message||""))}
- var doc=new DOMParser().parseFromString(raw,"text/html");
- var norm=function(s){return eustatCleanText(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim()};
- var wanted=norm(group.label),ops=[],seen=new Set();
+ var sourceUrl="https://es.eustat.eus/tema_16/opt_1/tipo_4/estad/temalista.html",raw="";
+ try{raw=await fetchText(sourceUrl,{cache:"no-store"})}
+ catch(e){throw new Error("Eustat: no s'ha pogut carregar el catàleg de Productes per operacions. "+(e&&e.message||""))}
+ var wanted=eustatNorm(group.label),ops=[],seen=new Set();
  function add(aEl){
-  if(!aEl)return;
-  var label=eustatCleanText(aEl.textContent||"");
-  var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",sourceUrl);
-  if(!label||!href)return;
-  var u;try{u=new URL(href)}catch(e){return}
-  if(!/^\/estadisticas\/tema_\d+\/opt_1\/ti_[^/]+\/temas\.html$/i.test(u.pathname))return;
-  if(seen.has(href))return;
+  var label=eustatCleanText(aEl.textContent||""),href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",sourceUrl);
+  if(!label||!href||!eustatIsOperationUrl(href)||seen.has(href))return;
   seen.add(href);ops.push({id:href,label:label,url:href,groupId:String(groupId)});
  }
- var candidates=Array.from(doc.querySelectorAll("li,div,span,a,h1,h2,h3,h4,h5,h6"));
- var groupEl=candidates.find(function(el){return norm(el.textContent||"")===wanted});
- if(groupEl){
-  var container=groupEl.closest("li")||groupEl;
-  Array.from(container.querySelectorAll("a[href]")).forEach(add);
-  if(!ops.length){
-   var p=container.parentElement;
-   if(p)Array.from(p.querySelectorAll("a[href]")).forEach(add);
+ var doc=new DOMParser().parseFromString(raw,"text/html");
+ var exact=Array.from(doc.querySelectorAll("span,div,li,p,h1,h2,h3,h4,h5,h6")).find(function(el){return eustatNorm(el.textContent||"")===wanted});
+ if(exact){
+  var li=exact.closest("li");
+  if(li)Array.from(li.querySelectorAll("a[href]")).forEach(add);
+ }
+ if(!ops.length){
+  var lines=String(raw||"").split(/\r?\n/),currentGroup="";
+  for(var i=0;i<lines.length;i++){
+   var line=lines[i];
+   var mGroup=line.match(/^\s*[*-]\s+([^\[\r\n]+)\s*$/);
+   if(mGroup){
+    var g=eustatCleanText(mGroup[1]);
+    if(eustatNorm(g)===wanted){currentGroup=g;continue}
+    if(currentGroup&&/^\s*[*-]\s+/.test(line)&&!/^\s+[*-]\s+\[/.test(line))currentGroup="";
+   }
+   var mOp=line.match(/^\s+[*-]\s+\[([^\]]+)\]\(([^)]+)\)/);
+   if(currentGroup&&mOp){
+    var href=eustatAbsoluteUrl(mOp[2],sourceUrl);
+    if(eustatIsOperationUrl(href)&&!seen.has(href)){seen.add(href);ops.push({id:href,label:eustatCleanText(mOp[1]),url:href,groupId:String(groupId)})}
+   }
   }
  }
  if(!ops.length){
-  var anchors=Array.from(doc.querySelectorAll("a[href]")).filter(function(aEl){
+  Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
    var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",sourceUrl);
-   try{return /^\/estadisticas\/tema_\d+\/opt_1\/ti_[^/]+\/temas\.html$/i.test(new URL(href).pathname)}catch(e){return false}
+   if(!eustatIsOperationUrl(href))return;
+   var p=aEl.parentElement;
+   while(p){if(eustatNorm(p.textContent||"")===wanted){add(aEl);break}p=p.parentElement}
   });
-  for(var ai=0;ai<anchors.length;ai++){
-   var p=anchors[ai].parentElement,belongs=false;
-   while(p){if(norm(p.textContent||"")===wanted){belongs=true;break}p=p.parentElement}
-   if(belongs)add(anchors[ai]);
-  }
  }
  ops.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
- state.eustatOperations=ops;
- fill($("concept"),ops.map(function(x){return{value:x.id,label:x.label}}));
- $("concept").disabled=!ops.length;
+ state.eustatOperations=ops;fill($("concept"),ops.map(function(x){return{value:x.id,label:x.label}}));$("concept").disabled=!ops.length;
  if(!ops.length)throw new Error("Eustat: no s'han trobat operacions per a "+group.label+".");
  return ops;
 }
 function eustatOperationCode(html){
- var s=String(html||"").replace(/<[^>]+>/g," ").replace(/\s+/g," "),m=s.match(/Código\s+operación\s*:?\s*(\d{6})/i);return m?m[1]:"";
+ var s=String(html||"").replace(/<[^>]+>/g," ").replace(/\s+/g," "),m=s.match(/Código\s+operación\s*:?\s*(\d{6})/i);
+ return m?m[1]:"";
+}
+function eustatBankuUrl(code){return code?"https://es.eustat.eus/banku/id_"+encodeURIComponent(code)+"/indexlistaopera.html":""}
+function eustatTablesPageUrl(opUrl){
+ try{var u=new URL(opUrl);if(/\/tipo_1\//i.test(u.pathname))return u.href;u.pathname=u.pathname.replace(/\/temas\.html$/i,"/tipo_1/temas.html");return u.href}catch(e){return""}
+}
+function eustatParseDownloadLinks(doc,baseUrl,operationId,tables,seen){
+ Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
+  var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",baseUrl),label=eustatCleanText(aEl.textContent||"");
+  if(!href||!label)return;
+  var u;try{u=new URL(href)}catch(e){return}
+  var path=u.pathname.toLowerCase();
+  if(/\.(csv|xlsx?|zip)$/i.test(path)&&!seen.has(href)){seen.add(href);tables.push({id:"DL:"+tables.length,label:label,type:"download",url:href,operationId:operationId})}
+ });
 }
 async function eustatLoadOperationTables(operationId){
- var op=(state.eustatOperations||[]).find(function(x){return x.id===operationId});if(!op)throw new Error("No s'ha trobat l'operació d'Eustat seleccionada.");
- var html=await fetchText(op.url,{cache:"no-store"}),doc=new DOMParser().parseFromString(html,"text/html"),code=eustatOperationCode(html),tables=[],seen=new Set();
- if(code)(state.eustatCatalog||[]).forEach(function(t){var id=String(t.id||t.value||"").trim();if(new RegExp("^PX_"+code+"(?:_|\\.|$)","i").test(id)&&!seen.has(id)){seen.add(id);tables.push({id:id,label:String(t.name||t.label||id),type:"px",url:"",operationId:operationId})}});
- var type1=[];
- Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",op.url);if(!href)return;var p;try{p=new URL(href).pathname.toLowerCase()}catch(e){return}if(p.indexOf("/tipo_1/")>=0)type1.push(href)});
- type1=[...new Set(type1)];
- for(var ti=0;ti<type1.length;ti++)try{
-  var h1=await fetchText(type1[ti],{cache:"no-store"}),d1=new DOMParser().parseFromString(h1,"text/html");
-  Array.from(d1.querySelectorAll("a[href]")).forEach(function(aEl){
-   var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",type1[ti]);if(!href)return;var u;try{u=new URL(href)}catch(e){return}
-   var path=u.pathname.toLowerCase(),label=eustatCleanText(aEl.textContent||"");if(!label)return;
-   if(/\.(csv|xlsx?|zip)$/i.test(path)||path.indexOf("/elementos/")>=0||/tbl\d+/i.test(path)){var key=href;if(seen.has(key))return;seen.add(key);tables.push({id:"DL:"+tables.length,label:label,type:"download",url:href,operationId:operationId})}
+ var op=(state.eustatOperations||[]).find(function(x){return x.id===operationId});
+ if(!op)throw new Error("No s'ha trobat l'operació d'Eustat seleccionada.");
+ var html=await fetchText(op.url,{cache:"no-store"}),code=eustatOperationCode(html),tables=[],seen=new Set();
+ var banku=eustatBankuUrl(code);
+ if(banku)try{
+  var bh=await fetchText(banku,{cache:"no-store"}),bd=new DOMParser().parseFromString(bh,"text/html");
+  Array.from(bd.querySelectorAll("a[href]")).forEach(function(aEl){
+   var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",banku),label=eustatCleanText(aEl.textContent||"");
+   if(!href||!label)return;
+   var u;try{u=new URL(href)}catch(e){return}
+   var ma=u.searchParams.get("ma");
+   if(ma&&u.pathname.toLowerCase().indexOf("/banku/redirec.aspx")>=0){
+    var key="px:"+ma;if(seen.has(key))return;seen.add(key);
+    tables.push({id:ma,label:label,type:"px",url:href,operationId:operationId});
+   }
   });
+  var rx=/[?&]ma=(PX_[^&)"'\s]+)/gi,m;
+  while((m=rx.exec(String(bh||"")))){
+   var ma2=decodeURIComponent(m[1]),key2="px:"+ma2;
+   if(!seen.has(key2)){seen.add(key2);var cat=(state.eustatCatalog||[]).find(function(t){return String(t.id||t.value||"")===ma2});tables.push({id:ma2,label:String(cat&&cat.label||cat&&cat.name||ma2),type:"px",url:"",operationId:operationId})}
+  }
  }catch(e){}
- if(!tables.length&&code)(state.eustatCatalog||[]).forEach(function(t){var id=String(t.id||t.value||"").trim();if(new RegExp("^PX_"+code+"(?:_|\\.|$)","i").test(id))tables.push({id:id,label:String(t.name||t.label||id),type:"px",url:"",operationId:operationId})});
+ var type1=eustatTablesPageUrl(op.url);
+ if(type1)try{
+  var th=await fetchText(type1,{cache:"no-store"}),td=new DOMParser().parseFromString(th,"text/html");
+  eustatParseDownloadLinks(td,type1,operationId,tables,seen);
+  var md=/\((https?:\/\/[^)\s]+\.(?:csv|xlsx?|zip)(?:\?[^)]*)?)\)/gi,mm;
+  while((mm=md.exec(String(th||"")))){var dh=eustatAbsoluteUrl(mm[1],type1);if(dh&&!seen.has(dh)){seen.add(dh);tables.push({id:"DL:"+tables.length,label:dh.split("/").pop(),type:"download",url:dh,operationId:operationId})}}
+ }catch(e){}
  tables.sort(function(a,b){return a.type===b.type?a.label.localeCompare(b.label,"es",{numeric:true}):(a.type==="px"?-1:1)});
- state.eustatTables=tables;fill($("cross"),tables.map(function(x){return{value:x.id,label:x.label+(x.type==="download"?" · descarregable":"")}}));$("cross").disabled=!tables.length;return tables;
+ state.eustatTables=tables;fill($("cross"),tables.map(function(x){return{value:x.id,label:x.label+(x.type==="download"?" · descarregable":"")}}));$("cross").disabled=!tables.length;
+ if(!tables.length)throw new Error("Eustat: no s'han trobat taules per a "+(op.label||"l'operació")+".");
+ return tables;
 }
 function eustatClassifyTable(label){
  var s=String(label||"").toLowerCase().normalize("NFD").replace(/[\\u0300-\\u036f]/g,"");
