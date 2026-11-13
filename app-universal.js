@@ -1211,69 +1211,43 @@ function eustatAbsoluteUrl(href,base){try{return new URL(String(href||"").replac
 async function eustatLoadOperations(groupId){
  var group=(state.eustatGroups||[]).find(function(x){return String(x.id)===String(groupId)});
  if(!group)throw new Error("No s'ha trobat el grup d'Eustat seleccionat.");
-
- // Eustat publica l'arbre complet d'operacions en aquesta pàgina.
- // No depenem de les antigues URLs /tema_10044/, que ja no són fiables.
- var sourceUrl="https://es.eustat.eus/estadisticas/opt_1/tipo_7/id_254/arbol.html";
- var proxies=[
-  "https://r.jina.ai/http://es.eustat.eus/estadisticas/opt_1/tipo_7/id_254/arbol.html",
-  "https://api.allorigins.win/raw?url="+encodeURIComponent(sourceUrl)
- ];
+ var sourceUrl="https://es.eustat.eus/estadisticas/opt_1/temalista.html";
  var raw="";
- for(var pi=0;pi<proxies.length&&!raw;pi++){
-  try{var rr=await fetch(proxies[pi],{cache:"no-store"});if(rr.ok)raw=await rr.text()}catch(e){}
- }
- var norm=function(s){return eustatCleanText(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()};
+ try{raw=await fetchText(sourceUrl,{cache:"no-store"})}catch(e){throw new Error("Eustat: no s'ha pogut carregar l'arbre d'operacions. "+(e&&e.message||""))}
+ var doc=new DOMParser().parseFromString(raw,"text/html");
+ var norm=function(s){return eustatCleanText(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim()};
  var wanted=norm(group.label),ops=[],seen=new Set();
-
- function add(label,href){
-  label=eustatCleanText(label);href=eustatAbsoluteUrl(href,sourceUrl);
+ function add(aEl){
+  if(!aEl)return;
+  var label=eustatCleanText(aEl.textContent||"");
+  var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",sourceUrl);
   if(!label||!href)return;
   var u;try{u=new URL(href)}catch(e){return}
-  if(!/\/estadisticas\/tema_\d+\/opt_1\/ti_[^/]+\/temas\.html$/i.test(u.pathname))return;
+  if(!/^\/estadisticas\/tema_\d+\/opt_1\/ti_[^/]+\/temas\.html$/i.test(u.pathname))return;
   if(seen.has(href))return;
   seen.add(href);ops.push({id:href,label:label,url:href,groupId:String(groupId)});
  }
-
- if(raw){
-  // Primer intent: el resultado de los proxies sol ser Markdown.
-  // Delimitamos el bloque pel nom del grup i el grup següent, i després
-  // extraiem qualsevol enllaç d'operació que hi hagi dins del bloc.
-  var pos=raw.toLowerCase().indexOf(group.label.toLowerCase());
-  if(pos<0){
-   var lines=raw.split(/\r?\n/);
-   for(var li=0;li<lines.length;li++)if(norm(lines[li]).indexOf(wanted)>=0){pos=raw.indexOf(lines[li]);break}
-  }
-  if(pos>=0){
-   var endPos=raw.length;
-   (state.eustatGroups||[]).forEach(function(g){
-    if(String(g.id)===String(group.id))return;
-    var p=raw.toLowerCase().indexOf(String(g.label).toLowerCase(),pos+group.label.length);
-    if(p>=0&&p<endPos)endPos=p;
-   });
-   var block=raw.slice(pos,endPos);
-   var re=/\[([^\]]+)\]\(([^)]+)\)/g,m;
-   while((m=re.exec(block)))add(m[1],m[2]);
-  }
-
-  // Segon intent: alguns convertidors no mantenen bé els salts de línia.
-  // Busquem els enllaços d'operació que apareixen després del grup fins al
-  // primer altre grup conegut.
+ var candidates=Array.from(doc.querySelectorAll("li,div,span,a,h1,h2,h3,h4,h5,h6"));
+ var groupEl=candidates.find(function(el){return norm(el.textContent||"")===wanted});
+ if(groupEl){
+  var container=groupEl.closest("li")||groupEl;
+  Array.from(container.querySelectorAll("a[href]")).forEach(add);
   if(!ops.length){
-   var re2=/\[([^\]]+)\]\((https?:\/\/[^)]+|\/[^)]+)\)/g,m2;
-   var candidates=[];
-   while((m2=re2.exec(raw)))candidates.push({pos:m2.index,label:m2[1],href:m2[2]});
-   var gi=candidates.findIndex(function(x){return norm(x.label)===wanted});
-   if(gi>=0){
-    for(var ci=gi+1;ci<candidates.length;ci++){
-     var lab=norm(candidates[ci].label);
-     if((state.eustatGroups||[]).some(function(g){return String(g.id)!==String(group.id)&&norm(g.label)===lab}))break;
-     add(candidates[ci].label,candidates[ci].href);
-    }
-   }
+   var p=container.parentElement;
+   if(p)Array.from(p.querySelectorAll("a[href]")).forEach(add);
   }
  }
-
+ if(!ops.length){
+  var anchors=Array.from(doc.querySelectorAll("a[href]")).filter(function(aEl){
+   var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",sourceUrl);
+   try{return /^\/estadisticas\/tema_\d+\/opt_1\/ti_[^/]+\/temas\.html$/i.test(new URL(href).pathname)}catch(e){return false}
+  });
+  for(var ai=0;ai<anchors.length;ai++){
+   var p=anchors[ai].parentElement,belongs=false;
+   while(p){if(norm(p.textContent||"")===wanted){belongs=true;break}p=p.parentElement}
+   if(belongs)add(anchors[ai]);
+  }
+ }
  ops.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
  state.eustatOperations=ops;
  fill($("concept"),ops.map(function(x){return{value:x.id,label:x.label}}));
