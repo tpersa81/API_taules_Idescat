@@ -1241,28 +1241,69 @@ function eustatAddOperationsFromBankuDoc(doc,sourceUrl,group,ops,seen){
 async function eustatLoadOperations(groupId){
  var group=(state.eustatGroups||[]).find(function(x){return String(x.id)===String(groupId)});
  if(!group)throw new Error("No s'ha trobat el grup d'Eustat seleccionat.");
- var ops=[],seen=new Set(),sourceUrl="https://es.eustat.eus/banku/index.html";
- try{
-  var raw=await fetchText(sourceUrl,{cache:"no-store"});
-  var doc=new DOMParser().parseFromString(raw,"text/html");
-  eustatAddOperationsFromBankuDoc(doc,sourceUrl,group,ops,seen);
- }catch(e){}
- if(!ops.length){
-  var fallbackUrl="https://es.eustat.eus/tema_76/opt_1/tipo_4/estad/temalista.html";
-  try{
-   var html=await fetchText(fallbackUrl,{cache:"no-store"}),fd=new DOMParser().parseFromString(html,"text/html");
-   var anchors=Array.from(fd.querySelectorAll("a[href]")),wanted=eustatNorm(group.label),groupLabels=(state.eustatGroups||[]).map(function(g){return eustatNorm(g.label)});
-   for(var i=0;i<anchors.length&&!ops.length;i++){
-    if(eustatNorm(anchors[i].textContent||"")!==wanted)continue;
-    for(var j=i+1;j<anchors.length;j++){
-     var label=eustatCleanText(anchors[j].textContent||""),href=eustatAbsoluteUrl(anchors[j].getAttribute("href")||"",fallbackUrl);
-     if(!label||!href)continue;
-     if(groupLabels.indexOf(eustatNorm(label))>=0)break;
-     if(/^\/estadisticas\/tema_\d+\/opt_1\/ti_[^/]+\/temas\.html$/i.test(new URL(href).pathname)&&!seen.has(href)){
-      seen.add(href);ops.push({id:href,label:label,url:href,groupId:String(group.id)});
+ var ops=[],seen=new Set();
+ function addOperation(label,href){
+  label=eustatCleanText(label);href=eustatAbsoluteUrl(href,"https://es.eustat.eus/");
+  if(!label||!href||!eustatIsOperationUrl(href)||seen.has(href))return;
+  seen.add(href);ops.push({id:href,label:label,url:href,groupId:String(group.id)});
+ }
+ function parseMarkdown(raw){
+  var lines=String(raw||"").split(/\\r?\\n/),currentGroup="";
+  for(var i=0;i<lines.length;i++){
+   var line=lines[i].replace(/\\t/g,"    "),trim=line.trim();
+   if(!trim)continue;
+   var lm=trim.match(/^(?:[-*+]\\s+)?\\[([^\\]]+)\\]\\(([^)]+)\\)/);
+   if(lm){
+    var linkedLabel=eustatCleanText(lm[1]),linkedHref=lm[2];
+    if(eustatIsOperationUrl(eustatAbsoluteUrl(linkedHref,"https://es.eustat.eus/"))){
+     if(eustatNorm(currentGroup)===eustatNorm(group.label))addOperation(linkedLabel,linkedHref);
+    }
+    continue;
+   }
+   var plain=trim.replace(/^(?:[-*+]\\s+)/,"").trim();
+   if(eustatNorm(plain)==="desplegar todo"||eustatNorm(plain)==="plegar todo")continue;
+   if((state.eustatGroups||[]).some(function(g){return eustatNorm(g.label)===eustatNorm(plain)}))currentGroup=plain;
+  }
+ }
+ }
+ function parseHtml(raw){
+  var doc=new DOMParser().parseFromString(String(raw||""),"text/html");
+  var labels=(state.eustatGroups||[]).map(function(g){return eustatNorm(g.label)});
+  Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
+   var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"","https://es.eustat.eus/"),label=eustatCleanText(aEl.textContent||"");
+   if(!eustatIsOperationUrl(href))return;
+   var li=aEl.closest("li"),groupText="";
+   if(li){
+    var parent=li.parentElement;
+    while(parent&&!groupText){
+     var prev=parent.previousElementSibling;
+     if(prev){
+      var spans=Array.from(prev.querySelectorAll("span.ramaArbol"));
+      for(var k=0;k<spans.length;k++){var tx=eustatCleanText(spans[k].textContent||"");if(labels.indexOf(eustatNorm(tx))>=0){groupText=tx;break}}
      }
+     parent=parent.parentElement;
     }
    }
+   if(!groupText){
+    var p=aEl.closest("ul");
+    if(p){
+     var owner=p.closest("li");
+     var span=owner&&owner.querySelector(":scope > span.ramaArbol");
+     if(span)groupText=eustatCleanText(span.textContent||"");
+    }
+   }
+   if(eustatNorm(groupText)===eustatNorm(group.label))addOperation(label,href);
+  });
+ }
+ var sources=[
+  "https://es.eustat.eus/estadisticas/tema_76/opt_1/tipo_4/temas.html",
+  "https://es.eustat.eus/banku/index.html"
+ ];
+ for(var si=0;si<sources.length&&!ops.length;si++){
+  try{
+   var raw=await fetchText(sources[si],{cache:"no-store"});
+   parseHtml(raw);
+   if(!ops.length)parseMarkdown(raw);
   }catch(e){}
  }
  ops.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
