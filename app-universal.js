@@ -1998,7 +1998,7 @@ function renderTemporalOrderControl(ds){
 function setTemporalOrder(value){
  if(state.provider!=="eurostat")return;
  state.temporalOrder=value==="asc"?"asc":"desc";
- if(state.lastData){state.page=1;renderResults(state.lastData);}
+ if(state.lastData){var p=state.pivot||{rows:[],columns:[]};state.page=1;renderResults(state.lastData);state.pivot={rows:p.rows.slice(),columns:p.columns.slice()};renderPivotBuilder();}
 }
 function renderResults(ds){
  state.pivot={rows:[],columns:[]};
