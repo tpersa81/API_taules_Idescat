@@ -1211,29 +1211,40 @@ function eustatAbsoluteUrl(href,base){try{return new URL(String(href||"").replac
 async function eustatLoadOperations(groupId){
  var group=(state.eustatGroups||[]).find(function(x){return String(x.id)===String(groupId)});
  if(!group)throw new Error("No s'ha trobat el grup d'Eustat seleccionat.");
- var rootUrl="https://es.eustat.eus/estadisticas/tema_0/opt_1/ti_0/temas.html";
- var html=await fetchText(rootUrl,{cache:"no-store"}),doc=new DOMParser().parseFromString(html,"text/html"),seen=new Set(),ops=[];
- var groupAnchor=Array.from(doc.querySelectorAll("a[href]")).find(function(aEl){return eustatCleanText(aEl.textContent||"")===group.label});
- if(!groupAnchor){
-  var wanted=eustatCleanText(group.label).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
-  groupAnchor=Array.from(doc.querySelectorAll("a[href]")).find(function(aEl){
-   var label=eustatCleanText(aEl.textContent||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
-   return label===wanted;
-  });
+ var sourceUrl="https://es.eustat.eus/estadisticas/opt_1/tipo_7/id_254/arbol.html";
+ var html=await fetchText(sourceUrl,{cache:"no-store"}),doc=new DOMParser().parseFromString(html,"text/html"),seen=new Set(),ops=[];
+ var norm=function(s){return eustatCleanText(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()};
+ var wanted=norm(group.label),groupAnchor=Array.from(doc.querySelectorAll("a[href]")).find(function(aEl){return norm(aEl.textContent||"")===wanted});
+ var container=null;
+ if(groupAnchor)container=groupAnchor.closest("li")||groupAnchor.parentElement;
+ if(!container){
+  var exact=Array.from(doc.querySelectorAll("*")).find(function(el){return norm(el.textContent||"")===wanted});
+  if(exact)container=exact.closest("li")||exact.parentElement;
  }
- var groupHref=groupAnchor?eustatAbsoluteUrl(groupAnchor.getAttribute("href")||"",rootUrl):"";
- if(groupHref){
-  try{
-   var gh=await fetchText(groupHref,{cache:"no-store"}),gd=new DOMParser().parseFromString(gh,"text/html");
-   Array.from(gd.querySelectorAll("a[href]")).forEach(function(aEl){
-    var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",groupHref);if(!href)return;
-    var u;try{u=new URL(href)}catch(e){return}
-    var p=u.pathname;
-    if(!/\/estadisticas\/tema_\d+\/opt_1\/ti_[^/]+\/temas\.html$/i.test(p))return;
-    var label=eustatCleanText(aEl.textContent||"");if(!label||label===group.label||seen.has(href))return;
-    seen.add(href);ops.push({id:href,label:label,url:href,groupId:String(groupId)});
-   });
-  }catch(e){}
+ var collect=function(root){
+  if(!root)return;
+  Array.from(root.querySelectorAll("a[href]")).forEach(function(aEl){
+   var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",sourceUrl);if(!href)return;
+   var u;try{u=new URL(href)}catch(e){return}
+   if(!/\/estadisticas\/tema_\d+\/opt_1\/ti_[^/]+\/temas\.html$/i.test(u.pathname))return;
+   var label=eustatCleanText(aEl.textContent||"");if(!label||norm(label)===wanted||seen.has(href))return;
+   seen.add(href);ops.push({id:href,label:label,url:href,groupId:String(groupId)});
+  });
+ };
+ collect(container);
+ if(!ops.length){
+  var all=Array.from(doc.querySelectorAll("a[href]"));
+  var inGroup=false;
+  all.forEach(function(aEl){
+   var txt=eustatCleanText(aEl.textContent||"");
+   if(norm(txt)===wanted){inGroup=true;return}
+   if(!inGroup)return;
+   var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",sourceUrl);if(!href)return;
+   var u;try{u=new URL(href)}catch(e){return}
+   if(/\/estadisticas\/tema_\d+\/opt_1\/ti_[^/]+\/temas\.html$/i.test(u.pathname)){
+    var label=txt;if(label&&!seen.has(href)){seen.add(href);ops.push({id:href,label:label,url:href,groupId:String(groupId)})}
+   }
+  });
  }
  ops.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
  state.eustatOperations=ops;
