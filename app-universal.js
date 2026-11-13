@@ -1984,19 +1984,18 @@ function sortRowsByJsonStatIndex(rows,dims,temporalDesc){
   return 0;
  });
 }
-function temporalSortDescending(){return state.provider!=="eurostat"||state.temporalOrder!=="asc"}
+function temporalSortDescending(){return state.temporalOrder!=="asc"}
 function resultRows(ds){var ids=ds.id||[],sizes=ds.size||[],dd=ids.map(function(id){return{id:id,label:ds.dimension&&ds.dimension[id]&&ds.dimension[id].label||id,cats:jsonstatCats(ds,id)}}),vals=ds.value||[],get=function(i){return Array.isArray(vals)?vals[i]:vals[String(i)]},total=sizes.reduce(function(x,y){return x*y},1),rows=[];for(var flat=0;flat<total;flat++){var rem=flat,row={};for(var j=ids.length-1;j>=0;j--){var size=Number(sizes[j]||0),idx=rem%size;rem=Math.floor(rem/size);var c=dd[j].cats.find(function(x){return x.index===idx});row[ids[j]]={code:c?c.code:"",label:c?c.label:""}}row.value=get(flat);rows.push(row)}rows=sortRowsByJsonStatIndex(rows,dd,temporalSortDescending());return{dims:dd,rows:rows}}
 function decimals(ds){var found=[];function walk(x){if(!x||typeof x!=="object")return;if(Array.isArray(x)){x.forEach(walk);return}Object.keys(x).forEach(function(k){if(k.toLowerCase()==="unit"&&x[k]&&typeof x[k]==="object")Object.values(x[k]).forEach(function(v){var n=Number(v&&v.decimals);if(Number.isInteger(n))found.push(n)});walk(x[k])})}walk(ds);var u=[...new Set(found)];return u.length===1?u[0]:null}
 function fmt(v,d){if(v==null||v==="")return"";var n=typeof v==="number"?v:Number(v);if(!Number.isFinite(n))return v;return n.toLocaleString("ca-ES",{minimumFractionDigits:d==null?0:d,maximumFractionDigits:d==null?20:d})}
 function renderTemporalOrderControl(ds){
  var wrap=$("temporalOrderWrap"),sel=$("temporalOrder");
  if(!wrap||!sel)return;
- var hasTemporal=dims(ds||{}).some(function(d){return temporal(d)}),show=state.provider==="eurostat"&&hasTemporal;
+ var hasTemporal=dims(ds||{}).some(function(d){return temporal(d)}),show=hasTemporal;
  wrap.hidden=!show;
  if(show)sel.value=state.temporalOrder;
 }
 function setTemporalOrder(value){
- if(state.provider!=="eurostat")return;
  state.temporalOrder=value==="asc"?"asc":"desc";
  if(state.lastData){var p=state.pivot||{rows:[],columns:[]};state.page=1;renderResults(state.lastData);state.pivot={rows:p.rows.slice(),columns:p.columns.slice()};renderPivotBuilder();}
 }
