@@ -1203,9 +1203,25 @@ function isPxMetadata(d){
  return !!(s&&((Array.isArray(s.variables)&&s.variables.length)||(Array.isArray(s.id)&&s.dimension)));
 }
 async function eustatLoadOperationTree(){
- var url="https://es.eustat.eus/web/comun/ExtractorArbolOperacionesBanco.ashx?id=All&idioma=c",raw="";
- try{raw=await fetchText(url,{cache:"no-store"})}
- catch(e){throw new Error("Eustat: no s'ha pogut carregar l'arbre d'operacions. "+(e&&e.message||""))}
+ var url="https://es.eustat.eus/web/comun/ExtractorArbolOperacionesBanco.ashx?id=All&idioma=c",raw="",last=null;
+ var urls=[
+   url,
+   "https://api.allorigins.win/raw?url="+encodeURIComponent(url),
+   "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(url),
+   "https://corsproxy.io/?url="+encodeURIComponent(url),
+   "https://cors.isomorphic-git.org/"+url
+ ];
+ for(var i=0;i<urls.length;i++){
+   try{
+     var rr=await fetch(urls[i],{cache:"no-store"});
+     if(rr.ok){
+       var txt=await rr.text();
+       if(/eustNodoNoHoja|ramaArbol|ExtractorArbolOperacionesBanco/i.test(txt)){raw=txt;break}
+       last=new Error("La resposta no conté l'arbre HTML d'Eustat");
+     }else last=new Error("HTTP "+rr.status);
+   }catch(e){last=e}
+ }
+ if(!raw)throw new Error("Eustat: no s'ha pogut carregar l'arbre d'operacions. "+(last&&last.message||"Failed to fetch"));
  var doc=new DOMParser().parseFromString(raw,"text/html"),groups=[],operationGroups={};
  Array.from(doc.querySelectorAll("li.eustNodoNoHoja")).forEach(function(li){
    var span=li.querySelector(":scope > span.ramaArbol"),anchor=li.querySelector(":scope > a[name]");
@@ -1213,13 +1229,16 @@ async function eustatLoadOperationTree(){
    var label=eustatCleanText(span.textContent||""),id=anchor?String(anchor.getAttribute("name")||"").trim():"";
    if(!label||!id)return;
    var operations=[],seen=new Set();
-   Array.from(li.querySelectorAll("ul.eustplantlista > li > a[href]")).forEach(function(aEl){
-     var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",url),opLabel=eustatCleanText(aEl.textContent||"");
-     if(!href||!opLabel||seen.has(href))return;
-     var m=href.match(/\/banku\/id_([^/]+)\/indexlistaopera\.html/i);
-     if(!m)return;
-     seen.add(href);
-     operations.push({id:href,label:opLabel,url:href,groupId:id,code:m[1]});
+   Array.from(li.children).forEach(function(child){
+     if(String(child.tagName).toLowerCase()!=="ul")return;
+     Array.from(child.querySelectorAll(":scope > li > a[href]")).forEach(function(aEl){
+       var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",url),opLabel=eustatCleanText(aEl.textContent||"");
+       if(!href||!opLabel||seen.has(href))return;
+       var m=href.match(/\/banku\/id_([^/]+)\/indexlistaopera\.html/i);
+       if(!m)return;
+       seen.add(href);
+       operations.push({id:href,label:opLabel,url:href,groupId:id,code:m[1]});
+     });
    });
    operationGroups[id]=operations;
    groups.push({id:id,label:label,type:"group"});
