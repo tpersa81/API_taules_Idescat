@@ -36,6 +36,15 @@
 
   <div class="actions export-actions"><button id="exportCsv" class="secondary" disabled>Exporta CSV</button><button id="exportXlsx" class="secondary" disabled>Exporta XLSX</button><button id="addToCart" class="secondary" disabled>Afegeix a la cistella</button></div>
 
+  <div id="temporalOrderWrap" class="temporal-order" hidden>
+    <label for="temporalOrder">Ordre temporal
+      <select id="temporalOrder">
+        <option value="desc">Descendent</option>
+        <option value="asc">Ascendent</option>
+      </select>
+    </label>
+  </div>
+
   <div class="result-tabs">
     <button id="tabData" class="result-tab active">Dades</button>
     <button id="tabPivot" class="result-tab">Constructor de taula</button>
@@ -54,6 +63,6 @@
 </section>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
-<script src="app.js?v=20261103-layout4"></script>
+<script src="app.js?v=20261113-temporal"></script>
 </body>
 </html>
