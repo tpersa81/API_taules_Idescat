@@ -1219,7 +1219,7 @@ async function eustatLoadOperationTree(){
      var m=href.match(/\\/banku\\/id_([^/]+)\\/indexlistaopera\\.html/i);
      if(!m)return;
      seen.add(href);
-     operations.push({id:m[1],label:opLabel,url:href,groupId:id});
+     operations.push({id:href,label:opLabel,url:href,groupId:id,code:m[1]});
    });
    operationGroups[id]=operations;
    groups.push({id:id,label:label,type:"group"});
