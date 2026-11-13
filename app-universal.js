@@ -1202,7 +1202,7 @@ function isPxMetadata(d){
  var s=d&&d.dataset&&typeof d.dataset==="object"?d.dataset:d;
  return !!(s&&((Array.isArray(s.variables)&&s.variables.length)||(Array.isArray(s.id)&&s.dimension)));
 }
-async function loadEustatTree(){
+async async function loadEustatTree(){
  if(state.eustatTree&&state.eustatTree.length)return state.eustatTree;
  var root="https://es.eustat.eus/estadisticas/opt_1/temalista.html";
  var html=await fetchText(root,{cache:"no-store"}),groups=[],seenG=new Set();
