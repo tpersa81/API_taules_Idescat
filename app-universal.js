@@ -1242,6 +1242,32 @@ async function loadEustatOperations(){
   if(guess)op.group=guess[1];
  });
  if(!state.eustatOperations.length)throw new Error("Eustat: no s'han pogut carregar les operacions.");
+ // Fallback per al cas en què el menú d'Eustat no expongui les àrees com
+ // a enllaços: busquem l'element textual de l'àrea i els enllaços de
+ // llistat d'operacions que en pengen en el DOM.
+ state.eustatOperations.forEach(function(op){if(op.group)return});
+ EUSTAT_OPERATION_GROUPS.forEach(function(g){
+  if(state.eustatOperations.some(function(op){return op.group===g[1]}))return;
+  var target=Array.from(doc.querySelectorAll("li,div,span,a")).find(function(el){return eustatNormalize(el.textContent)===eustatNormalize(g[1])});
+  if(!target)return;
+  var p=target;
+  for(var level=0;level<5&&p;level++,p=p.parentElement){
+   Array.from(p.querySelectorAll("a[href]")).forEach(function(aEl){
+    var href=aEl.getAttribute("href")||"",label=(aEl.textContent||"").replace(/\\s+/g," ").trim();
+    if(!href||!label||!/\\/ti_[^/]+\\//i.test(href))return;
+    var abs;try{abs=new URL(href,url).href}catch(e){return}
+    var op=state.eustatOperations.find(function(x){return x.href.toLowerCase()===abs.toLowerCase()});
+    if(op&&!op.group)op.group=g[1];
+   });
+  }
+ });
+ // Últim recurs: si l'àrea encara no té operacions, assignem les que
+ // comparteixen el mateix prefix de dos dígits quan el codi ja és conegut.
+ state.eustatOperations.forEach(function(op){
+  if(op.group||!op.code)return;
+  var g=EUSTAT_OPERATION_GROUPS.find(function(x){return x[0]===String(op.code).slice(0,2)});
+  if(g)op.group=g[1];
+ });
  // La pàgina general pot contenir els enllaços d'operació sense la categoria
  // explícita. Les pàgines de categoria ens permeten assignar-la de manera
  // fiable i, a més, mantenen la mateixa estructura que el web d'Eustat.
