@@ -1205,43 +1205,41 @@ function isPxMetadata(d){
 async function loadEustatTree(){
  if(state.eustatTree&&state.eustatTree.length)return state.eustatTree;
  var root="https://es.eustat.eus/estadisticas/opt_1/temalista.html";
- var html=await fetchText(root,{cache:"no-store"}),doc=new DOMParser().parseFromString(html,"text/html");
- var groups=[],seenG=new Set();
+ var html=await fetchText(root,{cache:"no-store"}),groups=[],seenG=new Set();
+ function cleanHtmlLabel(x){return String(x||"").replace(/<[^>]+>/g," ").replace(/&nbsp;/gi," ").replace(/&amp;/gi,"&").replace(/\s+/g," ").trim()}
  function addGroup(label,href){
-  label=String(label||"").replace(/\s+/g," ").trim();if(!label||seenG.has(label))return;
+  label=cleanHtmlLabel(label);if(!label||seenG.has(label))return;
   try{href=new URL(href,root).href}catch(e){return}
-  if(!/eustat\.eus\/estadisticas\//i.test(href)||!/tema_\d+/i.test(href))return;
+  if(!/\/estadisticas\/opt_1\/tema_\d+\/temas\.html/i.test(href))return;
   seenG.add(label);groups.push({id:label,label:label,href:href,operations:[]});
  }
- Array.from(doc.querySelectorAll("a[href]")).forEach(function(el){
-  var href=el.getAttribute("href")||"",label=el.textContent||"";
-  if(/\/opt_1\/tema_\d+\/temas?\.html/i.test(href))addGroup(label,href);
- });
+ var gm=/<a\b[^>]*href=["']([^"']*\/estadisticas\/opt_1\/tema_\d+\/temas\.html[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi,m;
+ while((m=gm.exec(html)))addGroup(m[2],m[1]);
  if(!groups.length){
-  var md=/\[([^\]]+)\]\(([^)]+)\)/g,m;
-  while((m=md.exec(html)))if(/\/opt_1\/tema_\d+\/temas?\.html/i.test(m[2]))addGroup(m[1],m[2]);
+  var md=/\[([^\]]+)\]\(([^)]+\/estadisticas\/opt_1\/tema_\d+\/temas\.html[^)]*)\)/gi;
+  while((m=md.exec(html)))addGroup(m[1],m[2]);
  }
  var topOrder=["Demografía y hábitos sociales","Lenguas","Sanidad y salud","Educación","Mercado de trabajo y costes laborales","Protección social y servicios sociales","Cultura, ocio y deportes","Justicia y seguridad","Medio ambiente","Sector primario","Industria y energía","Construcción y vivienda","Sector servicios","Comercio y servicios del automóvil","Administración pública","Cuentas económicas","Precios","Economía social","Infraestructura estadística","Sociedad de la información e I+D+i","Otros"];
- groups.sort(function(a,b){var ai=topOrder.indexOf(a.label),bi=topOrder.indexOf(b.label);if(ai<0)ai=999;if(bi<0)bi=999;return ai-bi||a.label.localeCompare(b.label,"es",{numeric:true})});
+ groups=groups.filter(function(g){return topOrder.indexOf(g.label)>=0});
+ groups.sort(function(a,b){return topOrder.indexOf(a.label)-topOrder.indexOf(b.label)});
  for(var gi=0;gi<groups.length;gi++){
-  var g=groups[gi],gh;
+  var g=groups[gi],gh,ops=[],seenO=new Set();
   try{gh=await fetchText(g.href,{cache:"no-store"});}catch(e){continue}
-  var gd=new DOMParser().parseFromString(gh,"text/html"),ops=[],seenO=new Set();
   function addOp(label,href){
-   label=String(label||"").replace(/\s+/g," ").trim();if(!label||seenO.has(label))return;
+   label=cleanHtmlLabel(label);if(!label||seenO.has(label))return;
    try{href=new URL(href,g.href).href}catch(e){return}
-   if(!/eustat\.eus\/estadisticas\//i.test(href)||!/\/opt_1\/ti_[^/]+\/temas?\.html/i.test(href))return;
+   if(!/\/estadisticas\/tema_\d+\/opt_1\/ti_[^/]+\/temas\.html/i.test(href))return;
    seenO.add(label);ops.push({id:label,label:label,href:href});
   }
-  Array.from(gd.querySelectorAll("a[href]")).forEach(function(el){addOp(el.textContent||"",el.getAttribute("href")||"")});
+  var om=/<a\b[^>]*href=["']([^"']*\/estadisticas\/tema_\d+\/opt_1\/ti_[^/]+\/temas\.html[^"']*)["'][^>]*>([\s\S]*?)<\/a>/gi,mm;
+  while((mm=om.exec(gh)))addOp(mm[2],mm[1]);
   if(!ops.length){
-   var om=/\[([^\]]+)\]\(([^)]+)\)/g,mm;
-   while((mm=om.exec(gh)))addOp(mm[1],mm[2]);
+   var omd=/\[([^\]]+)\]\(([^)]+\/estadisticas\/tema_\d+\/opt_1\/ti_[^/]+\/temas\.html[^)]*)\)/gi;
+   while((mm=omd.exec(gh)))addOp(mm[1],mm[2]);
   }
   ops.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});g.operations=ops;
  }
- state.eustatTree=groups;
- return groups;
+ state.eustatTree=groups;return groups;
 }
 function eustatNormText(s){return String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g," ").trim()}
 function eustatOperationScore(tableLabel,operationLabel){
