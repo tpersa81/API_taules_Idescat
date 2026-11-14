@@ -690,7 +690,7 @@ async function icelandEnglishRootLabel(label){
  };
  return m[n]||s;
 }
-async function loadStats(){
+async async function loadStats(){
  var loadToken=state.requestToken,loadProvider=state.provider,loadPreset=state.pxPreset;
  state.swedenPath=[];state.swedenV2Table=false;state.norwayPath=[];state.norwayCatalog=[];state.norwayRootItems=[];
  setProviderUI();state.stats=[];state.selected.stat="";fill($("stat"),[]);$("stat").disabled=true;
