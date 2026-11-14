@@ -741,6 +741,7 @@ else out=a(await fetchJson(c.base)).map(function(x){var id=String(f(x,"id","dbid
  if(state.provider==="eurostat"){hideStatSelector(true);await eurostatAddRootLevel()}
  else if(state.provider==="idescat"){hideStatSelector(true);recursiveProxyStart("idescat")}
  else if(state.pxPreset==="eustat"){hideStatSelector(true);recursiveProxyStart("eustat")}
+ else if(state.pxPreset==="unece"){hideStatSelector(true);addUniversalRootLevel(out,"Nivell 1",async function(v){state.selected.stat=v;await pxRecursiveSelectRoot(v)})}
  else if(state.provider!=="ine"){hideStatSelector(false)}
  var initial=new URLSearchParams(location.search).get("stat")||"";
  if(state.provider!=="ine"&&state.provider!=="eurostat"&&initial&&[].slice.call($("stat").options).some(function(o){return o.value===initial})){$("stat").value=initial;await onStatChange()}
