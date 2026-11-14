@@ -465,14 +465,13 @@ async function ineLoadTables(op){
  var apiOp=ineFindOperation(op);
  if(!apiOp)throw new Error("INE: no s'ha pogut identificar l'operació a Tempus3.");
 
- // Per a les operacions de Resultados, INEbase és la font de navegació estructural.
- if(/(?:[?&])menu=resultados(?:&|$)/i.test(String(op&&op.href||""))){
-  try{
-   var resultUrl=ineAbsoluteUrl(op&&op.href),ru0=new URL(resultUrl);ru0.searchParams.set("menu","resultados");
-   var resultItems=await ineLoadBaseLevel(ru0.href);
-   if(resultItems.length)return {operation:apiOp,tree:{label:"Resultats",sections:resultItems}};
-  }catch(e){}
- }
+ // Per a les operacions d'INE, Resultados d'INEbase és la font de navegació
+ // estructural preferent. Si no hi ha estructura de resultats, continuem amb Tempus3.
+ try{
+  var resultUrl=ineAbsoluteUrl(op&&op.href),ru0=new URL(resultUrl);ru0.searchParams.set("menu","resultados");
+  var resultItems=await ineLoadBaseLevel(ru0.href);
+  if(resultItems.length)return {operation:apiOp,tree:{label:"Resultats",sections:resultItems}};
+ }catch(e){}
 
  // Primer intentem sempre Tempus3. Si l'operació té taules en Tempus3,
  // aquest és el flux preferent i no entrem a la navegació d'INEbase.
@@ -768,7 +767,7 @@ else out=a(await fetchJson(c.base)).map(function(x){var id=String(f(x,"id","dbid
  if(state.provider==="eurostat"){hideStatSelector(true);await eurostatAddRootLevel()}
  else if(state.provider==="idescat"){hideStatSelector(true);recursiveProxyStart("idescat")}
  else if(state.pxPreset==="eustat"){hideStatSelector(true);recursiveProxyStart("eustat")}
- else if(state.pxPreset==="unece"){hideStatSelector(true);addUniversalRootLevel(out,"Nivell 1",async function(v){state.selected.stat=v;await pxRecursiveSelectRoot(v)})}
+ else if(state.pxPreset==="unece"){hideStatSelector(true);addUniversalRootLevel(out,"Grup temàtic",async function(v){state.selected.stat=v;await pxRecursiveSelectRoot(v)})}
  else if(state.provider!=="ine"){hideStatSelector(false)}
  var initial=new URLSearchParams(location.search).get("stat")||"";
  if(state.provider!=="ine"&&state.provider!=="eurostat"&&initial&&[].slice.call($("stat").options).some(function(o){return o.value===initial})){$("stat").value=initial;await onStatChange()}
