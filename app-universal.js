@@ -942,7 +942,7 @@ async function pxRecursiveLoadTable(item){
  state.selected.table=tableId;state.selected.node=tableId;state.selected.cross=tableId;state.pxPath=path.slice();state.metadata=ds;
  if(state.pxPreset==="finland")state.finlandTableUrl=url;
  renderMetadata(ds);$("tableInfo").hidden=false;
- $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||raw.label||tableId)+"<span class="path">"+esc(url)+"</span>";
+ $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||raw.label||tableId)+"<span class=\"path\">"+esc(url)+"</span>";
  $("query").disabled=false;
 }
 function pxRecursiveAddLevel(children,index){
