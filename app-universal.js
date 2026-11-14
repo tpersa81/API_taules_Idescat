@@ -799,48 +799,39 @@ async function norwayLoadV2Catalog(){
  var roots=new Map();
  state.norwayCatalog.forEach(function(t){
   (t.paths||[]).forEach(function(path){
-   if(!Array.isArray(path))return;
-   var p=path.map(function(x){return{id:String(f(x,"id","code","path")).trim(),label:String(f(x,"label","text","name","title")||f(x,"id","code","path")).trim()}}).filter(function(x){return x.id});
+   var raw=Array.isArray(path)?path:(path&&Array.isArray(path.path)?path.path:(path&&Array.isArray(path.elements)?path.elements:[path]));
+   var p=(raw||[]).map(function(x){return{id:String(f(x,"id","code","path")).trim(),label:String(f(x,"label","text","name","title")||f(x,"id","code","path")).trim()}}).filter(function(x){return x.id});
    if(!p.length)return;
-   var r=p[0];if(!roots.has(r.id))roots.set(r.id,{id:r.id,label:r.label,type:"l",path:p.map(function(x){return x.id})});
+   var r=p[0];if(!roots.has(r.id))roots.set(r.id,{id:r.id,label:r.label,type:"l",path:[r.id]});
   });
  });
  state.norwayRootItems=Array.from(roots.values());
+function norwayCatalogPath(t){
+ var paths=t&&t.paths||[];
+ for(var j=0;j<paths.length;j++){
+  var path=paths[j],raw=Array.isArray(path)?path:(path&&Array.isArray(path.path)?path.path:(path&&Array.isArray(path.elements)?path.elements:[path]));
+  var p=(raw||[]).map(function(x){return{id:String(f(x,"id","code","path")).trim(),label:String(f(x,"label","text","name","title")||f(x,"id","code","path")).trim()}}).filter(function(x){return x.id});
+  if(p.length)return p;
+ }
+ return [];
 }
 function norwayCatalogChildren(path){
  var p=(path||[]).slice(),out=new Map();
  state.norwayCatalog.forEach(function(t){
-  (t.paths||[]).forEach(function(path){
-   if(!Array.isArray(path))return;
-   var a1=path.map(function(x){return{id:String(f(x,"id","code","path")).trim(),label:String(f(x,"label","text","name","title")||f(x,"id","code","path")).trim()}}).filter(function(x){return x.id});
-   if(a1.length<=p.length)return;
-   for(var i=0;i<p.length;i++)if(a1[i].id!==p[i])return;
-   var x=a1[p.length],key=x.id;
-   if(!out.has(key))out.set(key,{id:key,label:x.label,type:"l",path:p.concat([key])});
-  });
-  (t.paths||[]).forEach(function(path){
-   if(!Array.isArray(path))return;
-   var a1=path.map(function(x){return{id:String(f(x,"id","code","path")).trim(),label:String(f(x,"label","text","name","title")||f(x,"id","code","path")).trim()}}).filter(function(x){return x.id});
-   if(a1.length!==p.length)return;
-   for(var i=0;i<p.length;i++)if(a1[i].id!==p[i])return;
-   if(String(t.id)===String(p[p.length-1])&&!out.has(t.id))out.set(t.id,{id:t.id,label:t.label,type:"t",path:p.slice(),tableId:t.id});
-  });
+  var a1=norwayCatalogPath(t);
+  if(a1.length===p.length){
+   var same=true;for(var i=0;i<p.length;i++)if(a1[i].id!==p[i])same=false;
+   if(same)out.set(t.id,{id:t.id,label:t.label,type:"t",path:p.slice(),tableId:t.id});
+   return;
+  }
+  if(a1.length<=p.length)return;
+  for(var i=0;i<p.length;i++)if(a1[i].id!==p[i])return;
+  var x=a1[p.length],key=x.id;
+  if(!out.has(key))out.set(key,{id:key,label:x.label,type:"l",path:p.concat([key])});
  });
- var result=Array.from(out.values());
- var exact=result.find(function(x){return x.type==="t"});
- if(!exact){
-  state.norwayCatalog.forEach(function(t){
-   (t.paths||[]).forEach(function(path){
-    if(!Array.isArray(path))return;
-    var ids=path.map(function(x){return String(f(x,"id","code","path")).trim()}).filter(Boolean);
-    if(ids.length!==p.length)return;
-    for(var i=0;i<p.length;i++)if(ids[i]!==p[i])return;
-    if(String(t.id)===String(p[p.length-1])&&!out.has(t.id))out.set(t.id,{id:t.id,label:t.label,type:"t",path:p.slice(),tableId:t.id});
-   });
-  });
- }
  return Array.from(out.values());
 }
+
 function norwayNavUrl(path){
  var p=(path||[]).slice();
  return "https://data.ssb.no/api/v0/en/table/"+p.map(function(x){return encodeURIComponent(String(x))}).join("/");
