@@ -632,36 +632,52 @@ function recursiveProxyClearFrom(index){
 }
 function recursiveProxyStart(kind){
  var box=$("eurostatLevels");if(!box)return;
- box.innerHTML="";box.hidden=false;box.style.display="grid";
  var defs=kind==="idescat"
   ?[{id:"stat",label:"Estadística"},{id:"concept",label:"Tema"},{id:"cross",label:"Encreuament"},{id:"node",label:"Entrada"},{id:"table",label:"Taula"},{id:"geo",label:"Geografia"}]
   :[{id:"stat",label:"Tema"},{id:"concept",label:"Operació"},{id:"cross",label:"Taula"}];
- async function add(index){
-  if(index>=defs.length)return;
-  var orig=$(defs[index].id);if(!orig)return;
-  var opts=Array.from(orig.options||[]).filter(function(o){return o.value!==""});
-  if(!opts.length)return;
-  recursiveProxyClearFrom(index);
-  var lab=document.createElement("label");
-  lab.dataset.recursiveProxy=String(index);
-  lab.style.display="flex";lab.style.flexDirection="column";lab.style.alignItems="stretch";
-  lab.appendChild(document.createTextNode(defs[index].label+" "));
-  var sel=document.createElement("select");sel.appendChild(new Option("— Selecciona —",""));
-  opts.forEach(function(o){sel.appendChild(new Option(o.textContent,o.value))});
-  if(orig.value&&opts.some(function(o){return o.value===orig.value}))sel.value=orig.value;
-  lab.appendChild(sel);box.appendChild(lab);
-  sel.onchange=async function(){
-   if(!sel.value)return;
-   recursiveProxyClearFrom(index+1);
-   orig.value=sel.value;
-   try{
-    if(typeof orig.onchange==="function")await orig.onchange();
-    await add(index+1);
-   }catch(e){status(e&&e.message?String(e.message):String(e),"error")}
-  };
+ function optionsFor(id){
+  var orig=$(id);return orig?Array.from(orig.options||[]).filter(function(o){return o.value!==""}):[];
  }
- add(0);
+ function draw(level){
+  box.innerHTML="";box.hidden=false;box.style.display="grid";
+  for(var i=0;i<=level&&i<defs.length;i++){
+   var def=defs[i],orig=$(def.id),opts=optionsFor(def.id);if(!orig||!opts.length)break;
+   var lab=document.createElement("label");lab.dataset.recursiveProxy=String(i);
+   lab.style.display="flex";lab.style.flexDirection="column";lab.style.alignItems="stretch";
+   lab.appendChild(document.createTextNode(def.label+" "));
+   var sel=document.createElement("select");sel.appendChild(new Option("— Selecciona —",""));
+   opts.forEach(function(o){sel.appendChild(new Option(o.textContent,o.value))});
+   if(orig.value&&opts.some(function(o){return o.value===orig.value}))sel.value=orig.value;
+   lab.appendChild(sel);box.appendChild(lab);
+   (function(index,original,proxy){
+    proxy.onchange=async function(){
+     if(!proxy.value)return;
+     original.value=proxy.value;
+     try{
+      await original.onchange();
+      var last=index;
+      for(var j=index+1;j<defs.length;j++){
+       var oo=$(defs[j].id),op=optionsFor(defs[j].id);
+       if(!oo||!op.length)break;
+       last=j;
+       if(!oo.value)break;
+      }
+      draw(last);
+     }catch(e){status(e&&e.message?String(e.message):String(e),"error")}
+    };
+   })(i,orig,sel);
+  }
+ }
+ var highest=0;
+ for(var k=0;k<defs.length;k++){
+  var o=$(defs[k].id),opts=optionsFor(defs[k].id);
+  if(!o||!opts.length)break;
+  highest=k;
+  if(!o.value)break;
+ }
+ draw(highest);
 }
+
 function setProviderUI(){setLabels();var isEuro=state.provider==="eurostat",isIne=state.provider==="ine",isSweden=state.provider==="pxweb"&&state.pxPreset==="sweden",isFinland=state.provider==="pxweb"&&state.pxPreset==="finland",isIceland=state.provider==="pxweb"&&state.pxPreset==="iceland",isNorway=state.provider==="pxweb"&&state.pxPreset==="norway",isEustat=state.provider==="pxweb"&&state.pxPreset==="eustat",isFlatPx=state.provider==="pxweb"&&isEustat,sl=null,otherBox=$("otherProviderWrap");if(otherBox)otherBox.hidden=!$("provider")||$("provider").value!=="other";var fixedGrid=document.querySelector("#step2>.grid"),euroBox=$("eurostatLevels");if(fixedGrid){fixedGrid.hidden=false;fixedGrid.style.display="";if(isSweden||isFinland||isIceland){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}}if(euroBox)euroBox.hidden=!(isEuro||isSweden||isFinland||isIceland||isNorway||isIne||state.provider==="idescat"||isEustat);if((isEuro||isIne)&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isEustat&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i<3?"":"none"});if(fixedGrid.querySelector("label:nth-child(2)"))fixedGrid.querySelector("label:nth-child(2)").firstChild.textContent="Operació ";if(fixedGrid.querySelector("label:nth-child(3)"))fixedGrid.querySelector("label:nth-child(3)").firstChild.textContent="Taula "}else if(isNorway&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isFlatPx&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}else if(fixedGrid&&!isSweden&&!isFinland&&!isIceland){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display=""})}if(fixedGrid&&(state.provider==="idescat"||isEustat)){fixedGrid.hidden=true;fixedGrid.style.display="none"}var tl=$("table")&&$("table").parentElement,gl=$("geo")&&$("geo").parentElement;if(tl)tl.style.display=(isEuro||isIne||isFlatPx||isNorway||isSweden||isFinland||isIceland)?"none":"";if(gl)gl.style.display=(isEuro||isIne||isFlatPx||isNorway||isSweden||isFinland||isIceland)?"none":"";$("docLink").href=provider().doc;var sel=state.provider==="pxweb"?"other":state.provider;if($("provider")&&[].slice.call($("provider").options).some(function(o){return o.value===sel}))$("provider").value=sel;if($("otherProvider")&&state.provider==="pxweb")$("otherProvider").value="pxweb:"+state.pxPreset}
 async function loadStats(){
  var loadToken=state.requestToken,loadProvider=state.provider,loadPreset=state.pxPreset;
