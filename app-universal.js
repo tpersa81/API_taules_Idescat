@@ -962,7 +962,7 @@ function pxRecursiveAddLevel(children,index){
   Array.from(box.querySelectorAll("label")).forEach(function(l){if(Number(l.dataset.eurostatLevel)>index)l.remove()});
   if(pxRecursiveTableItems([item]).length){await pxRecursiveLoadTable(item);return}
   pxRecursiveAddLevel(await pxRecursiveChildren(item.path),index+1);
- }catch(e){status(e&&e.message?e.message:String(e),"error")}};
+ }catch(e){var em=e&&e.message?e.message:String(e),st=e&&e.stack?String(e.stack).split("\n").find(function(x){return /app-universal\\.js/.test(x)}):"";status(em+(st?" · "+st.trim():""),"error")}};
  if(list.length===1){
   var only=list[0];
   if(only&&only.id){
