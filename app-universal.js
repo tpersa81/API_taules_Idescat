@@ -682,7 +682,7 @@ function recursiveProxyStart(kind){
  var box=$("eurostatLevels");if(!box)return;
  var defs=kind==="idescat"
   ?[{id:"stat",label:"Operació estadística"},{id:"concept",label:"Tema"},{id:"cross",label:"Encreuament"},{id:"node",label:"Entrada"},{id:"table",label:"Taula"},{id:"geo",label:"Geografia"}]
-  :[{id:"stat",label:"Tema"},{id:"concept",label:"Operació"},{id:"cross",label:"Taula"}];
+  :[{id:"stat",label:"Tema"},{id:"concept",label:"Operació estadística"},{id:"cross",label:"Taula"}];
  function optionsFor(id){
   var orig=$(id);return orig?Array.from(orig.options||[]).filter(function(o){return o.value!==""}):[];
  }
@@ -2279,6 +2279,7 @@ function temporalCategoryCode(c){
 }
 function previousYearPeriodCode(code){
  var v=String(code||"").trim();
+ if(/^\d+$/.test(v))return String(Math.max(0,Number(v)-4));
  if(/^\d{4}[MQSBDW]\d{1,3}$/i.test(v)||/^\d{4}-(?:M|Q|S|B|W|D)\d{1,3}$/i.test(v)||/^\d{4}-\d{2}(?:-\d{2})?$/.test(v))return v.replace(/^(\d{4})/,function(_,y){return String(Number(y)-1)});
  var m=v.match(/^(.*?)(\d{4})(.*)$/);
  return m?m[1]+String(Number(m[2])-1)+m[3]:""
