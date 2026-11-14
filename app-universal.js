@@ -608,11 +608,11 @@ function collection(d){
  return[];
 }
 function clearBelow(keepStat){state.pivot={rows:[],columns:[]};if(state.provider==="ine")ineClearNavigation();if(!keepStat)fill($("stat"),[]);["concept","cross","node","table","geo"].forEach(resetSelect);eurostatClearLevels();state.metadata=null;state.lastData=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;$("resultCount").textContent="";if($("temporalOrderWrap"))$("temporalOrderWrap").hidden=true}
-function setLabels(){var p=state.provider,ls=p==="idescat"?["Organisme","Estadística","Tema","Encreuament","Entrada","Taula","Geografia"]:p==="pxweb"&&state.pxPreset==="sweden"?["Organisme","Tema","Nivell 2","Nivell 3","Taula","Geografia"]:p==="pxweb"?["Organisme","Nivell 1","Nivell 2","Nivell 3","Taula","Geografia"]:p==="ine"?["Organisme","Nivell de navegació","","","","",""]:["Organisme","Tipus de dades","Tema","Subtema","Estadística","—"];var l=document.querySelectorAll("#step2 label");document.querySelector("#step1 label:nth-child(1)").firstChild.textContent=ls[0]+" ";l.forEach(function(x,i){x.firstChild.textContent=ls[i+1]+" "})}
-function setProviderUI(){setLabels();var isEuro=state.provider==="eurostat",isIne=state.provider==="ine",isSweden=state.provider==="pxweb"&&state.pxPreset==="sweden",isEustat=state.provider==="pxweb"&&state.pxPreset==="eustat",isFlatPx=state.provider==="pxweb"&&(state.pxPreset==="eustat"||state.pxPreset==="norway"),sl=document.querySelector("#step1 .grid label:nth-child(2)");if(sl)sl.firstChild.textContent=(isEuro?"Tipus de dades":isEustat?"Tema":isFlatPx?"Taula":"Estadística")+" ";var fixedGrid=document.querySelector("#step2>.grid"),euroBox=$("eurostatLevels");if(fixedGrid)fixedGrid.style.display="";if(euroBox)euroBox.hidden=!(isEuro||isSweden||isIne);if((isEuro||isIne)&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isEustat&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i<3?"":"none"});if(fixedGrid.querySelector("label:nth-child(2)"))fixedGrid.querySelector("label:nth-child(2)").firstChild.textContent="Operació ";if(fixedGrid.querySelector("label:nth-child(3)"))fixedGrid.querySelector("label:nth-child(3)").firstChild.textContent="Taula "}else if(isFlatPx&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}else if(fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display=""})}var tl=$("table")&&$("table").parentElement,gl=$("geo")&&$("geo").parentElement;if(tl)tl.style.display=(isEuro||isIne||isFlatPx)?"none":"";if(gl)gl.style.display=(isEuro||isIne||isFlatPx)?"none":"";$("docLink").href=provider().doc;var sel=state.provider==="pxweb"?"pxweb:"+state.pxPreset:state.provider;if($("provider")&&[].slice.call($("provider").options).some(function(o){return o.value===sel}))$("provider").value=sel}
+function setLabels(){var p=state.provider,ls=p==="idescat"?["Organisme","Estadística","Tema","Encreuament","Entrada","Taula","Geografia"]:p==="pxweb"&&state.pxPreset==="sweden"?["Organisme","Tema","Nivell 2","Nivell 3","Taula","Geografia"]:p==="pxweb"&&state.pxPreset==="norway"?["Organisme","Tema","Nivell 2","Nivell 3","Nivell 4","Geografia"]:p==="pxweb"?["Organisme","Nivell 1","Nivell 2","Nivell 3","Taula","Geografia"]:p==="ine"?["Organisme","Nivell de navegació","","","","",""]:["Organisme","Tipus de dades","Tema","Subtema","Estadística","—"];var l=document.querySelectorAll("#step2 label");document.querySelector("#step1 label:nth-child(1)").firstChild.textContent=ls[0]+" ";l.forEach(function(x,i){x.firstChild.textContent=ls[i+1]+" "})}
+function setProviderUI(){setLabels();var isEuro=state.provider==="eurostat",isIne=state.provider==="ine",isSweden=state.provider==="pxweb"&&state.pxPreset==="sweden",isNorway=state.provider==="pxweb"&&state.pxPreset==="norway",isEustat=state.provider==="pxweb"&&state.pxPreset==="eustat",isFlatPx=state.provider==="pxweb"&&isEustat,sl=document.querySelector("#step1 .grid label:nth-child(2)");if(sl)sl.firstChild.textContent=(isEuro?"Tipus de dades":isEustat||isNorway?"Tema":isFlatPx?"Taula":"Estadística")+" ";var fixedGrid=document.querySelector("#step2>.grid"),euroBox=$("eurostatLevels");if(fixedGrid)fixedGrid.style.display="";if(euroBox)euroBox.hidden=!(isEuro||isSweden||isNorway||isIne);if((isEuro||isIne)&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isEustat&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i<3?"":"none"});if(fixedGrid.querySelector("label:nth-child(2)"))fixedGrid.querySelector("label:nth-child(2)").firstChild.textContent="Operació ";if(fixedGrid.querySelector("label:nth-child(3)"))fixedGrid.querySelector("label:nth-child(3)").firstChild.textContent="Taula "}else if(isNorway&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isFlatPx&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}else if(fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display=""})}var tl=$("table")&&$("table").parentElement,gl=$("geo")&&$("geo").parentElement;if(tl)tl.style.display=(isEuro||isIne||isFlatPx||isNorway)?"none":"";if(gl)gl.style.display=(isEuro||isIne||isFlatPx||isNorway)?"none":"";$("docLink").href=provider().doc;var sel=state.provider==="pxweb"?"pxweb:"+state.pxPreset:state.provider;if($("provider")&&[].slice.call($("provider").options).some(function(o){return o.value===sel}))$("provider").value=sel}
 async function loadStats(){
  var loadToken=state.requestToken,loadProvider=state.provider,loadPreset=state.pxPreset;
- state.swedenPath=[];state.swedenV2Table=false;
+ state.swedenPath=[];state.swedenV2Table=false;state.norwayPath=[];
  setProviderUI();state.stats=[];state.selected.stat="";fill($("stat"),[]);$("stat").disabled=true;
  // INE: mostra la navegació jeràrquica abans de consultar Tempus3.
  if(state.provider==="ine"){
@@ -648,7 +648,7 @@ async function loadStats(){
  await eustatLoadOperationTree();
  out=state.eustatGroups.map(function(x){return{value:x.id,label:x.label}});
 }
- else if(state.pxPreset==="norway"){var noAll=[],noPage=1,noSize=500;for(var ng=0;ng<20;ng++,noPage++){var nu=c.base+"/tables?pageNumber="+noPage+"&pageSize="+noSize+"&lang=en",nd=await fetchJson(nu),nr=Array.isArray(nd&&nd.tables)?nd.tables:a(nd);noAll=noAll.concat(nr);var np=nd&&nd.page||nd&&nd.pagination||{},nt=Number(f(np,"totalPages","pages","pageCount"));if(nt&&noPage>=nt)break;if(!nr.length||nr.length<noSize)break}out=noAll.map(function(x){var id=String(f(x,"id","tableId","code","tableCode")).trim();return{value:id,label:id+" · "+String(f(x,"label","title","text","name")||id).trim()}}).filter(function(x){return x.value})}
+ else if(state.pxPreset==="norway"){var noRoots=await norwayV0Children([]);out=noRoots.map(function(x){return{value:x.id,label:x.label}}).filter(function(x){return x.value})}
  else if(state.pxPreset==="finland"){
   var finCatalog=null;
   try{finCatalog=await fetchJson(c.base)}
@@ -777,9 +777,84 @@ async function onStatChange(){
  ["concept","cross","node","table","geo"].forEach(resetSelect);
  var eo=await eustatLoadOperations(state.selected.stat);
  if(eo.length===1){$("concept").value=eo[0].id;await $("concept").onchange()}
-}else if(state.pxPreset==="norway"){await pxFlatSelectTable(state.selected.stat)}
+}else if(state.pxPreset==="norway"){await norwaySelectRoot(state.selected.stat)}
   else{state.pxPath=[state.selected.stat];await pxChildren(state.pxPath,"concept")}
  }catch(e){status(e.message,"error")}finally{busy(false)}
+}
+function norwayNavUrl(path){
+ var p=(path||[]).slice();
+ return "https://data.ssb.no/api/v0/en/table/"+p.map(function(x){return encodeURIComponent(String(x))}).join("/");
+}
+async function norwayV0Children(path){
+ var raw=await fetchJson(norwayNavUrl(path||[]));
+ return a(raw).map(function(x){
+  var id=String(f(x,"id","code","dbid","path")).trim();
+  var type=String(f(x,"type","class")).trim().toLowerCase();
+  return{id:id,label:String(f(x,"text","label","name","title")||id).trim(),type:type,path:(path||[]).concat([id])};
+ }).filter(function(x){return x.id});
+}
+function norwayClearLevels(){
+ var box=$("eurostatLevels");
+ if(box){box.innerHTML="";box.hidden=true}
+ state.norwayPath=[];
+}
+function norwayLevelLabel(index,list){
+ return list&&list.length&&list.every(function(x){return x.type==="t"||x.type==="table"||pxTable(x)})?"Taula":"Nivell "+(index+1);
+}
+async function norwaySelectRoot(rootCode){
+ norwayClearLevels();
+ state.norwayPath=[rootCode];
+ var children=await norwayV0Children([rootCode]);
+ state.pxItems.set("norwayLevel0",children);
+ if(children.length===1&&(children[0].type==="t"||children[0].type==="table"||pxTable(children[0]))){
+  await pxFlatSelectTable(children[0].id);
+  return;
+ }
+ norwayAddLevel(children,0);
+}
+function norwayAddLevel(children,index){
+ var box=$("eurostatLevels");if(!box)return;
+ var list=(children||[]).filter(function(x){return x&&x.id&&x.label});
+ if(!list.length)return;
+ box.hidden=false;box.style.display="grid";
+ var lab=document.createElement("label");
+ lab.dataset.norwayLevel=String(index);
+ lab.textContent=norwayLevelLabel(index,list)+" ";
+ var sel=document.createElement("select");
+ sel.id="norwayLevel"+index;
+ sel.appendChild(new Option("— Selecciona —",""));
+ list.forEach(function(x){sel.appendChild(new Option(x.label,x.id))});
+ lab.appendChild(sel);box.appendChild(lab);
+ state.pxItems.set("norwayLevel"+index,list);
+ sel.onchange=async function(){
+  if(!sel.value)return;
+  try{await norwaySelectDynamic(index,sel.value)}catch(e){status("Statistics Norway: "+(e&&e.message?e.message:String(e)),"error")}
+ };
+ if(list.length===1){
+  sel.value=list[0].id;
+  norwaySelectDynamic(index,list[0].id).catch(function(e){status("Statistics Norway: "+(e&&e.message?e.message:String(e)),"error")});
+ }
+}
+async function norwaySelectDynamic(index,val){
+ var items=state.pxItems.get("norwayLevel"+index)||[];
+ var item=items.find(function(x){return String(x.id)===String(val)});
+ if(!item)throw new Error("No s'ha trobat l'element seleccionat de Statistics Norway.");
+ var box=$("eurostatLevels");
+ if(box)Array.from(box.querySelectorAll("label")).forEach(function(l){
+  if(Number(l.dataset.norwayLevel)>index)l.remove();
+ });
+ state.norwayPath=(item.path||[]).slice();
+ state.metadata=null;$("query").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;
+ $("filters").innerHTML="";state.filters.clear();
+ var isTable=item.type==="t"||item.type==="table"||pxTable(item);
+ if(isTable){
+  state.selected.table=item.id;state.selected.node=item.id;
+  await pxFlatSelectTable(item.id);
+  return;
+ }
+ var next=await norwayV0Children(item.path||state.norwayPath);
+ state.pxItems.set("norwayLevel"+(index+1),next);
+ norwayAddLevel(next,index+1);
 }
 function swedenClearLevels(){var box=$("eurostatLevels");if(box){box.innerHTML="";box.hidden=true}}
 function swedenLevelLabel(index,list){return list&&list.length&&list.every(function(x){return x.type==="table"})?"Taula":"Nivell "+(index+1)}
