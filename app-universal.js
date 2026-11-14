@@ -2669,8 +2669,57 @@ function setResultPageSize(size){
  renderResults(ds);
 }
 
+var EXCEL_MAX_ROWS=1048576;
+function pivotRowCount(){
+ if(!state.lastData)return 0;
+ var z=resultRows(state.lastData),rowIds=(state.pivot&&state.pivot.rows)||[],colIds=(state.pivot&&state.pivot.columns)||[],all=[].concat(rowIds,colIds),avail=pivotDims();
+ if(!all.length||all.length!==avail.length||new Set(all).size!==all.length)return 0;
+ return pivotComb(z.rows,rowIds).length;
+}
+function xlsxExportMode(){
+ if(!state.lastData)return "none";
+ var rawCount=resultRows(state.lastData).rows.length;
+ if(rawCount<=EXCEL_MAX_ROWS)return "data";
+ var pr=pivotRowCount();
+ return pr>0&&pr<=EXCEL_MAX_ROWS?"pivot":"none";
+}
+function updateXlsxAvailability(){
+ var b=$("exportXlsx");if(!b)return;
+ var mode=xlsxExportMode();
+ b.disabled=mode==="none";
+ b.textContent=mode==="pivot"?"Exporta XLSX (taula construïda)":"Exporta XLSX";
+ b.title=mode==="none"&&state.lastData&&resultRows(state.lastData).rows.length>EXCEL_MAX_ROWS
+  ?"La consulta supera el límit de 1.048.576 files d'Excel. Construeix una taula amb Files i genera-la abans d'exportar a XLSX."
+  :mode==="pivot"
+   ?"La consulta supera el límit d'Excel; s'exportarà només la Taula construïda."
+   :"";
+}
 function exportCSV(){if(!state.lastData)return;var z=resultRows(state.lastData),h=z.dims.map(function(d){return[d.id+"_Codi",d.id+"_Etiqueta"]}).reduce(function(x,y){return x.concat(y)},[]).concat(["Valor"]),lines=[h].concat(z.rows.map(function(r){return z.dims.map(function(d){return[r[d.id].code,r[d.id].label]}).reduce(function(x,y){return x.concat(y)},[]).concat([r.value==null?"":r.value])})).map(function(row){return row.map(function(v){return'"'+String(v).replace(/"/g,'""')+'"'}).join(";")});var b=new Blob(["\uFEFF"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=state.provider+"_consulta.csv";a.click()}
-function exportXLSX(){if(!state.lastData||typeof XLSX==="undefined")return;var z=resultRows(state.lastData),info=exportInfo(),headers=z.dims.map(function(d){return[d.id+"_Codi",d.id+"_Etiqueta"]}).reduce(function(a,b){return a.concat(b)},[]).concat(["Valor"]),out=[[info.tableName],[info.source],["URL: "+info.queryUrl],["Data de consulta: "+info.exportDate],[],headers];z.rows.forEach(function(r){out.push(z.dims.map(function(d){return[r[d.id].code,r[d.id].label]}).reduce(function(a,b){return a.concat(b)},[]).concat([r.value==null?"":r.value]))});var wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(out);ws["!autofilter"]={ref:XLSX.utils.encode_range({s:{r:5,c:0},e:{r:out.length-1,c:headers.length-1}})};ws["!merges"]=[];if(ws.A1)ws.A1.s={font:{bold:true}};XLSX.utils.book_append_sheet(wb,ws,"Dades");var po=pivotExport();if(po){var pw=XLSX.utils.aoa_to_sheet(po),hr=4;if(po.length>hr)pw["!autofilter"]={ref:XLSX.utils.encode_range({s:{r:hr,c:0},e:{r:po.length-1,c:(po[hr]||[]).length-1}})};pw["!merges"]=[];if(pw.A1)pw.A1.s={font:{bold:true}};XLSX.utils.book_append_sheet(wb,pw,"Taula construïda")}XLSX.writeFile(wb,state.provider+"_"+state.selected.table+"_"+state.selected.geo+".xlsx")}
+function exportXLSX(){
+ if(!state.lastData||typeof XLSX==="undefined")return;
+ var mode=xlsxExportMode();
+ if(mode==="none"){
+  status("La consulta supera el límit de 1.048.576 files d'Excel. Construeix una taula amb Files i genera-la abans d'exportar a XLSX.","error");
+  return;
+ }
+ var z=resultRows(state.lastData),info=exportInfo(),po=pivotExport(),wb=XLSX.utils.book_new();
+ if(mode==="data"){
+  var headers=z.dims.map(function(d){return[d.id+"_Codi",d.id+"_Etiqueta"]}).reduce(function(a,b){return a.concat(b)},[]).concat(["Valor"]),
+      out=[[info.tableName],[info.source],["URL: "+info.queryUrl],["Data de consulta: "+info.exportDate],[],headers];
+  z.rows.forEach(function(r){out.push(z.dims.map(function(d){return[r[d.id].code,r[d.id].label]}).reduce(function(a,b){return a.concat(b)},[]).concat([r.value==null?"":r.value]))});
+  var ws=XLSX.utils.aoa_to_sheet(out);
+  ws["!autofilter"]={ref:XLSX.utils.encode_range({s:{r:5,c:0},e:{r:out.length-1,c:headers.length-1}})};ws["!merges"]=[];
+  if(ws.A1)ws.A1.s={font:{bold:true}};XLSX.utils.book_append_sheet(wb,ws,"Dades");
+ }
+ if(po){
+  var pw=XLSX.utils.aoa_to_sheet(po),hr=4;
+  if(po.length>hr)pw["!autofilter"]={ref:XLSX.utils.encode_range({s:{r:hr,c:0},e:{r:po.length-1,c:(po[hr]||[]).length-1}})};
+  pw["!merges"]=[];if(pw.A1)pw.A1.s={font:{bold:true}};
+  XLSX.utils.book_append_sheet(wb,pw,"Taula construïda");
+ }
+ if(!wb.SheetNames.length)return;
+ XLSX.writeFile(wb,state.provider+"_"+state.selected.table+"_"+state.selected.geo+".xlsx");
+}
 
 function pivotLabel(d){return String(d&&d.label||d&&d.id||'')}
 function pivotDims(){return dims(state.lastData||{}).filter(function(d){return !(d.categories&&d.categories.length===1)})}
