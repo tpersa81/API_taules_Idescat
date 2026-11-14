@@ -921,10 +921,14 @@ function pxRecursiveTableItems(list){
  return (list||[]).filter(function(x){return x&&((String(x.type||"").toLowerCase()==="table")||String(x.type||"").toLowerCase()==="t"||x.tableId||/\\.px$/i.test(String(x.id||"")))});
 }
 async function pxRecursiveChildren(path){
- var raw=await fetchJson(pxUrl(path)),items=a(raw).map(function(x){
-  var id=String(f(x,"id","code","dbid","path")).trim(),type=String(f(x,"type","class")||"folder").trim().toLowerCase();
-  return{id:id,label:String(f(x,"text","label","name","title")||id).trim(),type:type,path:(path||[]).concat([id]),tableId:type==="t"||type==="table"||/\.px$/i.test(id)?id:""};
- }).filter(function(x){return x.id});
+ var raw=await fetchJson(pxUrl(path)),src=a(raw),items=[];
+ src.forEach(function(x){
+  if(!x||typeof x!=="object")return;
+  var id=String(f(x,"id","code","dbid","path")||"").trim();
+  if(!id)return;
+  var type=String(f(x,"type","class")||"folder").trim().toLowerCase();
+  items.push({id:id,label:String(f(x,"text","label","name","title")||id).trim(),type:type,path:(path||[]).concat([id]),tableId:type==="t"||type==="table"||/\.px$/i.test(id)?id:""});
+ });
  return items;
 }
 async function pxRecursiveLoadTable(item){
@@ -959,12 +963,26 @@ function pxRecursiveAddLevel(children,index){
   if(pxRecursiveTableItems([item]).length){await pxRecursiveLoadTable(item);return}
   pxRecursiveAddLevel(await pxRecursiveChildren(item.path),index+1);
  }catch(e){status(e&&e.message?e.message:String(e),"error")}};
- if(list.length===1){sel.value=list[0].id;sel.onchange()}
+ if(list.length===1){
+  var only=list[0];
+  if(only&&only.id){
+   sel.value=String(only.id);
+   Promise.resolve(sel.onchange()).catch(function(e){status(e&&e.message?e.message:String(e),"error")});
+  }
+ }
 }
 async function pxRecursiveSelectRoot(rootCode){
- pxRecursiveClearLevels();state.pxPath=[rootCode];
+ pxRecursiveClearLevels();
+ rootCode=String(rootCode||"").trim();
+ if(!rootCode)throw new Error("No s'ha pogut identificar el tema seleccionat.");
+ state.pxPath=[rootCode];
  var children=await pxRecursiveChildren([rootCode]);
- if(children.length===1&&pxRecursiveTableItems(children).length===1){await pxRecursiveLoadTable(children[0]);return}
+ if(children.length===1&&pxRecursiveTableItems(children).length===1){
+  var only=children[0];
+  if(!only||!only.id)throw new Error("La resposta de PxWeb conté una taula sense identificador.");
+  await pxRecursiveLoadTable(only);
+  return;
+ }
  pxRecursiveAddLevel(children,0);
 }
 function swedenClearLevels(){var box=$("eurostatLevels");if(box){box.innerHTML="";box.hidden=true}}
