@@ -2422,7 +2422,7 @@ function fmt(v,d){if(v==null||v==="")return"";var n=typeof v==="number"?v:Number
 function renderTemporalOrderControl(ds){
  var wrap=$("temporalOrderWrap"),sel=$("temporalOrder");
  if(!wrap||!sel)return;
- var hasTemporal=dims(ds||{}).some(function(d){return temporal(d)}),show=hasTemporal;
+ var hasTemporal=dims(ds||{}).some(function(d){return temporal(d)&&Array.isArray(d.categories)&&d.categories.length>1}),show=hasTemporal;
  wrap.hidden=!show;
  if(show)sel.value=state.temporalOrder;
 }
