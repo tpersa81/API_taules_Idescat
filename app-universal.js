@@ -911,7 +911,7 @@ async function norwaySelectDynamic(index,val){
 }
 function pxRecursiveClearLevels(){
  var box=$("eurostatLevels");if(box){box.innerHTML="";box.hidden=true}
- state.pxItems.forEach(function(v,k){if(/^pxRecursiveLevel\\d+$/.test(k))state.pxItems.delete(k)});
+ state.pxItems.forEach(function(v,k){if(/^pxRecursiveLevel\d+$/.test(k))state.pxItems.delete(k)});
 }
 function pxRecursiveLevelLabel(index,list){
  var isTable=list&&list.length&&list.every(function(x){return x&&((String(x.type||"").toLowerCase()==="table")||String(x.type||"").toLowerCase()==="t"||x.tableId||/\\.px$/i.test(String(x.id||"")))});
@@ -923,7 +923,7 @@ function pxRecursiveTableItems(list){
 async function pxRecursiveChildren(path){
  var raw=await fetchJson(pxUrl(path)),items=a(raw).map(function(x){
   var id=String(f(x,"id","code","dbid","path")).trim(),type=String(f(x,"type","class")||"folder").trim().toLowerCase();
-  return{id:id,label:String(f(x,"text","label","name","title")||id).trim(),type:type,path:(path||[]).concat([id]),tableId:type==="t"||type==="table"?id:""};
+  return{id:id,label:String(f(x,"text","label","name","title")||id).trim(),type:type,path:(path||[]).concat([id]),tableId:type==="t"||type==="table"||/\.px$/i.test(id)?id:""};
  }).filter(function(x){return x.id});
  return items;
 }
@@ -2350,7 +2350,7 @@ async function runQuery(){
      query.query.push({code:d.id,selection:{filter:"item",values:selected}});
     }
    });
-   var up=state.pxPreset==="eustat"?provider().base+"/"+encodeURIComponent(state.selected.table):state.pxPreset==="norway"?provider().base+"/tables/"+encodeURIComponent(state.selected.table)+"/data":state.pxPreset==="finland"&&state.finlandTableUrl?state.finlandTableUrl:finlandTableUrl(state.pxPath);
+   var up=state.pxPreset==="eustat"?provider().base+"/"+encodeURIComponent(state.selected.table):state.pxPreset==="norway"?provider().base+"/tables/"+encodeURIComponent(state.selected.table)+"/data":state.pxPreset==="finland"&&state.finlandTableUrl?state.finlandTableUrl:pxUrl(state.pxPath);
    if(state.pxPreset==="norway"){var nq=new URL(up);nq.searchParams.set("lang","en");nq.searchParams.set("outputFormat","json-stat2");dims(state.metadata).forEach(function(d){nq.searchParams.set("valueCodes["+d.id+"]",Array.from(state.filters.get(d.id)||[]).join(","))});ds=await fetchJson(nq.toString())}
    else if(state.pxPreset==="sweden"){
     ds=await swedenV2Query(query);
