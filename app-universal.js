@@ -439,86 +439,116 @@ async function ineLoadBaseLevel(pageUrl){
    byParent.get(p).children.push(x);
   });
   // Els noms dels grups (p. ex. "Resultados nacionales") no són enllaços amb
-  // capsel: són spans.title que agrupen els fills. Associem cada grup al
-  // títol de secció més proper que conté els seus enllaços fills, en lloc
-  // de confiar en l'ordre global de tots els .title (que inclou també els
-  // títols dels fills com "Enfoque por sectores").
+  // capsel: són spans.title que agrupen els fills. Associem cada grupo al
+  // títol de la secció (li) que conté els enllaços amb aquell padre.
   var padreTitle=new Map();
   try{
-   function nearestSectionTitle(el){
-    var node=el;
-    while(node&&node!==doc){
-     var prev=node.previousElementSibling;
-     while(prev){
-      if(prev.matches&&prev.matches("span.title, .title, span[class*='title']")){
-       var t=String(prev.textContent||"").replace(/\s+/g," ").trim();
-       if(t&&!/^Apartat\s+\d+$/i.test(t))return t;
-      }
-      var inner=prev.querySelector&&prev.querySelector("span.title, .title");
-      if(inner&&!prev.querySelector("a")){
-       var t2=String(inner.textContent||"").replace(/\s+/g," ").trim();
-       if(t2&&!/^Apartat\s+\d+$/i.test(t2))return t2;
-      }
-      prev=prev.previousElementSibling;
-     }
-     if(node.parentElement){
-      var p=node.parentElement;
-      var direct=null;
-      Array.from(p.children||[]).some(function(ch){
-       if(ch.matches&&ch.matches("span.title, .title, span[class*='title']")&&!ch.closest("a")){
-        direct=ch;return true;
-       }
-       return false;
-      });
-      if(direct){
-       var t3=String(direct.textContent||"").replace(/\s+/g," ").trim();
-       if(t3&&!/^Apartat\s+\d+$/i.test(t3))return t3;
-      }
-     }
-     node=node.parentElement;
+   // 1) Estructura real d'INEbase: <li><span class="title">SEC</span><ul>...<a href="?padre=X">
+   Array.from(doc.querySelectorAll("li")).forEach(function(li){
+    var titleEl=null;
+    Array.from(li.children||[]).forEach(function(ch){
+     if(titleEl)return;
+     if(ch.matches&&ch.matches("span.title, .title, span[class*='title']")&&!ch.closest("a"))titleEl=ch;
+    });
+    if(!titleEl){
+     // a vegades el title no és fill directe
+     var st=li.querySelector(":scope > span.title, :scope > .title");
+     if(st&&!st.closest("a"))titleEl=st;
     }
-    return "";
-   }
-   Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
-    var href=aEl.getAttribute("href")||"";
-    var abs;try{abs=new URL(href.replace(/&amp;/g,"&"),pageUrl).href}catch(e){return}
-    var u;try{u=new URL(abs)}catch(e2){return}
-    var padre=u.searchParams.get("padre")||"";
-    var capsel=u.searchParams.get("capsel")||"";
-    if(!padre||!capsel)return;
-    if(padreTitle.has(padre))return;
-    var title=nearestSectionTitle(aEl);
-    if(title)padreTitle.set(padre,title);
+    if(!titleEl)return;
+    var title=String(titleEl.textContent||"").replace(/\s+/g," ").trim();
+    if(!title||/^Apartat\s+\d+$/i.test(title))return;
+    // Tots els padre= dels enllaços d'aquest <li> (no de sub-seccions més profundes amb el seu propi title)
+    var padres=new Set();
+    Array.from(li.querySelectorAll("a[href]")).forEach(function(aEl){
+     // Si l'enllaç està sota un altre li que també té span.title propi, no el comptem aquí
+     var innerLi=aEl.closest("li");
+     while(innerLi&&innerLi!==li){
+      var hasOwn=false;
+      Array.from(innerLi.children||[]).forEach(function(ch){
+       if(ch.matches&&ch.matches("span.title, .title")&&!ch.closest("a"))hasOwn=true;
+      });
+      if(hasOwn)return;
+      innerLi=innerLi.parentElement&&innerLi.parentElement.closest("li");
+     }
+     var href=aEl.getAttribute("href")||"";
+     var abs;try{abs=new URL(href.replace(/&amp;/g,"&"),pageUrl).href}catch(e){return}
+     var u;try{u=new URL(abs)}catch(e2){return}
+     var padre=u.searchParams.get("padre")||"";
+     if(padre)padres.add(padre);
+    });
+    padres.forEach(function(p){if(!padreTitle.has(p))padreTitle.set(p,title)});
    });
   }catch(e){}
 
-  // Fallback per HTML alterat per proxies (markdown / text pla).
-  if(!padreTitle.size){
+  // 2) Fallback regex sobre l'HTML cru: cada span.title de secció + primer padre del bloc següent
+  if(padreTitle.size<groups.filter(function(x){return x.type==="capsel-group"}).length){
    try{
     var htmlStr=String(html||"");
-    var blockRe=/<span\s+class=["'][^"']*\btitle\b[^"']*["'][^>]*>([\s\S]*?)<\/span>([\s\S]{0,1200}?)(?=<span\s+class=["'][^"']*\btitle\b|$)/gi,bm;
-    while((bm=blockRe.exec(htmlStr))){
-     var blockTitle=String(bm[1]||"").replace(/<[^>]+>/g," ").replace(/&nbsp;/gi," ").replace(/&amp;/gi,"&").replace(/\s+/g," ").trim();
+    // Títols de secció que NO estan dins d'un <a ...>
+    var re=/<span\s+class=["'][^"']*\btitle\b[^"']*["'][^>]*>([\s\S]*?)<\/span>/gi,m,pos=0;
+    var sectionTitles=[];
+    while((m=re.exec(htmlStr))){
+     var before=htmlStr.slice(Math.max(0,m.index-40),m.index);
+     if(/<a\s[^>]*$/i.test(before)||/href\s*=\s*["'][^"']*$/i.test(before))continue; // title dins d'enllaç
+     var blockTitle=String(m[1]||"").replace(/<[^>]+>/g," ").replace(/&nbsp;/gi," ").replace(/&amp;/gi,"&").replace(/\s+/g," ").trim();
      if(!blockTitle||/^Apartat\s+\d+$/i.test(blockTitle))continue;
-     var chunk=bm[2]||"";
-     var padreMatch=chunk.match(/[?&]padre=(\d+)/i);
-     if(padreMatch&&!padreTitle.has(padreMatch[1]))padreTitle.set(padreMatch[1],blockTitle);
+     // Evita títols de fulla tipus "Enfoque por sectores" si immediatament després no hi ha ul amb diversos fills de secció
+     sectionTitles.push({title:blockTitle,index:m.index,end:m.index+m[0].length});
+    }
+    for(var si=0;si<sectionTitles.length;si++){
+     var start=sectionTitles[si].end;
+     var stop=si+1<sectionTitles.length?sectionTitles[si+1].index:htmlStr.length;
+     var chunk=htmlStr.slice(start,Math.min(stop,start+2000));
+     var padresIn=[];
+     var pm;var pre=/[?&]padre=(\d+)/gi;
+     while((pm=pre.exec(chunk))){
+      if(padresIn.indexOf(pm[1])<0)padresIn.push(pm[1]);
+     }
+     padresIn.forEach(function(p){
+      if(!padreTitle.has(p))padreTitle.set(p,sectionTitles[si].title);
+     });
     }
    }catch(e){}
   }
 
-  // Fallback markdown (proxies tipus jina).
-  if(!padreTitle.size){
+  // 3) Fallback per ordre: títols de secció en ordre de document ↔ grups en ordre d'aparició
+  if(true){
    try{
-    var lines=String(html||"").split(/\n+/),pending="";
-    lines.forEach(function(line){
-     var t=String(line||"").replace(/^\s*[\*\-]\s*/,"").replace(/\s+/g," ").trim();
-     if(/^Resultados\b/i.test(t)||/^Resultats\b/i.test(t)||/^National results\b/i.test(t)){
-      pending=t.replace(/\s*[|·-]\s*(?:Instituto Nacional de Estadística|INE).*$/i,"").trim();
-      return;
+    var orderedTitles=[];
+    Array.from(doc.querySelectorAll("span.title, .title")).forEach(function(el){
+     if(el.closest&&el.closest("a"))return;
+     var t=String(el.textContent||"").replace(/\s+/g," ").trim();
+     if(!t||/^Apartat\s+\d+$/i.test(t))return;
+     // Prefereix títols que semblen agrupadors de resultats
+     if(/^(Resultados|Resultats|National results)\b/i.test(t)||el.parentElement&&el.parentElement.querySelector("ul")){
+      if(orderedTitles.indexOf(t)<0)orderedTitles.push(t);
      }
-     var m=t.match(/[?&]padre=(\d+)/i)||t.match(/padre=(\d+)/i);
-     if(pending&&m&&!padreTitle.has(m[1])){padreTitle.set(m[1],pending);}
+    });
+    // Si no n'hi ha amb heurística, agafa spans.title que no estan en enllaços i tenen un ul germà/nebot
+    if(!orderedTitles.length){
+     Array.from(doc.querySelectorAll("li")).forEach(function(li){
+      var st=null;
+      Array.from(li.children||[]).some(function(ch){
+       if(ch.matches&&ch.matches("span.title, .title")&&!ch.closest("a")){st=ch;return true}
+       return false;
+      });
+      if(!st)return;
+      if(!li.querySelector("a[href*='padre='], a[href*='capsel=']"))return;
+      var t=String(st.textContent||"").replace(/\s+/g," ").trim();
+      if(t&&!/^Apartat\s+\d+$/i.test(t)&&orderedTitles.indexOf(t)<0)orderedTitles.push(t);
+     });
+    }
+    var groupOrder=[];
+    groups.forEach(function(g){
+     if(g.type==="capsel-group"&&groupOrder.indexOf(String(g.padre))<0)groupOrder.push(String(g.padre));
+    });
+    // Només omple els que encara falten, per ordre
+    var ti=0;
+    groupOrder.forEach(function(p){
+     if(padreTitle.has(p))return;
+     while(ti<orderedTitles.length&&Array.from(padreTitle.values()).indexOf(orderedTitles[ti])>=0)ti++;
+     if(ti<orderedTitles.length){padreTitle.set(p,orderedTitles[ti]);ti++}
     });
    }catch(e){}
   }
