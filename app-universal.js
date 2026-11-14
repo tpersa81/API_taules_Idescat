@@ -1141,7 +1141,23 @@ function pxToJsonStat(m){
  // {dataset:{...}}. També pot retornar les metadades clàssiques
  // {title,variables:[...]}. Normalitzem tots dos formats.
  var src=m&&m.dataset&&typeof m.dataset==="object"?m.dataset:m;
- if(src&&Array.isArray(src.id)&&src.dimension)return src;
+ if(src&&Array.isArray(src.id)&&src.dimension){
+  // Algunes respostes JSON-stat 1.2 d'Eustat poden no incloure "size".
+  // La mida es pot reconstruir directament a partir de category.index.
+  if(!Array.isArray(src.size)||src.size.length!==src.id.length){
+   var normalized=Object.assign({},src),sizes=[];
+   src.id.forEach(function(id){
+    var cat=src.dimension[id]&&src.dimension[id].category||{},n=0;
+    if(Array.isArray(cat.index))n=cat.index.length;
+    else if(cat.index&&typeof cat.index==="object")n=Object.keys(cat.index).length;
+    else if(cat.label&&typeof cat.label==="object")n=Object.keys(cat.label).length;
+    sizes.push(n);
+   });
+   normalized.size=sizes;
+   return normalized;
+  }
+  return src;
+ }
  var vars=Array.isArray(src&&src.variables)?src.variables:(Array.isArray(m&&m.variables)?m.variables:[]);
  var ds={version:"2.0",class:"dataset",label:String(src&&src.label||m&&m.title||m&&m.label||state.selected.table||""),id:[],size:[],dimension:{}};
  vars.forEach(function(v){
