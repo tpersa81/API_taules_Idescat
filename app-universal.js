@@ -185,11 +185,15 @@ async function ineExplainCapselItems(items){
   if(!/^Apartat\s+\d+$/i.test(String(x.label||""))||!x.url)return;
   try{
    var html=await fetchText(x.url,{cache:"no-store"}),doc=new DOMParser().parseFromString(html,"text/html");
-   var h=doc.querySelector("h1.inebase_titulo")||doc.querySelector("h1")||doc.querySelector("h2"),t=h?String(h.textContent||"").replace(/\s+/g," ").trim():"";
-   if(!t){var tt=doc.querySelector("title");if(tt)t=String(tt.textContent||"").replace(/\s+/g," ").trim()}
-   if(!t){var meta=doc.querySelector('meta[name="description"]');if(meta)t=String(meta.getAttribute("content")||"").replace(/\s+/g," ").trim()}
+   var candidates=[];
+   ["h1.inebase_titulo","h1","h2","h3",".inebase_titulo",".titulo","td.titulo","span.titulo"].forEach(function(q){
+    doc.querySelectorAll(q).forEach(function(el){var t=String(el.textContent||"").replace(/\s+/g," ").trim();if(t&&candidates.indexOf(t)<0)candidates.push(t)})
+   });
+   var tt=doc.querySelector("title");if(tt){var t0=String(tt.textContent||"").replace(/\s+/g," ").trim();if(t0)candidates.push(t0)}
+   var meta=doc.querySelector('meta[name="description"]');if(meta){var t1=String(meta.getAttribute("content")||"").replace(/\s+/g," ").trim();if(t1)candidates.push(t1)}
+   var t=candidates.find(function(v){return v&&!/^INEbase(?:\s*[|·:-]|$)/i.test(v)&&!/^(Apartat|Secci[oó]n)\s+\d+$/i.test(v)})||candidates.find(function(v){return !/^Apartat\s+\d+$/i.test(v)})||"";
    if(t)t=t.replace(/^INEbase\s*[-|·:]\s*/i,"").replace(/\s*[|·-]\s*(?:Instituto Nacional de Estadística|INE).*$/i,"").trim();
-   if(t)x.label=t||x.label;
+   if(t&&!/^Apartat\s+\d+$/i.test(t))x.label=t;
   }catch(e){}
  }));
  return list
