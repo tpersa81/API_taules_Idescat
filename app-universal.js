@@ -723,6 +723,8 @@ else out=a(await fetchJson(c.base)).map(function(x){var id=String(f(x,"id","dbid
  if(loadToken!==state.requestToken||loadProvider!==state.provider||(loadProvider==="pxweb"&&loadPreset!==state.pxPreset))return;
  out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});state.stats=out;fill($("stat"),out);$("stat").disabled=!out.length;
  if(state.provider==="eurostat"){hideStatSelector(true);await eurostatAddRootLevel()}
+ else if(state.provider==="idescat"){hideStatSelector(true);recursiveProxyStart("idescat")}
+ else if(state.pxPreset==="eustat"){hideStatSelector(true);recursiveProxyStart("eustat")}
  else if(state.provider!=="ine"){hideStatSelector(false)}
  var initial=new URLSearchParams(location.search).get("stat")||"";
  if(state.provider!=="ine"&&state.provider!=="eurostat"&&initial&&[].slice.call($("stat").options).some(function(o){return o.value===initial})){$("stat").value=initial;await onStatChange()}
