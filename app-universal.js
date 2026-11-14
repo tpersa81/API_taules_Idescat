@@ -2422,7 +2422,12 @@ function fmt(v,d){if(v==null||v==="")return"";var n=typeof v==="number"?v:Number
 function renderTemporalOrderControl(ds){
  var wrap=$("temporalOrderWrap"),sel=$("temporalOrder");
  if(!wrap||!sel)return;
- var hasTemporal=dims(ds||{}).some(function(d){return temporal(d)&&Array.isArray(d.categories)&&d.categories.length>1}),show=hasTemporal;
+ var temporalDim=dims(ds||{}).find(function(d){return temporal(d)}),show=false;
+ if(temporalDim){
+  var selected=state.filters&&state.filters.get(temporalDim.id);
+  var selectedCount=selected instanceof Set?selected.size:temporalDim.categories.length;
+  show=temporalDim.categories.length>1&&selectedCount>1;
+ }
  wrap.hidden=!show;
  if(show)sel.value=state.temporalOrder;
 }
