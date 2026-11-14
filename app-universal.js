@@ -518,16 +518,15 @@ async function ineLoadTables(op){
  // Si Tempus3 no té taules per a l'operació, utilitzem el flux INEbase
  // que ja tenim: Resultados -> capsel -> taules, de manera genèrica.
  try{
-  var rootUrl=ineAbsoluteUrl(op&&op.href);
-  var ru=new URL(rootUrl);
-  ru.searchParams.set("menu","resultados");
-  rootUrl=ru.href;
-  var rootItems=await ineLoadBaseLevel(rootUrl);
-  if(rootItems.length){
-   return {operation:apiOp,tree:{label:"Resultats",sections:rootItems}};
-  }
- }catch(e){}
-
+  var rootBase=ineAbsoluteUrl(op&&op.href),menus=["resultados","ultiDatos"];
+ for(var mi=0;mi<menus.length;mi++){
+  try{
+   var ru=new URL(rootBase);
+   ru.searchParams.set("menu",menus[mi]);
+   var rootItems=await ineLoadBaseLevel(ru.href);
+   if(rootItems.length)return {operation:apiOp,tree:{label:"Resultats",sections:rootItems}};
+  }catch(e){}
+ }
  // Darrer recurs: taules directes d'INEbase, només si Resultados no ha
  // proporcionat capsel ni taules.
  try{
