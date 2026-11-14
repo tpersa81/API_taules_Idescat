@@ -967,7 +967,7 @@ function pxRecursiveAddLevel(children,index){
   var only=list[0];
   if(only&&only.id){
    sel.value=String(only.id);
-   Promise.resolve(sel.onchange()).catch(function(e){status(e&&e.message?e.message:String(e),"error")});
+   Promise.resolve(sel.onchange()).catch(function(e){var em=e&&e.message?e.message:String(e),st=e&&e.stack?String(e.stack).split("\n").find(function(x){return /app-universal\.js/.test(x)}):"";status(em+(st?" · "+st.trim():""),"error")});
   }
  }
 }
