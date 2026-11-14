@@ -2432,13 +2432,24 @@ async function runQuery(){
            valueInfo=eustatValue==null?"absent":(Array.isArray(eustatValue)?"array("+eustatValue.length+")":"object("+Object.keys(eustatValue||{}).length+")");
        throw new Error("Eustat: resposta JSON-stat no vàlida per a la taula. id=["+eustatIds.join(",")+"] · size=["+eustatSizes.join(",")+"] · total="+eustatTotal+" · value="+valueInfo+" · camps="+rawKeys+" · dimensions="+dimKeys);
       }
+     }else{
+      // Finland, Iceland i la resta de PxWeb retornen JSON-stat/json-stat2.
+      // Cal convertir sempre la resposta de dades abans de renderitzar-la.
+      ds=pxToJsonStat(rawPxResponse);
+      if(!ds||!Array.isArray(ds.id)||!ds.id.length){
+       throw new Error("PxWeb: la resposta de dades no conté una estructura JSON-stat vàlida.");
+      }
      }
     }catch(pxErr){
      // Statistics Iceland pot servir JSON-stat clàssic encara que la
      // interfície PxWeb publiqui l'opció json-stat2.
      if(state.pxPreset==="iceland"){
       var fallbackQuery={query:query.query,response:{format:"json"}};
-      ds=await fetchJson(up,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(fallbackQuery)});
+      var fallbackPxResponse=await fetchJson(up,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(fallbackQuery)});
+      ds=pxToJsonStat(fallbackPxResponse);
+      if(!ds||!Array.isArray(ds.id)||!ds.id.length){
+       throw new Error("Statistics Iceland: la resposta JSON-stat alternativa no és vàlida.");
+      }
      }else throw pxErr;
     }
    }
