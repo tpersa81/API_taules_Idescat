@@ -728,8 +728,15 @@ async function loadStats(){
 else out=a(await fetchJson(c.base)).map(function(x){var id=String(f(x,"id","dbid","code","path"));return{value:id,label:String(f(x,"text","label","name","title")||id)}}).filter(function(x){return x.value});
  if(loadToken!==state.requestToken||loadProvider!==state.provider||(loadProvider==="pxweb"&&loadPreset!==state.pxPreset))return;
  out.sort(function(x,y){return x.label.localeCompare(y.label,"ca",{numeric:true})});state.stats=out;fill($("stat"),out);$("stat").disabled=!out.length;
+ // La navegació del pas 2 és sempre recursiva: el primer nivell també és dinàmic.
  if(state.provider==="eurostat"){hideStatSelector(true);await eurostatAddRootLevel()}
- else if(state.provider!=="ine"){hideStatSelector(false)}
+ else if(state.provider==="ine"){hideStatSelector(true)}
+ else if(state.provider==="idescat"){hideStatSelector(true);idescatAddLevel(out.map(function(x){return{id:x.value,label:x.label}}),0,"Nivell 1")}
+ else if(state.pxPreset==="eustat"){hideStatSelector(true);eustatAddRecursiveLevel(out.map(function(x){return{id:x.value,label:x.label}}),0,"Nivell 1")}
+ else if(state.pxPreset==="sweden"){hideStatSelector(true);addUniversalRootLevel(out,"Nivell 1",async function(v){state.selected.stat=v;await swedenSelectRoot(v)})}
+ else if(state.pxPreset==="finland"||state.pxPreset==="iceland"){hideStatSelector(true);addUniversalRootLevel(out,"Nivell 1",async function(v){state.selected.stat=v;await pxRecursiveSelectRoot(v)})}
+ else if(state.pxPreset==="norway"){hideStatSelector(true);addUniversalRootLevel(out,"Nivell 1",async function(v){state.selected.stat=v;await norwaySelectRoot(v)})}
+ else {hideStatSelector(true);addUniversalRootLevel(out,"Nivell 1",async function(v){state.selected.stat=v;await onStatChange()})}
  var initial=new URLSearchParams(location.search).get("stat")||"";
  if(state.provider!=="ine"&&state.provider!=="eurostat"&&initial&&[].slice.call($("stat").options).some(function(o){return o.value===initial})){$("stat").value=initial;await onStatChange()}
 }
@@ -1161,6 +1168,21 @@ async function swedenLoadV1Table(path,tableId){
 function eurostatClearLevels(){
  var box=$("eurostatLevels");
  if(box){box.innerHTML="";box.hidden=true}
+}
+function addUniversalRootLevel(items,labelText,handler){
+ var box=$("eurostatLevels");if(!box)return;
+ var old=box.querySelector('[data-universal-root="1"]');if(old)old.remove();
+ var list=(items||[]).filter(function(x){return x&&((x.id!=null&&String(x.id)!=="")||(x.value!=null&&String(x.value)!==""))});
+ if(!list.length)return;
+ box.hidden=false;box.style.display="grid";
+ var lab=document.createElement("label");lab.dataset.universalRoot="1";lab.textContent=(labelText||"Nivell 1")+" ";
+ var sel=document.createElement("select");sel.id="universalRootLevel";sel.appendChild(new Option("— Selecciona —",""));
+ list.forEach(function(x){var id=x.id!=null?x.id:x.value;sel.appendChild(new Option(x.label||String(id),String(id)))});
+ lab.appendChild(sel);box.insertBefore(lab,box.firstChild);
+ sel.onchange=async function(){
+  var v=sel.value;if(!v)return;
+  try{await handler(v)}catch(e){status(e&&e.message?String(e.message):String(e),"error")}
+ };
 }
 function hideStatSelector(hidden){
  var lab=$("stat")&&$("stat").parentElement;
