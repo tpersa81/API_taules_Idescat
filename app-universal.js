@@ -74,7 +74,7 @@ function temporal(d){
      r=String(d&&d.role||"").toUpperCase(),
      cats=d&&Array.isArray(d.categories)?d.categories:[];
  var explicit=["YEAR","MONTH","QUARTER","SEMESTER","BIMONTH","WEEK","DAY","DATE","TIME","TIME_PERIOD","PERIOD","PERIODO","PERIODO_TEMPORAL"].indexOf(id)>=0;
- var named=id.indexOf("TIME")===0||id.indexOf("PER")===0||label==="PERIODO"||label.indexOf("PERIODO ")===0||label==="PERIOD"||label.indexOf("PERIOD ")===0||label.indexOf("TEMPORAL")>=0||label.indexOf("TEMPORAL ")===0||label.indexOf("YEAR")>=0||label.indexOf("MONTH")>=0||label.indexOf("QUARTER")>=0||label.indexOf("SEMESTER")>=0||label.indexOf("TRIMESTRE")>=0||label.indexOf("MES")===0||r.indexOf("TIME")>=0||r.indexOf("TEMPOR")>=0;
+ var named=id.indexOf("TIME")===0||id.indexOf("PER")===0||label==="PERIODO"||label.indexOf("PERIODO ")===0||label==="PERIOD"||label.indexOf("PERIOD ")===0||label.indexOf("TEMPORAL")>=0||label.indexOf("YEAR")>=0||label.indexOf("MONTH")>=0||label.indexOf("QUARTER")>=0||label.indexOf("SEMESTER")>=0||label.indexOf("TRIMESTRE")>=0||label.indexOf("MES")===0||label.indexOf("AÑO")>=0||label.indexOf("ANO")>=0||label.indexOf("YEAR")>=0||r.indexOf("TIME")>=0||r.indexOf("TEMPOR")>=0;
  var temporalCodes=cats.length>0&&cats.every(function(c){
    var code=String(c&&c.code||"").trim();
    return /^\d{4}$/.test(code)||/^\d{4}M\d{1,2}$/i.test(code)||/^\d{4}(?:Q|T)\d$/i.test(code)||/^\d{4}S\d$/i.test(code)||/^\d{4}B\d{1,2}$/i.test(code)||/^\d{4}W\d{1,2}$/i.test(code)||/^\d{4}D\d{1,3}$/i.test(code)||/^\d{4}-(?:M|Q|S|B|W|D)\d{1,3}$/i.test(code)||/^\d{4}-\d{2}(?:-\d{2})?$/.test(code);
@@ -636,7 +636,7 @@ function collection(d){
  return[];
 }
 function clearBelow(keepStat){state.pivot={rows:[],columns:[]};if(state.provider==="ine")ineClearNavigation();if(!keepStat)fill($("stat"),[]);["concept","cross","node","table","geo"].forEach(resetSelect);eurostatClearLevels();state.metadata=null;state.lastData=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;$("resultCount").textContent="";if($("temporalOrderWrap"))$("temporalOrderWrap").hidden=true}
-function setLabels(){var p=state.provider,ls=p==="idescat"?["Organisme","Operació estadística","Tema","Encreuament","Entrada","Taula","Geografia"]:p==="pxweb"&&state.pxPreset==="sweden"?["Organisme","Grup temàtic","Nivell 2","Nivell 3","Taula","Geografia"]:p==="pxweb"&&state.pxPreset==="norway"?["Organisme","Grup temàtic","Nivell 2","Nivell 3","Nivell 4","Geografia"]:p==="pxweb"?["Organisme","Grup temàtic","Nivell 2","Nivell 3","Taula","Geografia"]:p==="ine"?["Organisme","Grup temàtic","","","","",""]:["Organisme","Tipus de dades","Grup temàtic","Tema","Estadística","—"];var l=document.querySelectorAll("#step2 label");document.querySelector("#step1 label:nth-child(1)").firstChild.textContent=ls[0]+" ";l.forEach(function(x,i){x.firstChild.textContent=ls[i+1]+" "})}
+function setLabels(){var p=state.provider,ls=p==="idescat"?["Organisme","Operació estadística","Tema","Encreuament","Entrada","Taula","Geografia"]:p==="pxweb"&&state.pxPreset==="sweden"?["Organisme","Grup temàtic","Nivell 2","Nivell 3","Taula","Geografia"]:p==="pxweb"&&state.pxPreset==="norway"?["Organisme","Grup temàtic","Nivell 2","Nivell 3","Nivell 4","Geografia"]:p==="pxweb"?["Organisme","Grup temàtic","Nivell 2","Nivell 3","Taula","Geografia"]:p==="ine"?["Organisme","Grup temàtic","","","","",""]:["Organisme","Grup temàtic","Tema","Estadística","—","—"];var l=document.querySelectorAll("#step2 label");document.querySelector("#step1 label:nth-child(1)").firstChild.textContent=ls[0]+" ";l.forEach(function(x,i){x.firstChild.textContent=ls[i+1]+" "})}
 function recursiveProxyClearFrom(index){
  var box=$("eurostatLevels");if(!box)return;
  Array.from(box.querySelectorAll("[data-recursive-proxy]")).forEach(function(el){
@@ -1213,20 +1213,7 @@ function eurostatAddRootLevel(){
  eurostatClearLevels();
  var list=(state.eurostatRoots||[]).filter(function(x){return x&&x.code&&x.label&&!/cross[\s-]*cutting\s+topics/i.test(String(x.label))&&!/cross[\s-]*cutting/i.test(String(x.code))});
  if(!list.length)return;
- box.hidden=false;
- var label=document.createElement("label");
- label.dataset.eurostatLevel="-1";
- label.textContent="Tipus de dades ";
- var sel=document.createElement("select");
- sel.id="eurostatRootLevel";
- sel.disabled=false;
- sel.appendChild(new Option("— Selecciona —",""));
- list.forEach(function(x){sel.appendChild(new Option(x.label,x.code))});
- label.appendChild(sel);box.appendChild(label);
- sel.onchange=async function(){
-  if(!sel.value)return;
-  try{await eurostatSelectRoot(sel.value)}catch(e){status(e&&e.message?e.message:String(e),"error")}
- };
+ eurostatAddLevel(list,"",0);
 }
 function eurostatLevelLabel(i,list){
  var isTable=list&&list.length&&list.every(function(x){var t=String(x&&x.type||"").toLowerCase();return t==="dataset"||t==="table"||x&&x.tableId});
@@ -1275,10 +1262,6 @@ async function eurostatSelectRoot(rootCode){
  state.eurostatPath=[root.code];
  state.eurostatNodeParentPath=[root.code];
  eurostatClearLevels();
- // Mantén sempre visible el selector de "Tipus de dades".
- eurostatAddRootLevel();
- var rootSel=$("eurostatRootLevel");
- if(rootSel)rootSel.value=root.code;
  ["concept","cross","node","table","geo"].forEach(resetSelect);
  eurostatAddLevel(root.children||[],[root.code],0);
 }
