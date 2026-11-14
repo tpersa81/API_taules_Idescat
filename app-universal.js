@@ -86,6 +86,7 @@ function temporal(d){
 }
 function temporalCodeRank(code){
  var v=String(code==null?"":code).trim().toUpperCase(),m;
+ if(/^\d+$/.test(v))return Number(v);
  if(/^\d{4}$/.test(v))return Number(v)*100000000;
  m=v.match(/^(\d{4})M(\d{1,2})$/);if(m)return Number(m[1])*100000000+Number(m[2])*1000000;m=v.match(/^(\d{4})-M(\d{1,2})$/);if(m)return Number(m[1])*100000000+Number(m[2])*1000000;
  m=v.match(/^(\d{4})(?:Q|T)(\d)$/);if(m)return Number(m[1])*100000000+Number(m[2])*10000000;m=v.match(/^(\d{4})-Q(\d)$/);if(m)return Number(m[1])*100000000+Number(m[2])*10000000;
@@ -100,7 +101,8 @@ function sortedCats(c,d){
  var x=c.slice();
  if(temporal(d)){
   x.sort(function(a,b){
-   var ar=temporalCodeRank(a.code),br=temporalCodeRank(b.code);
+   var ac=temporalCategoryCode(a),bc=temporalCategoryCode(b);
+   var ar=temporalCodeRank(ac),br=temporalCodeRank(bc);
    if(ar!=null&&br!=null&&ar!==br)return br-ar;
    return Number(b.index)-Number(a.index);
   });
@@ -2253,7 +2255,9 @@ async function onGeoChange(){
  }catch(e){status(e.message,"error")}
 }
 function temporalPeriodicity(categories){
- var arr=(categories||[]).map(function(c){return{code:String(c&&c.code||"").trim(),label:String(c&&c.label||"").trim()}}).filter(function(x){return x.code||x.label});
+ var arr=(categories||[]).map(function(c){return{code:temporalCategoryCode(c),label:String(c&&c.label||"").trim()}}).filter(function(x){return x.code||x.label});
+ if(arr.some(function(x){return /^\d+$/.test(x.code)&&Number(x.code)>=0}))return"quarter";
+
  for(var i=0;i<arr.length;i++){var code=arr[i].code,label=arr[i].label;
   if(/^\d{4}$/.test(code)||/^\d{4}$/.test(label))return"year";
   if(/^\d{4}M\d{1,2}$/i.test(code)||/^\d{4}-M\d{1,2}$/i.test(code)||/^\d{4}-\d{2}$/.test(code)||/^\d{4}\s*[-/]?\s*M\d{1,2}$/i.test(label))return"month";
@@ -2677,7 +2681,17 @@ function setTemporalOrder(value){
 }
 function renderResults(ds){
  state.pivot={rows:[],columns:[]};
- var z=resultRows(ds),rows=z.rows,dd=z.dims,
+ var z=resultRows(ds),rows=z.rows,dd=z.dims;
+ // Ordenació temporal també s'aplica a les files retornades, no només al selector.
+ var td=dd.find(function(d){return temporal(d)});
+ if(td&&state.temporalOrder){
+  rows=rows.slice().sort(function(a,b){
+   var ar=temporalCodeRank(temporalCategoryCode(a[td.id])),br=temporalCodeRank(temporalCategoryCode(b[td.id]));
+   if(ar==null||br==null||ar===br)return 0;
+   return state.temporalOrder==="asc"?ar-br:br-ar;
+  });
+ }
+ var zRows=rows,
      totalPages=Math.max(1,Math.ceil(rows.length/state.pageSize)),
      current=Math.min(Math.max(1,Number(state.page)||1),totalPages);
  state.page=current;
