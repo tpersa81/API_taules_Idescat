@@ -643,7 +643,18 @@ async function ineSelectLevel(index,val){
  if(item.type==="capsel-group"){
   var groupLabel=item.label||"Apartat";
   if(/^Apartat\s+\d+$/i.test(String(groupLabel))){
-   try{var gu=new URL("https://www.ine.es/dynt3/inebase/index.htm");gu.searchParams.set("capsel",String(item.padre||""));var gh=await fetchText(gu.href,{cache:"no-store"}),gd=new DOMParser().parseFromString(gh,"text/html"),gh1=gd.querySelector("h1.inebase_titulo")||gd.querySelector("h1");if(gh1){var gt=String(gh1.textContent||"").replace(/\s+/g," ").trim().replace(/\s*[|·-]\s*(?:Instituto Nacional de Estadística|INE).*$/i,"").trim();if(gt)groupLabel=gt}}catch(e){}
+   try{
+    // El grup representa un capsel pare: el títol real és a ?padre=<id>.
+    var gu=new URL("https://www.ine.es/dynt3/inebase/index.htm");
+    gu.searchParams.set("padre",String(item.padre||""));
+    var gh=await fetchText(gu.href,{cache:"no-store"});
+    var gd=new DOMParser().parseFromString(gh,"text/html");
+    var gh1=gd.querySelector('h1.inebase_titulo[id="c_'+String(item.padre||"")+'"]')||gd.querySelector("h1.inebase_titulo")||gd.querySelector("h1");
+    if(gh1){
+     var gt=String(gh1.textContent||"").replace(/\s+/g," ").trim().replace(/\s*[|·-]\s*(?:Instituto Nacional de Estadística|INE).*$/i,"").trim();
+     if(gt)groupLabel=gt;
+    }
+   }catch(e){}
   }
   ineAddLevel(item.children||[],index+1,groupLabel);
   return;
