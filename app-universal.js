@@ -2,6 +2,21 @@
 const MAX_CELLS=20000;
 const state={provider:"idescat",pxPreset:"finland",stats:[],metadata:null,lastData:null,lastQueryUrl:"",finlandTableUrl:"",ineVarCache:new Map(),filters:new Map(),page:1,pageSize:100,temporalOrder:"desc",requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],ineNav:null,ineNavLoaded:false,ineOperations:null,inePath:[],ineItems:new Map(),swedenV2Tables:null,swedenV2Table:false,swedenPath:[],eustatCatalog:[],eustatGroups:[],eustatOperations:[],eustatTables:[],eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[],norwayPath:[],norwayCatalog:[],norwayRootItems:[]};
 const $=id=>document.getElementById(id);
+function debugGlobalError(e){
+ var msg=e&&e.message?String(e.message):String(e||"Error"),
+     file=e&&e.filename?String(e.filename):"",
+     line=e&&e.lineno?String(e.lineno):"",
+     col=e&&e.colno?String(e.colno):"",
+     stack=e&&e.error&&e.error.stack?String(e.error.stack):(e&&e.stack?String(e.stack):"");
+ var loc=(file?(file.split("/").pop()+(line?":"+line:"")+(col?":"+col:"")):"");
+ var detail=msg+(loc?" · "+loc:"")+(stack?" · "+stack.split("\n").slice(0,3).join(" | "):"");
+ try{status(detail,"error")}catch(_){}
+}
+window.addEventListener("error",function(e){debugGlobalError(e)});
+window.addEventListener("unhandledrejection",function(e){
+ var r=e&&e.reason?e.reason:e;
+ debugGlobalError(r);
+});
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]});
 async function fetchJson(url,opt){opt=opt||{};var r;try{r=await fetch(url,opt)}catch(e){
   if(state.provider==="pxweb"&&((state.pxPreset==="iceland"&&/^https:\/\/px\.hagstofa\.is\//i.test(url))||(state.pxPreset==="finland"&&/^https:\/\/pxdata\.stat\.fi\//i.test(url)))){
