@@ -184,10 +184,7 @@ async function ineExplainCapselItems(items){
  await Promise.all(list.map(async function(x){
   if(!/^Apartat\s+\d+$/i.test(String(x.label||"")))return;
   function cleanTitle(s){
-   s=String(s||"").replace(/\s+/g," ").trim();
-   s=s.replace(/^INEbase\s*[-|·:]\s*/i,"").replace(/\s*[|·-]\s*(?:Instituto Nacional de Estadística|INE).*$/i,"").trim();
-   if(!s||/^INEbase(?:\s*[|·:-]|$)/i.test(s)||/^(Apartat|Secci[oó]n)\s+\d+$/i.test(s))return "";
-   return s;
+   return ineCleanSectionTitle(s);
   }
   function titlesFromDoc(doc,capsel){
    var out=[],seen=new Set();
@@ -263,6 +260,37 @@ function ineAddLevel(items,index,labelText){
 function ineTrimTitle(s){
  return String(s||"").replace(/\s+/g," ").replace(/\s*[·|]+\s*$/,"").trim();
 }
+/** Neteja títols de secció INE contaminats per proxies markdown/HTML. */
+function ineCleanSectionTitle(s){
+ s=String(s==null?"":s);
+ s=s.replace(/!?\[[^\]]*\]\([^)]*\)/g," ");
+ s=s.replace(/!\[[^\]]*\]/g," ");
+ s=s.replace(/\[[^\]]*\]\([^)]*\)/g," ");
+ s=s.replace(/https?:\/\/\S+/gi," ");
+ s=s.replace(/<[^>]+>/g," ");
+ s=s.replace(/&nbsp;/gi," ").replace(/&amp;/gi,"&").replace(/&quot;/gi,'"');
+ s=s.replace(/&ntilde;/gi,"ñ").replace(/&Ntilde;/gi,"Ñ");
+ s=s.replace(/&aacute;/gi,"á").replace(/&eacute;/gi,"é").replace(/&iacute;/gi,"í").replace(/&oacute;/gi,"ó").replace(/&uacute;/gi,"ú");
+ s=s.replace(/\[+/g," ").replace(/\]+/g," ");
+ s=s.replace(/\s+/g," ").trim();
+ s=s.replace(/\s*[|·-]\s*(?:Instituto Nacional de Estadística|INE).*$/i,"").trim();
+ var m;
+ m=s.match(/^(Resultados\s+nacionales)\b/i);
+ if(m)return "Resultados nacionales";
+ m=s.match(/^(Resultados\s+por\s+comunidades\s+aut[oó]nomas)\b/i);
+ if(m)return "Resultados por comunidades autónomas";
+ m=s.match(/^(Resultats\s+nacionals)\b/i);
+ if(m)return "Resultats nacionals";
+ m=s.match(/^(Resultats\s+per\s+comunitats\s+aut[oò]nomes)\b/i);
+ if(m)return "Resultats per comunitats autònomes";
+ m=s.match(/^(National\s+results)\b/i);
+ if(m)return "National results";
+ if(/logoinebase|menus\/img|Image\s+\d+/i.test(s))return "";
+ if(s.length>80)s=s.slice(0,80).replace(/\s+\S*$/,"").trim();
+ if(!s||/^Apartat\s+\d+$/i.test(s))return "";
+ return s;
+}
+
 function ineAbsoluteUrl(href){
  try{return new URL(href,"https://www.ine.es/").href}catch(e){return String(href||"")}
 }
@@ -438,38 +466,34 @@ async function ineLoadBaseLevel(pageUrl){
    }
    byParent.get(p).children.push(x);
   });
-  // Resolució de títols de grup a partir del HTML cru.
-  // Els proxies CORS sovint trenquen el DOM; per això prioritzem el text pla.
+  // Resolució de títols de grup. Els proxies CORS (jina, etc.) sovint tornen
+  // markdown i trenquen el DOM; combinem text cru + neteja agressiva.
   var padreTitle=new Map();
   var htmlStr=String(html||"");
 
   function setPadreTitle(p,t){
-   p=String(p||"").trim();t=String(t||"").replace(/\s+/g," ").trim();
-   if(!p||!t||/^Apartat\s+\d+$/i.test(t))return;
-   t=t.replace(/\s*[|·-]\s*(?:Instituto Nacional de Estadística|INE).*$/i,"").trim();
-   if(!t)return;
+   p=String(p||"").trim();
+   t=ineCleanSectionTitle(t);
+   if(!p||!t)return;
    if(!padreTitle.has(p))padreTitle.set(p,t);
   }
 
-  // A) Escaneig sequencial del HTML: cada span.title fora d'un <a>, després
-  //    els padre= del fragment fins al següent span.title de secció.
+  // A) span.title fora d'enllaços + padre= del bloc següent
   try{
    var reTitle=/<span\s+class=["'][^"']*\btitle\b[^"']*["'][^>]*>([\s\S]*?)<\/span>/gi,m;
    var sections=[];
    while((m=reTitle.exec(htmlStr))){
     var before=htmlStr.slice(Math.max(0,m.index-60),m.index);
-    // Ignora titles dins d'enllaços (<a ...><span class="title">)
     if(/<a\b[^>]*$/i.test(before))continue;
-    var t=String(m[1]||"").replace(/<[^>]+>/g," ").replace(/&nbsp;/gi," ").replace(/&amp;/gi,"&").replace(/&ntilde;/gi,"ñ").replace(/&aacute;/gi,"á").replace(/&eacute;/gi,"é").replace(/&iacute;/gi,"í").replace(/&oacute;/gi,"ó").replace(/&uacute;/gi,"ú").replace(/\s+/g," ").trim();
-    if(!t||/^Apartat\s+\d+$/i.test(t))continue;
-    sections.push({title:t,index:m.index,end:m.index+m[0].length});
+    var t=ineCleanSectionTitle(String(m[1]||""));
+    if(!t)continue;
+    sections.push({title:t,end:m.index+m[0].length,index:m.index});
    }
    for(var si=0;si<sections.length;si++){
     var from=sections[si].end;
     var to=si+1<sections.length?sections[si+1].index:Math.min(htmlStr.length,from+2500);
     var chunk=htmlStr.slice(from,to);
-    // Només assigna si el bloc conté enllaços de navegació (padre/capsel)
-    if(!/[?&]padre=\d+/i.test(chunk)&&!/[?&]capsel=\d+/i.test(chunk))continue;
+    if(!/[?&]padre=\d+/i.test(chunk))continue;
     var seenP={},pm,pre=/[?&]padre=(\d+)/gi;
     while((pm=pre.exec(chunk))){
      if(!seenP[pm[1]]){seenP[pm[1]]=1;setPadreTitle(pm[1],sections[si].title)}
@@ -477,119 +501,74 @@ async function ineLoadBaseLevel(pageUrl){
    }
   }catch(e){}
 
-  // B) DOM: <li><span class="title">T</span> ... <a href="?padre=X">
-  if(padreTitle.size<2){
-   try{
-    Array.from(doc.querySelectorAll("li")).forEach(function(li){
-     var titleEl=null;
-     Array.from(li.children||[]).some(function(ch){
-      if(ch.matches&&ch.matches("span.title, .title, span[class*='title']")&&!(ch.closest&&ch.closest("a"))){titleEl=ch;return true}
-      return false;
-     });
-     if(!titleEl)return;
-     var title=String(titleEl.textContent||"").replace(/\s+/g," ").trim();
-     if(!title||/^Apartat\s+\d+$/i.test(title))return;
-     Array.from(li.querySelectorAll("a[href]")).forEach(function(aEl){
-      var href=aEl.getAttribute("href")||"";
-      var abs;try{abs=new URL(href.replace(/&amp;/g,"&"),pageUrl).href}catch(e){return}
-      var u;try{u=new URL(abs)}catch(e2){return}
-      var padre=u.searchParams.get("padre")||"";
-      if(padre)setPadreTitle(padre,title);
-     });
-    });
-   }catch(e){}
-  }
-
-  // C) Proximitat al text: per a cada padre desconegut, cerca enrere el títol
-  //    "Resultados ..." o similar més proper.
+  // B) DOM: li > span.title + enllaços amb padre=
   try{
-   var groupPadres=groups.filter(function(x){return x.type==="capsel-group"}).map(function(g){return String(g.padre||"")});
-   groupPadres.forEach(function(p){
+   Array.from(doc.querySelectorAll("li")).forEach(function(li){
+    var titleEl=null;
+    Array.from(li.children||[]).some(function(ch){
+     if(ch.matches&&ch.matches("span.title, .title, span[class*='title']")&&!(ch.closest&&ch.closest("a"))){titleEl=ch;return true}
+     return false;
+    });
+    if(!titleEl)return;
+    var title=ineCleanSectionTitle(titleEl.textContent);
+    if(!title)return;
+    Array.from(li.querySelectorAll("a[href]")).forEach(function(aEl){
+     var href=aEl.getAttribute("href")||"";
+     var abs;try{abs=new URL(href.replace(/&amp;/g,"&"),pageUrl).href}catch(err){return}
+     var u;try{u=new URL(abs)}catch(err2){return}
+     var padre=u.searchParams.get("padre")||"";
+     if(padre)setPadreTitle(padre,title);
+    });
+   });
+  }catch(e){}
+
+  // C) Proximitat: des de cada padre del grup, cerca enrere "Resultados ..."
+  try{
+   groups.filter(function(x){return x.type==="capsel-group"}).forEach(function(g){
+    var p=String(g.padre||"");
     if(!p||padreTitle.has(p))return;
     var reP=new RegExp("[?&]padre="+p+"(?:\\D|$)","i");
     var mm=reP.exec(htmlStr);
     if(!mm)return;
-    var windowStart=Math.max(0,mm.index-800);
-    var window=htmlStr.slice(windowStart,mm.index);
-    // Cerca l'últim títol de secció a la finestra
-    var candidates=[],tm,tre=/<span\s+class=["'][^"']*\btitle\b[^"']*["'][^>]*>([\s\S]*?)<\/span>/gi;
-    while((tm=tre.exec(window))){
-     var bt=window.slice(Math.max(0,tm.index-50),tm.index);
-     if(/<a\b[^>]*$/i.test(bt))continue;
-     var tt=String(tm[1]||"").replace(/<[^>]+>/g," ").replace(/&nbsp;/gi," ").replace(/&amp;/gi,"&").replace(/&ntilde;/gi,"ñ").replace(/&aacute;/gi,"á").replace(/&eacute;/gi,"é").replace(/&iacute;/gi,"í").replace(/&oacute;/gi,"ó").replace(/&uacute;/gi,"ú").replace(/\s+/g," ").trim();
-     if(tt&&!/^Apartat\s+\d+$/i.test(tt))candidates.push(tt);
+    var win=htmlStr.slice(Math.max(0,mm.index-1000),mm.index);
+    var best="",rm,rr=/(?:Resultados|Resultats|National results)[^\n<]{0,60}/gi;
+    while((rm=rr.exec(win))){
+     var cand=ineCleanSectionTitle(rm[0]);
+     if(cand)best=cand;
     }
-    // També text pla tipus markdown
-    var lines=window.split(/\n+/);
-    lines.forEach(function(line){
-     var t=String(line||"").replace(/^\s*[\*\-]\s*/,"").replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim();
-     if(/^(Resultados|Resultats|National results)\b/i.test(t))candidates.push(t);
-    });
-    if(candidates.length)setPadreTitle(p,candidates[candidates.length-1]);
+    if(best)setPadreTitle(p,best);
    });
   }catch(e){}
 
-  // D) Fallback per ordre de document: títols agrupadors vs grups
+  // D) Si el HTML conté els dos títols clàssics, assigna per ordre als grups pendents
   try{
-   var ordered=[];
-   var reO=/<span\s+class=["'][^"']*\btitle\b[^"']*["'][^>]*>([\s\S]*?)<\/span>/gi,mo;
-   while((mo=reO.exec(htmlStr))){
-    var bf=htmlStr.slice(Math.max(0,mo.index-60),mo.index);
-    if(/<a\b[^>]*$/i.test(bf))continue;
-    var ot=String(mo[1]||"").replace(/<[^>]+>/g," ").replace(/&nbsp;/gi," ").replace(/&amp;/gi,"&").replace(/&ntilde;/gi,"ñ").replace(/&aacute;/gi,"á").replace(/&eacute;/gi,"é").replace(/&iacute;/gi,"í").replace(/&oacute;/gi,"ó").replace(/&uacute;/gi,"ú").replace(/\s+/g," ").trim();
-    if(!ot||/^Apartat\s+\d+$/i.test(ot))continue;
-    // Un títol de secció sol anar seguit (dins ~1.5kB) d'un padre=
-    var fol=htmlStr.slice(mo.index,mo.index+1500);
-    if(!/[?&]padre=\d+/i.test(fol))continue;
-    if(ordered.indexOf(ot)<0)ordered.push(ot);
+   var hasRN=/Resultados\s+nacionales/i.test(htmlStr);
+   var hasRC=/Resultados\s+por\s+comunidades/i.test(htmlStr);
+   if(hasRN&&hasRC){
+    var order=["Resultados nacionales","Resultados por comunidades autónomas"];
+    var gi=0;
+    groups.forEach(function(g){
+     if(g.type!=="capsel-group")return;
+     var p=String(g.padre||"");
+     if(p&&!padreTitle.has(p)&&order[gi]){setPadreTitle(p,order[gi]);gi++}
+    });
    }
-   var giPadres=[];
-   groups.forEach(function(g){
-    if(g.type==="capsel-group"){
-     var pp=String(g.padre||"");
-     if(pp&&giPadres.indexOf(pp)<0)giPadres.push(pp);
-    }
-   });
-   var oi=0;
-   giPadres.forEach(function(p){
-    if(padreTitle.has(p))return;
-    while(oi<ordered.length&&Array.from(padreTitle.values()).indexOf(ordered[oi])>=0)oi++;
-    if(oi<ordered.length){setPadreTitle(p,ordered[oi]);oi++}
-   });
   }catch(e){}
 
   var groupList=groups.filter(function(x){return x.type==="capsel-group"});
   groupList.forEach(function(g){
    var t=padreTitle.get(String(g.padre||""));
-   if(t){
-    t=String(t).replace(/\s*[|·-]\s*(?:Instituto Nacional de Estadística|INE).*$/i,"").trim();
-    if(t)g.label=t;
-   }
+   if(t)g.label=t;
   });
 
-  // E) Últim recurs textual: qualsevol "Resultados ..." / "Resultats ..." al HTML,
-  //    en ordre d'aparició, assignat als grups que encara diguin Apartat.
-  try{
-   var still=groupList.filter(function(g){return /^Apartat\s+\d+$/i.test(String(g.label||""))});
-   if(still.length){
-    var found=[],fr=/(?:Resultados|Resultats|National results)\s+[^<|\n\r]{0,80}/gi,fm;
-    var hs=String(html||"");
-    while((fm=fr.exec(hs))){
-     var ft=String(fm[0]||"").replace(/<[^>]+>/g," ").replace(/&nbsp;/gi," ").replace(/&amp;/gi,"&").replace(/&ntilde;/gi,"ñ").replace(/&aacute;/gi,"á").replace(/&eacute;/gi,"é").replace(/&iacute;/gi,"í").replace(/&oacute;/gi,"ó").replace(/&uacute;/gi,"ú").replace(/\s+/g," ").trim();
-     ft=ft.replace(/\s*[|·-]\s*(?:Instituto Nacional de Estadística|INE).*$/i,"").trim();
-     // Evita fragments massa curts o que siguin només "Resultados"
-     if(ft&&ft.length>12&&!/^Apartat\s+\d+$/i.test(ft)&&found.indexOf(ft)<0)found.push(ft);
-    }
-    // Prefereix títols que no siguin de nivell fulla (Enfoque...)
-    var sectionish=found.filter(function(t){return !/^(Resultados|Resultats)\s+20\d{2}/i.test(t)&&!/^Enfoque\b/i.test(t)});
-    if(!sectionish.length)sectionish=found;
-    still.forEach(function(g,i){
-     if(sectionish[i])g.label=sectionish[i];
-    });
-   }
-  }catch(e){}
+  // E) Neteja final d'etiquetes contaminades per markdown
+  groups.forEach(function(g){
+   if(g.type!=="capsel-group")return;
+   var c=ineCleanSectionTitle(g.label);
+   if(c)g.label=c;
+  });
 
-  // Últim recurs: ineExplainCapselItems / h1 de la pàgina del padre
+  // F) Recurs: ineExplainCapselItems per als que encara diguin Apartat
   var unresolved=groupList.filter(function(g){return /^Apartat\s+\d+$/i.test(String(g.label||""))});
   if(unresolved.length){
    try{
@@ -598,105 +577,24 @@ async function ineLoadBaseLevel(pageUrl){
     }));
     explained.forEach(function(g){
      var dst=groups.find(function(x){return x.id===g.id});
-     if(dst&&g.label&&!/^Apartat\s+\d+$/i.test(String(g.label)))dst.label=g.label;
+     var cl=ineCleanSectionTitle(g.label);
+     if(dst&&cl)dst.label=cl;
     });
    }catch(e){}
   }
-  for(var gi=0;gi<groups.length;gi++){
-   var g=groups[gi];
-   if(g.type!=="capsel-group")continue;
-   if(!/^Apartat\s+\d+$/i.test(String(g.label||"")))continue;
-   var title="";
-   try{
-    var parentUrl=new URL("https://www.ine.es/dynt3/inebase/index.htm");
-    parentUrl.searchParams.set("capsel",String(g.padre));
-    var parentHtml=await fetchText(parentUrl.href,{cache:"no-store"});
-    var parentDoc=new DOMParser().parseFromString(parentHtml,"text/html");
-    var h=parentDoc.querySelector("h1.inebase_titulo")||parentDoc.querySelector("h1");
-    if(h)title=String(h.textContent||"").replace(/\s+/g," ").trim();
-    if(!title||/^Indicadores\b/i.test(title)||/^Indicadors\b/i.test(title)){
-     var st=parentDoc.querySelector("span.title, .title");
-     if(st){
-      var stt=String(st.textContent||"").replace(/\s+/g," ").trim();
-      if(stt&&!/^Apartat\s+\d+$/i.test(stt))title=stt;
-     }
-    }
-   }catch(e){}
-   if(title){
-    title=title.replace(/\s*[|·-]\s*(?:Instituto Nacional de Estadística|INE).*$/i,"").trim();
-    if(title&&!/^Apartat\s+\d+$/i.test(title))g.label=title;
-   }
-  }
 
-  // F) Forçat: descodifica entitats i cerca enrere des de cada padre=
+  // G) Si encara queden Apartat i el HTML té els títols, assignació directa per ordre
   try{
-   var decoded=String(html||"")
-    .replace(/&nbsp;/gi," ")
-    .replace(/&amp;/gi,"&")
-    .replace(/&quot;/gi,'"')
-    .replace(/&lt;/gi,"<")
-    .replace(/&gt;/gi,">")
-    .replace(/&ntilde;/gi,"ñ")
-    .replace(/&Ntilde;/gi,"Ñ")
-    .replace(/&aacute;/gi,"á")
-    .replace(/&eacute;/gi,"é")
-    .replace(/&iacute;/gi,"í")
-    .replace(/&oacute;/gi,"ó")
-    .replace(/&uacute;/gi,"ú")
-    .replace(/&aacute;/gi,"á");
-   groups.forEach(function(g){
-    if(g.type!=="capsel-group")return;
-    if(!/^Apartat\s+\d+$/i.test(String(g.label||"")))return;
-    var p=String(g.padre||"");
-    if(!p)return;
-    var pos=decoded.search(new RegExp("[?&]padre="+p+"(?:\\D|$)","i"));
-    if(pos<0)pos=decoded.indexOf("padre="+p);
-    if(pos<0)return;
-    var win=decoded.slice(Math.max(0,pos-1200),pos);
-    // últim "Resultados ..." o "Resultats ..." a la finestra
-    var best="",rm,rr=/(?:Resultados|Resultats|National results)[^\n<]{0,60}/gi;
-    while((rm=rr.exec(win))){
-     var cand=String(rm[0]||"").replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim();
-     cand=cand.replace(/\s*[|·.].*$/,"").trim();
-     if(cand.length>12)best=cand;
-    }
-    // també últim span.title text a la finestra
-    if(!best){
-     var sm,sr=/class=["'][^"']*\btitle\b[^"']*["'][^>]*>([^<]{3,80})</gi;
-     while((sm=sr.exec(win))){
-      var c2=String(sm[1]||"").replace(/\s+/g," ").trim();
-      if(c2&&!/^Apartat\s+\d+$/i.test(c2)&&!/^Enfoque\b/i.test(c2))best=c2;
-     }
-    }
-    if(best)g.label=best;
-   });
-  }catch(e){}
-
-
-  // Diagnòstic suau: si encara hi ha Apartat, indiquem si el HTML tenia els títols
-  try{
-   var hs=String(html||"");
-   var hasRN=/Resultados\s+nacionales/i.test(hs);
-   var hasRC=/Resultados\s+por\s+comunidades/i.test(hs);
-   groups.forEach(function(g){
-    if(g.type!=="capsel-group")return;
-    if(!/^Apartat\s+\d+$/i.test(String(g.label||"")))return;
-    if(hasRN&&hasRC){
-     // el HTML els tenia però no s'han mapat: assignació directa per ordre
-    }
-   });
    var pending=groups.filter(function(g){return g.type==="capsel-group"&&/^Apartat\s+\d+$/i.test(String(g.label||""))});
-   if(pending.length&&hasRN&&hasRC){
-    var labels=[];
-    if(hasRN)labels.push("Resultados nacionales");
-    if(hasRC)labels.push("Resultados por comunidades autónomas");
-    // altres títols Resultados al document
-    pending.forEach(function(g,i){if(labels[i])g.label=labels[i]});
+   if(pending.length&&/Resultados\s+nacionales/i.test(htmlStr)&&/Resultados\s+por\s+comunidades/i.test(htmlStr)){
+    var labs=["Resultados nacionales","Resultados por comunidades autónomas"];
+    pending.forEach(function(g,i){if(labs[i])g.label=labs[i]});
    }
   }catch(e){}
 
   return groups;
  }
+
  return tables;
 }
 
