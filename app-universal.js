@@ -52,7 +52,7 @@ function pxUrl(path){
  return [provider().base.replace(/\/+$/,"")].concat(p).join("/");
 }
 function jsonstatCats(ds,id){var c=ds.dimension&&ds.dimension[id]&&ds.dimension[id].category||{},lab=c.label&&typeof c.label==="object"?c.label:{};if(Array.isArray(c.index))return c.index.map(function(code,i){return{code:String(code),label:String(lab[code]==null?code:lab[code]),index:i}});if(c.index&&typeof c.index==="object")return Object.keys(c.index).map(function(code){return{code:String(code),label:String(lab[code]==null?code:lab[code]),index:Number(c.index[code])}}).sort(function(x,y){return x.index-y.index});return Object.keys(lab).map(function(code,i){return{code:String(code),label:String(lab[code]),index:i}})}
-function dims(ds){return(ds.id||[]).map(function(id){var d=ds.dimension&&ds.dimension[id]||{};return{id:id,label:d.label||id,role:d.extension&&d.extension.role||d.role||"",categories:jsonstatCats(ds,id)}})}
+function dims(ds){return(ds&&Array.isArray(ds.id)?ds.id:[]).filter(function(id){return id!=null&&String(id)!==""}).map(function(id){var d=ds&&ds.dimension&&ds.dimension[id]||{};return{id:String(id),label:d.label||id,role:d.extension&&d.extension.role||d.role||"",categories:jsonstatCats(ds,String(id))}})}
 function temporal(d){
  var id=String(d&&d.id||"").trim().toUpperCase(),
      label=String(d&&d.label||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase(),
@@ -929,17 +929,20 @@ async function pxRecursiveChildren(path){
 }
 async function pxRecursiveLoadTable(item){
  var path=(item&&item.path||[]).slice(),tableId=String(item&&item.tableId||path[path.length-1]||"").trim(),urls=[];
- if(state.pxPreset==="finland"){
-  if(path.length&&!/\\.px$/i.test(path[path.length-1]))path[path.length-1]+=".px";
-  urls=finlandTableUrls(path);
- }else urls=[pxUrl(path)];
- var raw=null,url=urls[0];
- for(var i=0;i<urls.length&&!raw;i++){try{raw=await fetchJson(urls[i]);url=urls[i]}catch(e){}}
- if(!raw||!isPxMetadata(raw))throw new Error("La taula de "+(state.pxPreset==="finland"?"Statistics Finland":"Statistics Iceland")+" no ha retornat metadades.");
- state.selected.table=tableId;state.pxPath=path.slice();state.metadata=pxToJsonStat(raw);
+ if(state.pxPreset==="finland")urls=finlandTableUrls(path);
+ else urls=[pxUrl(path)];
+ var raw=null,url="",lastErr=null;
+ for(var i=0;i<urls.length&&!raw;i++){
+  try{var candidate=await fetchJson(urls[i]);if(isPxMetadata(candidate)){raw=candidate;url=urls[i]}else lastErr=new Error("La resposta no és metadades PxWeb.")}
+  catch(e){lastErr=e}
+ }
+ if(!raw)throw new Error("La taula de "+(state.pxPreset==="finland"?"Statistics Finland":"Statistics Iceland")+" no ha retornat metadades. "+(lastErr&&lastErr.message||""));
+ var ds=pxToJsonStat(raw);
+ if(!ds||!Array.isArray(ds.id)||!ds.id.length)throw new Error("Les metadades de la taula no contenen variables vàlides.");
+ state.selected.table=tableId;state.selected.node=tableId;state.selected.cross=tableId;state.pxPath=path.slice();state.metadata=ds;
  if(state.pxPreset==="finland")state.finlandTableUrl=url;
- renderMetadata(state.metadata);$("tableInfo").hidden=false;
- $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||raw.label||tableId)+"<span class=\"path\">"+esc(url)+"</span>";
+ renderMetadata(ds);$("tableInfo").hidden=false;
+ $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||raw.label||tableId)+"<span class="path">"+esc(url)+"</span>";
  $("query").disabled=false;
 }
 function pxRecursiveAddLevel(children,index){
