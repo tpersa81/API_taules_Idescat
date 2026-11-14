@@ -76,8 +76,11 @@ function temporal(d){
  var explicit=["YEAR","MONTH","QUARTER","SEMESTER","BIMONTH","WEEK","DAY","DATE","TIME","TIME_PERIOD","PERIOD","PERIODO","PERIODO_TEMPORAL"].indexOf(id)>=0;
  var named=id.indexOf("TIME")===0||id.indexOf("PER")===0||label==="PERIODO"||label.indexOf("PERIODO ")===0||label==="PERIOD"||label.indexOf("PERIOD ")===0||label.indexOf("TEMPORAL")>=0||label.indexOf("YEAR")>=0||label.indexOf("MONTH")>=0||label.indexOf("QUARTER")>=0||label.indexOf("SEMESTER")>=0||label.indexOf("TRIMESTRE")>=0||label.indexOf("MES")===0||label.indexOf("AÑO")>=0||label.indexOf("ANO")>=0||label.indexOf("YEAR")>=0||r.indexOf("TIME")>=0||r.indexOf("TEMPOR")>=0;
  var temporalCodes=cats.length>0&&cats.every(function(c){
-   var code=String(c&&c.code||"").trim();
-   return /^\d{4}$/.test(code)||/^\d{4}M\d{1,2}$/i.test(code)||/^\d{4}(?:Q|T)\d$/i.test(code)||/^\d{4}S\d$/i.test(code)||/^\d{4}B\d{1,2}$/i.test(code)||/^\d{4}W\d{1,2}$/i.test(code)||/^\d{4}D\d{1,3}$/i.test(code)||/^\d{4}-(?:M|Q|S|B|W|D)\d{1,3}$/i.test(code)||/^\d{4}-\d{2}(?:-\d{2})?$/.test(code);
+   var code=String(c&&c.code||"").trim(),lab=String(c&&c.label||"").trim();
+   return /^\d{4}$/.test(code)||/^\d{4}M\d{1,2}$/i.test(code)||/^\d{4}(?:Q|T)\d$/i.test(code)||/^\d{4}S\d$/i.test(code)||/^\d{4}B\d{1,2}$/i.test(code)||/^\d{4}W\d{1,2}$/i.test(code)||/^\d{4}D\d{1,3}$/i.test(code)||/^\d{4}-(?:M|Q|S|B|W|D)\d{1,3}$/i.test(code)||/^\d{4}-\d{2}(?:-\d{2})?$/.test(code)||
+          /^(?:Q|T|S|M|B|W|D)\s*\d{1,3}\s*[-/]?\s*\d{4}$/i.test(lab)||
+          /^\d{4}\s*[-/]?\s*(?:Q|T|S|M|B|W|D)\s*\d{1,3}$/i.test(lab)||
+          /^\d{4}\s*[-/]?\s*\d{1,2}[-/]\d{1,2}$/.test(lab);
  });
  return explicit||named||temporalCodes;
 }
@@ -357,6 +360,10 @@ async function ineLoadBaseLevel(pageUrl){
   try{uu2=new URL(pageUrl);uu2.searchParams.set("capsel",cc2);var pp2=uu2.searchParams.get("padre")||"";if(cc2&&cc2!==currentCapsel&&!seenCapsel.has("capsel:"+cc2)){seenCapsel.add("capsel:"+cc2);capsels.push({id:uu2.href,label:"Apartat "+cc2,type:"capsel",url:uu2.href,capsel:cc2,padre:pp2})}}catch(e){}
  }
 
+ // El text de l'enllaç d'INEbase sovint només conté el número de capsel.
+ // El títol de la pàgina és el nom real que volem mostrar a la navegació.
+ capsels=await ineExplainCapselItems(capsels);
+
  if(currentCapsel){
   var children=capsels.filter(function(x){return x.padre===currentCapsel});
   return children.length?children:tables;
@@ -411,7 +418,7 @@ async function ineLoadBaseLevel(pageUrl){
    var title="";
    try{
     var parentUrl=new URL("https://www.ine.es/dynt3/inebase/index.htm");
-    parentUrl.searchParams.set("padre",String(g.padre));
+    parentUrl.searchParams.set("capsel",String(g.padre));
     var parentHtml=await fetchText(parentUrl.href,{cache:"no-store"});
     var parentDoc=new DOMParser().parseFromString(parentHtml,"text/html");
     var h=parentDoc.querySelector("h1.inebase_titulo")||parentDoc.querySelector("h1");
@@ -876,6 +883,7 @@ async function onStatChange(){
  ["concept","cross","node","table","geo"].forEach(resetSelect);
  var eo=await eustatLoadOperations(state.selected.stat);
  if(eo.length===1){$("concept").value=eo[0].id;await $("concept").onchange()}
+ recursiveProxyStart("eustat");
 }else if(state.pxPreset==="norway"){await norwaySelectRoot(state.selected.stat)}
   else{state.pxPath=[state.selected.stat];await pxChildren(state.pxPath,"concept")}
  }catch(e){var em=e&&e.message?String(e.message):String(e),st=e&&e.stack?String(e.stack):"";if(state.provider==="pxweb"&&(state.pxPreset==="finland"||state.pxPreset==="iceland")){status("PX-"+String(state.pxPreset).toUpperCase()+": "+em+(st?" · STACK: "+st.split("\n").slice(0,4).join(" | "):""),"error")}else status(em,"error")}finally{busy(false)}
@@ -1211,8 +1219,13 @@ function hideStatSelector(hidden){
 function eurostatAddRootLevel(){
  var box=$("eurostatLevels");if(!box)return;
  eurostatClearLevels();
- var list=(state.eurostatRoots||[]).filter(function(x){return x&&x.code&&x.label&&!/cross[\s-]*cutting\s+topics/i.test(String(x.label))&&!/cross[\s-]*cutting/i.test(String(x.code))});
+ state.eurostatRootParent="";
+ var roots=(state.eurostatRoots||[]).filter(function(x){return x&&x.code&&x.label});
+ var databaseRoot=roots.find(function(x){return /database\s+by\s+themes/i.test(String(x.label))});
+ var list=databaseRoot?(databaseRoot.children||[]):roots;
+ list=list.filter(function(x){return x&&x.code&&x.label&&!/cross[\s-]*cutting\s+topics/i.test(String(x.label))&&!/cross[\s-]*cutting/i.test(String(x.code))});
  if(!list.length)return;
+ if(databaseRoot)state.eurostatRootParent=databaseRoot.code;
  eurostatAddLevel(list,"",0);
 }
 function eurostatLevelLabel(i,list){
@@ -1268,6 +1281,7 @@ async function eurostatSelectRoot(rootCode){
 async function eurostatSelectDynamic(index,val){
  var base=(state.eurostatPath||[]).slice(0,index+1);
  var path=base.concat([val]);
+ if(index===0&&state.eurostatRootParent)path=[state.eurostatRootParent,val];
  var item=eurostatNodeByPath(path);
  if(!item)throw new Error("No s'ha trobat l'element seleccionat d'Eurostat.");
  state.eurostatPath=path;
@@ -2477,7 +2491,7 @@ async function runQuery(){
    var query={query:[],response:{format:state.pxPreset==="eustat"?"json-stat":"json-stat2"}};
    dims(state.metadata).forEach(function(d){
     var selected=Array.from(state.filters.get(d.id)||[]),all=d.categories.map(function(c){return c.code});
-    if(selected.length&&selected.length!==all.length){
+    if(selected.length&&(selected.length!==all.length||state.pxPreset==="finland")){
      query.query.push({code:d.id,selection:{filter:"item",values:selected}});
     }
    });
