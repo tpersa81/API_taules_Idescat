@@ -2125,6 +2125,9 @@ async function runQuery(){
    }else{
     try{
      ds=await fetchJson(up,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(query)});
+     // Eustat retorna JSON-stat 1.2. El normalitzem abans de passar-lo al
+     // renderitzador com fem amb les metadades PxWeb.
+     if(state.pxPreset==="eustat")ds=pxToJsonStat(ds);
     }catch(pxErr){
      // Statistics Iceland pot servir JSON-stat clàssic encara que la
      // interfície PxWeb publiqui l'opció json-stat2.
