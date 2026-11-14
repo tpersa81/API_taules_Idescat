@@ -946,6 +946,28 @@ async function pxRecursiveChildren(path){
  });
  return items;
 }
+function finlandTableUrls(path){
+ var p=(path||[]).slice(),base=provider().base.replace(/\/+$/,"");
+ if(state.pxPreset!=="finland")return [pxUrl(p)];
+ if(!p.length)return [];
+ var parts=p.map(function(x){return String(x||"").trim()}).filter(Boolean);
+ if(!parts.length)return [];
+ parts[0]=parts[0].replace(/^StatFin__/i,"");
+ var last=parts[parts.length-1].replace(/\.px$/i,"");
+ if(!last)return [];
+ // Statistics Finland documenta que /StatFin/12dj.px és equivalent a /StatFin/synt/12dj.px.
+ // Prioritzem l'endpoint curt i mantenim la ruta jeràrquica com a fallback.
+ var urls=[base+"/"+last+".px"];
+ var rel=parts.slice(0,-1).concat([last+".px"]).join("/");
+ urls.push(base+"/"+rel);
+ var db=parts[0];
+ if(db){
+  var physical="statfin_"+db+"_pxt_"+last+".px";
+  urls.push(base+"/"+db+"/"+physical);
+  urls.push(base+"/"+physical);
+ }
+ return [...new Set(urls)];
+}
 async function pxRecursiveLoadTable(item){
  var path=(item&&item.path||[]).slice(),tableId=String(item&&item.tableId||path[path.length-1]||"").trim(),urls=[];
  if(state.pxPreset==="finland")urls=finlandTableUrls(path);
@@ -1442,72 +1464,9 @@ function pxToJsonStat(m){
  }
  return ds;
 }
-function finlandTableUrls(path){
- var p=(path||[]).slice(),base=provider().base.replace(/\/+$/,"");
- if(state.pxPreset!=="finland")return [pxUrl(p)];
- if(!p.length)return [];
- var parts=p.map(function(x){return String(x||"").trim()}).filter(Boolean);
- if(!parts.length)return [];
- parts[0]=parts[0].replace(/^StatFin__/i,"");
- var last=parts[parts.length-1].replace(/\.px$/i,"");
- if(!last)return [];
- // Statistics Finland documenta que /StatFin/12dj.px és equivalent a /StatFin/synt/12dj.px.
- // Per tant, prioritzem l'endpoint curt i mantenim la ruta jeràrquica com a fallback.
- var urls=[base+"/"+last+".px"];
- var rel=parts.slice(0,-1).concat([last+".px"]).join("/");
- urls.push(base+"/"+rel);
- var db=parts[0];
- if(db){
-  var physical="statfin_"+db+"_pxt_"+last+".px";
-  urls.push(base+"/"+db+"/"+physical);
-  urls.push(base+"/"+physical);
- }
- return [...new Set(urls)];
-}
-function finlandTableUrls(path){
- var p=(path||[]).slice(),base=provider().base.replace(/\/+$/,"");
- if(state.pxPreset!=="finland")return [pxUrl(p)];
- if(!p.length)return [];
- var parts=p.map(function(x){return String(x||"").trim()}).filter(Boolean);
- if(!parts.length)return [];
- parts[0]=parts[0].replace(/^StatFin__/i,"");
- var last=parts[parts.length-1].replace(/\.px$/i,"");
- if(!last)return [];
- // Statistics Finland documenta que /StatFin/12dj.px és equivalent a /StatFin/synt/12dj.px.
- // Per tant, prioritzem l'endpoint curt i mantenim la ruta jeràrquica com a fallback.
- var urls=[base+"/"+last+".px"];
- var rel=parts.slice(0,-1).concat([last+".px"]).join("/");
- urls.push(base+"/"+rel);
- var db=parts[0];
- if(db){
-  var physical="statfin_"+db+"_pxt_"+last+".px";
-  urls.push(base+"/"+db+"/"+physical);
-  urls.push(base+"/"+physical);
- }
- return [...new Set(urls)];
-}
-function finlandTableUrls(path){
- var p=(path||[]).slice(),base=provider().base.replace(/\/+$/,"");
- if(state.pxPreset!=="finland")return [pxUrl(p)];
- if(!p.length)return [];
- var parts=p.map(function(x){return String(x||"").trim()}).filter(Boolean);
- if(!parts.length)return [];
- parts[0]=parts[0].replace(/^StatFin__/i,"");
- var last=parts[parts.length-1].replace(/\.px$/i,"");
- if(!last)return [];
- // Statistics Finland documenta que /StatFin/12dj.px és equivalent a /StatFin/synt/12dj.px.
- // Per tant, prioritzem l'endpoint curt i mantenim la ruta jeràrquica com a fallback.
- var urls=[base+"/"+last+".px"];
- var rel=parts.slice(0,-1).concat([last+".px"]).join("/");
- urls.push(base+"/"+rel);
- var db=parts[0];
- if(db){
-  var physical="statfin_"+db+"_pxt_"+last+".px";
-  urls.push(base+"/"+db+"/"+physical);
-  urls.push(base+"/"+physical);
- }
- return [...new Set(urls)];
-}
+
+
+
 function finlandTableUrl(path){return finlandTableUrls(path)[0]}
 function isPxMetadata(d){
  var s=d&&d.dataset&&typeof d.dataset==="object"?d.dataset:d;
