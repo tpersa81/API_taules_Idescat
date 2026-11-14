@@ -2380,7 +2380,7 @@ async function onNodeChange(){
  }else if(state.provider==="pxweb")await pxSelect("node");
  else if(state.provider==="ine"){state.selected.node=$("node").value;state.selected.table=state.selected.node;if(!state.selected.table)return;try{await ineMetadata(state.selected.table)}catch(e){status("INE: "+e.message,"error")}}
 }
-async async function onTableChange(){
+async function onTableChange(){
  clearQueryView();
  if(state.provider==="idescat"){
   state.selected.table=$("table").value;
