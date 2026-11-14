@@ -2152,11 +2152,32 @@ function addTemporalQuickControls(toolbar,dim,categories,list){
 }
 function renderMetadata(ds){
  state.filters.clear();$("filters").innerHTML="";
- dims(ds).forEach(function(d){var cats=sortedCats(d.categories,d),set=new Set(cats.map(function(x){return x.code}));state.filters.set(d.id,set);var sec=document.createElement("section");sec.className="filter";sec.dataset.dim=d.id;sec.innerHTML="<div class=\"filter-head\"><div><h3>"+esc(d.label)+"</h3><span class=\"role\">"+esc(d.role||"")+"</span></div><span class=\"selected-count\"></span></div>";var tools=document.createElement("div");tools.className="filter-tools";var buttons=document.createElement("div");buttons.className="filter-buttons";var all=document.createElement("button");all.className="secondary";all.textContent="Tots";var none=document.createElement("button");none.className="secondary";none.textContent="Cap";var list=document.createElement("div");list.className="options";if(cats.length>1){buttons.append(all,none);tools.append(buttons);addTemporalQuickControls(tools,d,cats,list)}
- cats.forEach(function(c){var b=document.createElement("button");b.type="button";b.className="option selected";b.dataset.code=c.code;b.innerHTML="<span class=\"option-label\">"+esc(c.label)+"</span><small>"+esc(c.code)+"</small>";b.onclick=function(){if(cats.length===1)return;var s=state.filters.get(d.id);if(s.has(c.code))s.delete(c.code);else s.add(c.code);b.classList.toggle("selected",s.has(c.code));updateCells()};list.append(b)});
- sec.append(tools,list);$("filters").append(sec);
- all.onclick=function(){state.filters.set(d.id,new Set(cats.map(function(c){return c.code})));list.querySelectorAll(".option").forEach(function(b){b.classList.add("selected")});updateCells()};none.onclick=function(){state.filters.set(d.id,new Set());list.querySelectorAll(".option").forEach(function(b){b.classList.remove("selected")});updateCells()}
- });updateCells()
+ var metadataDims=dims(ds||{}).filter(function(d){return d&&d.id});
+ metadataDims.forEach(function(d){
+  try{
+   var cats=sortedCats(Array.isArray(d.categories)?d.categories:[],d),set=new Set(cats.map(function(x){return x.code}));
+   state.filters.set(d.id,set);
+   var sec=document.createElement("section");sec.className="filter";sec.dataset.dim=d.id;
+   sec.innerHTML="<div class=\"filter-head\"><div><h3>"+esc(d.label||d.id)+"</h3><span class=\"role\">"+esc(d.role||"")+"</span></div><span class=\"selected-count\"></span></div>";
+   var tools=document.createElement("div");tools.className="filter-tools",buttons=document.createElement("div");buttons.className="filter-buttons";
+   var all=document.createElement("button");all.className="secondary";all.textContent="Tots";
+   var none=document.createElement("button");none.className="secondary";none.textContent="Cap";
+   var list=document.createElement("div");list.className="options";
+   if(cats.length>1){buttons.append(all,none);tools.append(buttons);addTemporalQuickControls(tools,d,cats,list)}
+   cats.forEach(function(c){
+    var b=document.createElement("button");b.type="button";b.className="option selected";b.dataset.code=c.code;
+    b.innerHTML="<span class=\"option-label\">"+esc(c.label)+"</span><small>"+esc(c.code)+"</small>";
+    b.onclick=function(){if(cats.length===1)return;var fs=state.filters.get(d.id)||new Set();if(fs.has(c.code))fs.delete(c.code);else fs.add(c.code);state.filters.set(d.id,fs);b.classList.toggle("selected",fs.has(c.code));updateCells()};
+    list.append(b)
+   });
+   sec.append(tools,list);$("filters").append(sec);
+   all.onclick=function(){state.filters.set(d.id,new Set(cats.map(function(c){return c.code})));list.querySelectorAll(".option").forEach(function(b){b.classList.add("selected")});updateCells()};
+   none.onclick=function(){state.filters.set(d.id,new Set());list.querySelectorAll(".option").forEach(function(b){b.classList.remove("selected")});updateCells()};
+  }catch(e){
+   console.warn("No s'ha pogut construir el filtre PxWeb",d,e);
+  }
+ });
+ updateCells()
 }
 function selectedFilters(){var q={};dims(state.metadata).forEach(function(d){var s=state.filters.get(d.id)||new Set(),n=d.categories.length;if(s.size&&s.size!==n)q[d.id]=Array.from(s)});return q}
 function updateCells(){var n=1;state.filters.forEach(function(s){n*=s.size});var missing=Array.from(state.filters.values()).some(function(s){return !s.size});var cellLimit=state.provider==="idescat"?MAX_CELLS:(state.provider==="pxweb"&&state.pxPreset==="finland"?100000:(state.provider==="pxweb"&&state.pxPreset==="sweden"?150000:Infinity));var tooMany=n>cellLimit;var bad=missing||tooMany;$("cellInfo").hidden=false;var icon=bad?"✕":"✓";var limitText=Number.isFinite(cellLimit)?cellLimit.toLocaleString("ca-ES"):"—";var msg=missing?"Cal seleccionar valors a totes les dimensions.":tooMany?"Cal filtrar la taula (màxim "+limitText+" cel·les)":"Es pot continuar."; $("cellInfo").innerHTML="<span class=\"status-icon "+(bad?"bad":"ok")+"\" aria-hidden=\"true\">"+icon+"</span> <strong>Nombre de cel·les de la taula filtrada:</strong> "+n.toLocaleString("ca-ES")+" · <span class=\""+(bad?"bad":"ok")+"\">"+msg+"</span>";document.querySelectorAll(".filter").forEach(function(x){x.querySelector(".selected-count").textContent=(state.filters.get(x.dataset.dim)||new Set()).size.toLocaleString("ca-ES")+" seleccionades"});$("query").disabled=bad||!state.metadata}
