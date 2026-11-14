@@ -1144,12 +1144,15 @@ function pxToJsonStat(m){
  if(src&&Array.isArray(src.id)&&src.dimension){
   // Algunes respostes JSON-stat 1.2 d'Eustat poden no incloure "size".
   // La mida es pot reconstruir directament a partir de category.index.
-  if(!Array.isArray(src.size)||src.size.length!==src.id.length){
+  var needSize=!Array.isArray(src.size)||src.size.length!==src.id.length||src.size.some(function(n){return Number(n)<=0});
+  if(needSize){
    var normalized=Object.assign({},src),sizes=[];
-   src.id.forEach(function(id){
-    var cat=src.dimension[id]&&src.dimension[id].category||{},n=0;
+   src.id.forEach(function(id,j){
+    var cat=src.dimension[id]&&src.dimension[id].category||{},n=Number(src.size&&src.size[j]||0);
+    if(n>0){sizes.push(n);return}
     if(Array.isArray(cat.index))n=cat.index.length;
     else if(cat.index&&typeof cat.index==="object")n=Object.keys(cat.index).length;
+    else if(Array.isArray(cat.label))n=cat.label.length;
     else if(cat.label&&typeof cat.label==="object")n=Object.keys(cat.label).length;
     sizes.push(n);
    });
@@ -2132,7 +2135,10 @@ async function runQuery(){
   else if(state.provider==="pxweb"){
    var query={query:[],response:{format:state.pxPreset==="eustat"?"json-stat":"json-stat2"}};
    dims(state.metadata).forEach(function(d){
-    query.query.push({code:d.id,selection:{filter:"item",values:Array.from(state.filters.get(d.id)||[])}});
+    var selected=Array.from(state.filters.get(d.id)||[]),all=d.categories.map(function(c){return c.code});
+    if(selected.length&&selected.length!==all.length){
+     query.query.push({code:d.id,selection:{filter:"item",values:selected}});
+    }
    });
    var up=state.pxPreset==="eustat"?provider().base+"/"+encodeURIComponent(state.selected.table):state.pxPreset==="norway"?provider().base+"/tables/"+encodeURIComponent(state.selected.table)+"/data":state.pxPreset==="finland"&&state.finlandTableUrl?state.finlandTableUrl:finlandTableUrl(state.pxPath);
    if(state.pxPreset==="norway"){var nq=new URL(up);nq.searchParams.set("lang","en");nq.searchParams.set("outputFormat","json-stat2");dims(state.metadata).forEach(function(d){nq.searchParams.set("valueCodes["+d.id+"]",Array.from(state.filters.get(d.id)||[]).join(","))});ds=await fetchJson(nq.toString())}
