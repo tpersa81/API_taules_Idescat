@@ -476,7 +476,6 @@ select option{text-align:left}
 
 /* Navegació jeràrquica de Statistics Sweden */
 #eurostatLevels{margin-top:10px;}
-#eurostatLevels > label{grid-column:1;}
 
 /* Selector d'ordre temporal dels resultats */
 .temporal-order{margin:0 0 14px;width:max-content;max-width:100%;}
