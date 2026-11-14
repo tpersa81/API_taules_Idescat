@@ -795,7 +795,7 @@ async function onStatChange(){
  if(eo.length===1){$("concept").value=eo[0].id;await $("concept").onchange()}
 }else if(state.pxPreset==="norway"){await norwaySelectRoot(state.selected.stat)}
   else{state.pxPath=[state.selected.stat];await pxChildren(state.pxPath,"concept")}
- }catch(e){status(e.message,"error")}finally{busy(false)}
+ }catch(e){var em=e&&e.message?String(e.message):String(e),st=e&&e.stack?String(e.stack):"";if(state.provider==="pxweb"&&(state.pxPreset==="finland"||state.pxPreset==="iceland")){status("PX-"+String(state.pxPreset).toUpperCase()+": "+em+(st?" · STACK: "+st.split("\n").slice(0,4).join(" | "):""),"error")}else status(em,"error")}finally{busy(false)}
 }
 async function norwayLoadV2Catalog(){
  var all=[],page=1,pageSize=500;
