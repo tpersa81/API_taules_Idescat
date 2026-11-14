@@ -1169,6 +1169,22 @@ function pxToJsonStat(m){
   }
   return src;
  }
+ // Eustat JSON-stat 1.2: en algunes respostes, "id", "size" i "role" arriben dins de "dimension".
+ // Els camps de les dimensions pròpiament dites continuen sent les claus restants.
+ if(src&&src.dimension&&Array.isArray(src.dimension.id)){
+  var ed=src.dimension, eids=ed.id.slice(), esizes=Array.isArray(ed.size)?ed.size.slice():[], eds={version:src.version||"2.0",class:src.class||"dataset",label:String(src.label||state.selected.table||""),id:eids,size:[],dimension:{}};
+  eids.forEach(function(id,j){
+   var d=ed[id]||{},cat=d.category||{},idx=cat.index,lab=cat.label||{},n=Number(esizes[j]||0);
+   if(!n){if(Array.isArray(idx))n=idx.length;else if(idx&&typeof idx==="object")n=Object.keys(idx).length;else if(lab&&typeof lab==="object")n=Object.keys(lab).length;}
+   eds.size.push(n);
+   eds.dimension[id]=d;
+  });
+  if(src.value!=null)eds.value=src.value;
+  else if(src.values!=null)eds.value=src.values;
+  else if(Array.isArray(src.data))eds.value=src.data;
+  if(ed.role)eds.role=ed.role;
+  return eds;
+ }
  var vars=Array.isArray(src&&src.variables)?src.variables:(Array.isArray(m&&m.variables)?m.variables:[]);
  var ds={version:"2.0",class:"dataset",label:String(src&&src.label||m&&m.title||m&&m.label||state.selected.table||""),id:[],size:[],dimension:{}};
  vars.forEach(function(v){
