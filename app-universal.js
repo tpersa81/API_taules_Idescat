@@ -535,6 +535,7 @@ async function ineLoadTables(op){
  }catch(e){lastErr=e;}
 
  throw new Error(lastErr&&lastErr.message||"INE: no s'han trobat taules per a aquesta operació.");
+}catch(e){lastErr=e;}
 }
 function ineLevelLabel(index){return index===0?"Grup temàtic":index===1?"Tema":index===2?"Estadística":"Nivell "+(index-2)}
 async function ineSelectRoot(){
