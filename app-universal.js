@@ -1050,7 +1050,7 @@ function deriveCross(s){s=String(s||"").trim();var p=s.indexOf(". ");if(p<0)retu
 async function onStatChange(){
  state.selected.stat=$("stat").value;clearBelow(true);if(!state.selected.stat)return;busy(true);
  try{
-  if(state.provider==="idescat"){var d=await fetchJson(provider().base+"/"+encodeURIComponent(state.selected.stat)+"?lang=ca");state.catalog=collection(d).map(function(x){return{node:x.id,name:x.label,concept:deriveConcept(x.label),cross:deriveCross(x.label)}});var cs=[...new Set(state.catalog.map(function(x){return x.concept}).filter(Boolean))];fill($("concept"),cs.map(function(x){return{value:x,label:x}}));$("concept").disabled=!cs.length}
+  if(state.provider==="idescat"){var d=await fetchJson(provider().base+"/"+encodeURIComponent(state.selected.stat)+"?lang=ca");state.catalog=collection(d).map(function(x){return{node:x.id,name:x.label,concept:deriveConcept(x.label),cross:deriveCross(x.label)}});var cs=[...new Set(state.catalog.map(function(x){return x.concept}).filter(Boolean))];fill($("concept"),cs.map(function(x){return{value:x,label:x}}));$("concept").disabled=!cs.length;if(cs.length===1){$("concept").value=cs[0];await $("concept").onchange()}}
   else if(state.provider==="ine"){await ineSelectRoot();$("stat").disabled=true;$("concept").disabled=true;$("cross").disabled=true;$("node").disabled=true;$("table").disabled=true;$("geo").disabled=true}
   else if(state.provider==="eurostat"){await eurostatSelectRoot(state.selected.stat)}
   else if(state.pxPreset==="sweden"){await swedenSelectRoot(state.selected.stat)}
