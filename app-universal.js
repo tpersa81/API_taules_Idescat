@@ -177,7 +177,21 @@ function ineNavOperations(group,topic){
  });
  return out;
 }
-async function ineExplainCapselItems(items){var list=(items||[]).map(function(x){return Object.assign({},x)});await Promise.all(list.map(async function(x){if(!/^Apartat\s+\d+$/i.test(String(x.label||""))||!x.url)return;try{var html=await fetchText(x.url,{cache:"no-store"}),doc=new DOMParser().parseFromString(html,"text/html"),h=doc.querySelector("h1.inebase_titulo")||doc.querySelector("h1"),t=h?String(h.textContent||"").replace(/\s+/g," ").trim():"";if(t)t=t.replace(/\s*[|·-]\s*(?:Instituto Nacional de Estadística|INE).*$/i,"").trim();if(t)x.label=t||x.label}catch(e){}}));return list}
+async function ineExplainCapselItems(items){
+ var list=(items||[]).map(function(x){return Object.assign({},x)});
+ await Promise.all(list.map(async function(x){
+  if(!/^Apartat\s+\d+$/i.test(String(x.label||""))||!x.url)return;
+  try{
+   var html=await fetchText(x.url,{cache:"no-store"}),doc=new DOMParser().parseFromString(html,"text/html");
+   var h=doc.querySelector("h1.inebase_titulo")||doc.querySelector("h1")||doc.querySelector("h2"),t=h?String(h.textContent||"").replace(/\s+/g," ").trim():"";
+   if(!t){var tt=doc.querySelector("title");if(tt)t=String(tt.textContent||"").replace(/\s+/g," ").trim()}
+   if(!t){var meta=doc.querySelector('meta[name="description"]');if(meta)t=String(meta.getAttribute("content")||"").replace(/\s+/g," ").trim()}
+   if(t)t=t.replace(/^INEbase\s*[-|·:]\s*/i,"").replace(/\s*[|·-]\s*(?:Instituto Nacional de Estadística|INE).*$/i,"").trim();
+   if(t)x.label=t||x.label;
+  }catch(e){}
+ }));
+ return list
+}
 function ineAddLevel(items,index,labelText){
  var box=$("eurostatLevels");if(!box)return;
  var list=(items||[]).filter(function(x){return x&&x.id&&x.label});
@@ -2232,16 +2246,15 @@ async function onGeoChange(){
  }catch(e){status(e.message,"error")}
 }
 function temporalPeriodicity(categories){
- var codes=(categories||[]).map(function(c){return String(c.code||"").trim()}).filter(Boolean);
- for(var i=0;i<codes.length;i++){
-  var code=codes[i];
-  if(/^\d{4}$/.test(code))return"year";
-  if(/^\d{4}M\d{1,2}$/i.test(code)||/^\d{4}-M\d{1,2}$/i.test(code)||/^\d{4}-\d{2}$/.test(code))return"month";
-  if(/^\d{4}(?:Q|T)\d$/i.test(code)||/^\d{4}-Q\d$/i.test(code))return"quarter";
-  if(/^\d{4}S\d$/i.test(code)||/^\d{4}-S\d$/i.test(code))return"semester";
-  if(/^\d{4}B\d{1,2}$/i.test(code)||/^\d{4}-B\d{1,2}$/i.test(code))return"bimonth";
-  if(/^\d{4}W\d{1,2}$/i.test(code)||/^\d{4}-W\d{1,2}$/i.test(code))return"week";
-  if(/^\d{4}D\d{1,3}$/i.test(code)||/^\d{4}-D\d{1,3}$/i.test(code)||/^\d{4}-\d{2}-\d{2}$/.test(code))return"day";
+ var arr=(categories||[]).map(function(c){return{code:String(c&&c.code||"").trim(),label:String(c&&c.label||"").trim()}}).filter(function(x){return x.code||x.label});
+ for(var i=0;i<arr.length;i++){var code=arr[i].code,label=arr[i].label;
+  if(/^\d{4}$/.test(code)||/^\d{4}$/.test(label))return"year";
+  if(/^\d{4}M\d{1,2}$/i.test(code)||/^\d{4}-M\d{1,2}$/i.test(code)||/^\d{4}-\d{2}$/.test(code)||/^\d{4}\s*[-/]?\s*M\d{1,2}$/i.test(label))return"month";
+  if(/^\d{4}(?:Q|T)\d$/i.test(code)||/^\d{4}-Q\d$/i.test(code)||/^\d{4}\s*[-/]?\s*(?:Q|T)\d$/i.test(label))return"quarter";
+  if(/^\d{4}S\d$/i.test(code)||/^\d{4}-S\d$/i.test(code)||/^\d{4}\s*[-/]?\s*S\d$/i.test(label))return"semester";
+  if(/^\d{4}B\d{1,2}$/i.test(code)||/^\d{4}-B\d{1,2}$/i.test(code)||/^\d{4}\s*[-/]?\s*B\d{1,2}$/i.test(label))return"bimonth";
+  if(/^\d{4}W\d{1,2}$/i.test(code)||/^\d{4}-W\d{1,2}$/i.test(code)||/^\d{4}\s*[-/]?\s*W\d{1,2}$/i.test(label))return"week";
+  if(/^\d{4}D\d{1,3}$/i.test(code)||/^\d{4}-D\d{1,3}$/i.test(code)||/^\d{4}-\d{2}-\d{2}$/.test(code)||/^\d{4}\s*[-/]?\s*D\d{1,3}$/i.test(label))return"day";
  }
  return null
 }
