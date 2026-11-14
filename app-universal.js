@@ -795,7 +795,7 @@ async function onStatChange(){
  if(eo.length===1){$("concept").value=eo[0].id;await $("concept").onchange()}
 }else if(state.pxPreset==="norway"){await norwaySelectRoot(state.selected.stat)}
   else{state.pxPath=[state.selected.stat];await pxChildren(state.pxPath,"concept")}
- }catch(e){status(e.message,"error")}finally{busy(false)}
+ }catch(e){var em=e&&e.message?String(e.message):String(e),st=e&&e.stack?String(e.stack):"";if(state.provider==="pxweb"&&(state.pxPreset==="finland"||state.pxPreset==="iceland")){status("PX-"+String(state.pxPreset).toUpperCase()+": "+em+(st?" · STACK: "+st.split("\n").slice(0,4).join(" | "):""),"error")}else status(em,"error")}finally{busy(false)}
 }
 async function norwayLoadV2Catalog(){
  var all=[],page=1,pageSize=500;
@@ -945,6 +945,28 @@ async function pxRecursiveChildren(path){
   items.push({id:id,label:String(f(x,"text","label","name","title")||id).trim(),type:type,path:(path||[]).concat([id]),tableId:type==="t"||type==="table"||/\.px$/i.test(id)?id:""});
  });
  return items;
+}
+function finlandTableUrls(path){
+ var p=(path||[]).slice(),base=provider().base.replace(/\/+$/,"");
+ if(state.pxPreset!=="finland")return [pxUrl(p)];
+ if(!p.length)return [];
+ var parts=p.map(function(x){return String(x||"").trim()}).filter(Boolean);
+ if(!parts.length)return [];
+ parts[0]=parts[0].replace(/^StatFin__/i,"");
+ var last=parts[parts.length-1].replace(/\.px$/i,"");
+ if(!last)return [];
+ // Statistics Finland documenta que /StatFin/12dj.px és equivalent a /StatFin/synt/12dj.px.
+ // Prioritzem l'endpoint curt i mantenim la ruta jeràrquica com a fallback.
+ var urls=[base+"/"+last+".px"];
+ var rel=parts.slice(0,-1).concat([last+".px"]).join("/");
+ urls.push(base+"/"+rel);
+ var db=parts[0];
+ if(db){
+  var physical="statfin_"+db+"_pxt_"+last+".px";
+  urls.push(base+"/"+db+"/"+physical);
+  urls.push(base+"/"+physical);
+ }
+ return [...new Set(urls)];
 }
 async function pxRecursiveLoadTable(item){
  var path=(item&&item.path||[]).slice(),tableId=String(item&&item.tableId||path[path.length-1]||"").trim(),urls=[];
@@ -1442,25 +1464,9 @@ function pxToJsonStat(m){
  }
  return ds;
 }
-function finlandTableUrls(path){
- var p=(path||[]).slice(),base=provider().base.replace(/\/+$/,"");
- if(state.pxPreset!=="finland")return [pxUrl(p)];
- var last=String(p[p.length-1]||"").trim().replace(/\.px$/i,"");
- var db=String(p[0]||state.selected.stat||"").replace(/^StatFin__/i,"").trim();
- var urls=[];
- if(last){
-  // Format físic actual de Statistics Finland: /StatFin/statfin_<db>_pxt_<taula>.px
-  var physical="statfin_"+db+"_pxt_"+last+".px";
-  // Des del canvi de 8/6/2026 Statistics Finland ha escurçat els
-  // noms dels fitxers de les taules. Per a les taules actives de
-  // StatFin, l'endpoint API canònic és /StatFin/<nivell>/<id>.px.
-  if(db)urls.push(base+"/"+db+"/"+last+".px");
-  if(db)urls.push(base+"/"+db+"/"+physical);
-  if(db)urls.push(base+"/"+physical);
-  urls.push(base+"/"+last+".px");
- }
- return [...new Set(urls)];
-}
+
+
+
 function finlandTableUrl(path){return finlandTableUrls(path)[0]}
 function isPxMetadata(d){
  var s=d&&d.dataset&&typeof d.dataset==="object"?d.dataset:d;
@@ -2426,13 +2432,24 @@ async function runQuery(){
            valueInfo=eustatValue==null?"absent":(Array.isArray(eustatValue)?"array("+eustatValue.length+")":"object("+Object.keys(eustatValue||{}).length+")");
        throw new Error("Eustat: resposta JSON-stat no vàlida per a la taula. id=["+eustatIds.join(",")+"] · size=["+eustatSizes.join(",")+"] · total="+eustatTotal+" · value="+valueInfo+" · camps="+rawKeys+" · dimensions="+dimKeys);
       }
+     }else{
+      // Finland, Iceland i la resta de PxWeb retornen JSON-stat/json-stat2.
+      // Cal convertir sempre la resposta de dades abans de renderitzar-la.
+      ds=pxToJsonStat(rawPxResponse);
+      if(!ds||!Array.isArray(ds.id)||!ds.id.length){
+       throw new Error("PxWeb: la resposta de dades no conté una estructura JSON-stat vàlida.");
+      }
      }
     }catch(pxErr){
      // Statistics Iceland pot servir JSON-stat clàssic encara que la
      // interfície PxWeb publiqui l'opció json-stat2.
      if(state.pxPreset==="iceland"){
       var fallbackQuery={query:query.query,response:{format:"json"}};
-      ds=await fetchJson(up,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(fallbackQuery)});
+      var fallbackPxResponse=await fetchJson(up,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(fallbackQuery)});
+      ds=pxToJsonStat(fallbackPxResponse);
+      if(!ds||!Array.isArray(ds.id)||!ds.id.length){
+       throw new Error("Statistics Iceland: la resposta JSON-stat alternativa no és vàlida.");
+      }
      }else throw pxErr;
     }
    }
