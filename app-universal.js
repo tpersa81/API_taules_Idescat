@@ -1292,35 +1292,55 @@ function eustatParseDownloadLinks(doc,baseUrl,operationId,tables,seen){
 async function eustatLoadOperationTables(operationId){
  var op=(state.eustatOperations||[]).find(function(x){return x.id===operationId});
  if(!op)throw new Error("No s'ha trobat l'operació d'Eustat seleccionada.");
- var html=await fetchText(op.url,{cache:"no-store"}),code=eustatOperationCode(html),tables=[],seen=new Set();
- var banku=eustatBankuUrl(code);
- if(banku)try{
-  var bh=await fetchText(banku,{cache:"no-store"}),bd=new DOMParser().parseFromString(bh,"text/html");
-  Array.from(bd.querySelectorAll("a[href]")).forEach(function(aEl){
-   var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",banku),label=eustatCleanText(aEl.textContent||"");
-   if(!href||!label)return;
-   var u;try{u=new URL(href)}catch(e){return}
-   var ma=u.searchParams.get("ma");
-   if(ma&&u.pathname.toLowerCase().indexOf("/banku/redirec.aspx")>=0){
-    var key="px:"+ma;if(seen.has(key))return;seen.add(key);
-    tables.push({id:ma,label:label,type:"px",url:href,operationId:operationId});
+
+ // El catàleg oficial de l'API d'Eustat és pla, però els identificadors
+ // PX de les taules incorporen el codi de l'operació (PX_010152_...).
+ // Això permet obtenir totes les taules de l'operació sense dependre de
+ // CORS ni d'analitzar una pàgina HTML del Banco de Datos.
+ var code=String(op.code||"");
+ if(!code){
+   var m=String(op.url||"").match(/\/banku\/id_([^/]+)\/indexlistaopera\\.html/i);
+   code=m?m[1]:"";
+ }
+ var catalog=Array.isArray(state.eustatCatalog)?state.eustatCatalog:[];
+ var prefix=code?"PX_"+code+"_":"";
+ var tables=catalog.filter(function(t){
+   var id=String(t&&((t.id!=null)?t.id:t.value)||"");
+   return prefix && id.toUpperCase().indexOf(prefix.toUpperCase())===0;
+ }).map(function(t){
+   var id=String(t.id!=null?t.id:t.value||"");
+   return {
+     id:id,
+     label:String(t.label||t.text||t.name||id),
+     type:"px",
+     url:eustatAbsoluteUrl("/bankupx/pxweb/es/DB/DB/"+id+".px/", "https://es.eustat.eus"),
+     operationId:operationId
+   };
+ });
+
+ // Fallback per a operacions/taules que no segueixin el patró PX_<codi>_.
+ if(!tables.length){
+   var html="";
+   try{html=await fetchText(op.url,{cache:"no-store"})}catch(e){}
+   if(html){
+     var doc=new DOMParser().parseFromString(html,"text/html"),seen=new Set();
+     Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
+       var href=eustatAbsoluteUrl(aEl.getAttribute("href")||"",op.url),label=eustatCleanText(aEl.textContent||"");
+       if(!href||!label)return;
+       var mm=href.match(/[?&]ma=(PX_[^&)"'\\s]+)/i);
+       if(!mm)return;
+       var id=decodeURIComponent(mm[1]);
+       if(seen.has(id))return;
+       seen.add(id);
+       tables.push({id:id,label:label,type:"px",url:eustatAbsoluteUrl("/bankupx/pxweb/es/DB/DB/"+id+".px/","https://es.eustat.eus"),operationId:operationId});
+     });
    }
-  });
-  var rx=/[?&]ma=(PX_[^&)"'\s]+)/gi,m;
-  while((m=rx.exec(String(bh||"")))){
-   var ma2=decodeURIComponent(m[1]),key2="px:"+ma2;
-   if(!seen.has(key2)){seen.add(key2);var cat=(state.eustatCatalog||[]).find(function(t){return String(t.id||t.value||"")===ma2});tables.push({id:ma2,label:String(cat&&cat.label||cat&&cat.name||ma2),type:"px",url:"",operationId:operationId})}
-  }
- }catch(e){}
- var type1=eustatTablesPageUrl(op.url);
- if(type1)try{
-  var th=await fetchText(type1,{cache:"no-store"}),td=new DOMParser().parseFromString(th,"text/html");
-  eustatParseDownloadLinks(td,type1,operationId,tables,seen);
-  var md=/\((https?:\/\/[^)\s]+\.(?:csv|xlsx?|zip)(?:\?[^)]*)?)\)/gi,mm;
-  while((mm=md.exec(String(th||"")))){var dh=eustatAbsoluteUrl(mm[1],type1);if(dh&&!seen.has(dh)){seen.add(dh);tables.push({id:"DL:"+tables.length,label:dh.split("/").pop(),type:"download",url:dh,operationId:operationId})}}
- }catch(e){}
- tables.sort(function(a,b){return a.type===b.type?a.label.localeCompare(b.label,"es",{numeric:true}):(a.type==="px"?-1:1)});
- state.eustatTables=tables;fill($("cross"),tables.map(function(x){return{value:x.id,label:x.label+(x.type==="download"?" · descarregable":"")}}));$("cross").disabled=!tables.length;
+ }
+
+ tables.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
+ state.eustatTables=tables;
+ fill($("cross"),tables.map(function(x){return{value:x.id,label:x.label}}));
+ $("cross").disabled=!tables.length;
  if(!tables.length)throw new Error("Eustat: no s'han trobat taules per a "+(op.label||"l'operació")+".");
  return tables;
 }
