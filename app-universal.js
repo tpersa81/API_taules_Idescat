@@ -182,21 +182,46 @@ function ineNavOperations(group,topic){
 async function ineExplainCapselItems(items){
  var list=(items||[]).map(function(x){return Object.assign({},x)});
  await Promise.all(list.map(async function(x){
-  if(!/^Apartat\s+\d+$/i.test(String(x.label||""))||!x.url)return;
+  if(!/^Apartat\\s+\\d+$/i.test(String(x.label||""))||!x.url)return;
   try{
+   // INEbase exposa el títol de cada apartat a la pàgina
+   // ?padre=<capsel>, no necessàriament a la URL ?capsel=<capsel>.
+   // Exemple: ?padre=13720 -> <h1 class="inebase_titulo" id="c_13720">Resultados nacionales</h1>.
+   var titleUrl="";
+   try{
+    var tu=new URL("https://www.ine.es/dynt3/inebase/index.htm");
+    tu.searchParams.set("padre",String(x.capsel||""));
+    titleUrl=tu.href;
+   }catch(e){}
+   if(titleUrl){
+    var thtml=await fetchText(titleUrl,{cache:"no-store"});
+    var tdoc=new DOMParser().parseFromString(thtml,"text/html");
+    var h=tDocTitle(tdoc,x.capsel);
+    if(h){x.label=h;return}
+   }
+   // Reserva: algunes pàgines poden arribar amb una estructura diferent.
    var html=await fetchText(x.url,{cache:"no-store"}),doc=new DOMParser().parseFromString(html,"text/html");
    var candidates=[];
    ["h1.inebase_titulo","h1","h2","h3",".inebase_titulo",".titulo","td.titulo","span.titulo"].forEach(function(q){
-    doc.querySelectorAll(q).forEach(function(el){var t=String(el.textContent||"").replace(/\s+/g," ").trim();if(t&&candidates.indexOf(t)<0)candidates.push(t)})
+    doc.querySelectorAll(q).forEach(function(el){var t=String(el.textContent||"").replace(/\\s+/g," ").trim();if(t&&candidates.indexOf(t)<0)candidates.push(t)})
    });
-   var tt=doc.querySelector("title");if(tt){var t0=String(tt.textContent||"").replace(/\s+/g," ").trim();if(t0)candidates.push(t0)}
-   var meta=doc.querySelector('meta[name="description"]');if(meta){var t1=String(meta.getAttribute("content")||"").replace(/\s+/g," ").trim();if(t1)candidates.push(t1)}
-   var t=candidates.find(function(v){return v&&!/^INEbase(?:\s*[|·:-]|$)/i.test(v)&&!/^(Apartat|Secci[oó]n)\s+\d+$/i.test(v)})||candidates.find(function(v){return !/^Apartat\s+\d+$/i.test(v)})||"";
-   if(t)t=t.replace(/^INEbase\s*[-|·:]\s*/i,"").replace(/\s*[|·-]\s*(?:Instituto Nacional de Estadística|INE).*$/i,"").trim();
-   if(t&&!/^Apartat\s+\d+$/i.test(t))x.label=t;
+   var tt=doc.querySelector("title");if(tt){var t0=String(tt.textContent||"").replace(/\\s+/g," ").trim();if(t0)candidates.push(t0)}
+   var meta=doc.querySelector('meta[name="description"]');if(meta){var t1=String(meta.getAttribute("content")||"").replace(/\\s+/g," ").trim();if(t1)candidates.push(t1)}
+   var t=candidates.find(function(v){return v&&!/^INEbase(?:\\s*[|·:-]|$)/i.test(v)&&!/^(Apartat|Secci[oó]n)\\s+\\d+$/i.test(v)})||"";
+   if(t)t=t.replace(/^INEbase\\s*[-|·:]\\s*/i,"").replace(/\\s*[|·-]\\s*(?:Instituto Nacional de Estadística|INE).*$/i,"").trim();
+   if(t&&!/^Apartat\\s+\\d+$/i.test(t))x.label=t;
   }catch(e){}
  }));
  return list
+}
+function tDocTitle(doc,capsel){
+ if(!doc)return"";
+ var h=null;
+ if(capsel)h=doc.querySelector('h1.inebase_titulo[id="c_'+String(capsel)+'"]');
+ if(!h)h=doc.querySelector("h1.inebase_titulo");
+ if(!h)h=doc.querySelector("h1");
+ if(!h)return"";
+ return String(h.textContent||"").replace(/\\s+/g," ").trim();
 }
 function ineAddLevel(items,index,labelText){
  var box=$("eurostatLevels");if(!box)return;
