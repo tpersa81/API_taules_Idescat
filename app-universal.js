@@ -2154,10 +2154,23 @@ async function runQuery(){
     ds=await swedenV2Query(query);
    }else{
     try{
-     ds=await fetchJson(up,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(query)});
+     var rawPxResponse=await fetchJson(up,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(query)});
      // Eustat retorna JSON-stat 1.2. El normalitzem abans de passar-lo al
      // renderitzador com fem amb les metadades PxWeb.
-     if(state.pxPreset==="eustat")ds=pxToJsonStat(ds);
+     if(state.pxPreset==="eustat"){
+      var rawPx=rawPxResponse&&rawPxResponse.dataset&&typeof rawPxResponse.dataset==="object"?rawPxResponse.dataset:rawPxResponse;
+      ds=pxToJsonStat(rawPxResponse);
+      var eustatIds=Array.isArray(ds.id)?ds.id:[],
+          eustatSizes=Array.isArray(ds.size)?ds.size:[],
+          eustatValue=ds.value!=null?ds.value:(ds.values!=null?ds.values:null),
+          eustatTotal=eustatSizes.length?eustatSizes.reduce(function(a,b){return a*Number(b||0)},1):0;
+      if(!eustatIds.length||!eustatSizes.length||eustatTotal<=0||eustatValue==null){
+       var rawKeys=rawPx&&typeof rawPx==="object"?Object.keys(rawPx).join(","):"",
+           dimKeys=rawPx&&rawPx.dimension&&typeof rawPx.dimension==="object"?Object.keys(rawPx.dimension).join(","):"",
+           valueInfo=eustatValue==null?"absent":(Array.isArray(eustatValue)?"array("+eustatValue.length+")":"object("+Object.keys(eustatValue||{}).length+")");
+       throw new Error("Eustat: resposta JSON-stat no vàlida per a la taula. id=["+eustatIds.join(",")+"] · size=["+eustatSizes.join(",")+"] · total="+eustatTotal+" · value="+valueInfo+" · camps="+rawKeys+" · dimensions="+dimKeys);
+      }
+     }
     }catch(pxErr){
      // Statistics Iceland pot servir JSON-stat clàssic encara que la
      // interfície PxWeb publiqui l'opció json-stat2.
