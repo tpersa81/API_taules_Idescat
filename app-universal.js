@@ -806,6 +806,7 @@ async function norwayLoadV2Catalog(){
   });
  });
  state.norwayRootItems=Array.from(roots.values());
+}
 function norwayCatalogPath(t){
  var paths=t&&t.paths||[];
  for(var j=0;j<paths.length;j++){
