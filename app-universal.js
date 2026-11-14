@@ -77,16 +77,16 @@ function temporal(d){
  var named=id.indexOf("TIME")===0||id.indexOf("PER")===0||label==="PERIODO"||label.indexOf("PERIODO ")===0||label==="PERIOD"||label.indexOf("PERIOD ")===0||label.indexOf("TEMPORAL")>=0||label.indexOf("TEMPORAL ")===0||label.indexOf("YEAR")>=0||label.indexOf("MONTH")>=0||label.indexOf("QUARTER")>=0||label.indexOf("SEMESTER")>=0||label.indexOf("TRIMESTRE")>=0||label.indexOf("MES")===0||r.indexOf("TIME")>=0||r.indexOf("TEMPOR")>=0;
  var temporalCodes=cats.length>0&&cats.every(function(c){
    var code=String(c&&c.code||"").trim();
-   return /^\d{4}$/.test(code)||/^\d{4}M\d{1,2}$/i.test(code)||/^\d{4}(?:Q|T)\d$/i.test(code)||/^\d{4}S\d$/i.test(code)||/^\d{4}B\d{1,2}$/i.test(code)||/^\d{4}W\d{1,2}$/i.test(code)||/^\d{4}D\d{1,3}$/i.test(code)||/^\d{4}-\d{2}(?:-\d{2})?$/.test(code);
+   return /^\d{4}$/.test(code)||/^\d{4}M\d{1,2}$/i.test(code)||/^\d{4}(?:Q|T)\d$/i.test(code)||/^\d{4}S\d$/i.test(code)||/^\d{4}B\d{1,2}$/i.test(code)||/^\d{4}W\d{1,2}$/i.test(code)||/^\d{4}D\d{1,3}$/i.test(code)||/^\d{4}-(?:M|Q|S|B|W|D)\d{1,3}$/i.test(code)||/^\d{4}-\d{2}(?:-\d{2})?$/.test(code);
  });
  return explicit||named||temporalCodes;
 }
 function temporalCodeRank(code){
  var v=String(code==null?"":code).trim().toUpperCase(),m;
  if(/^\d{4}$/.test(v))return Number(v)*100000000;
- m=v.match(/^(\d{4})M(\d{1,2})$/);if(m)return Number(m[1])*100000000+Number(m[2])*1000000;
- m=v.match(/^(\d{4})(?:Q|T)(\d)$/);if(m)return Number(m[1])*100000000+Number(m[2])*10000000;
- m=v.match(/^(\d{4})S(\d)$/);if(m)return Number(m[1])*100000000+Number(m[2])*10000000;
+ m=v.match(/^(\d{4})M(\d{1,2})$/);if(m)return Number(m[1])*100000000+Number(m[2])*1000000;m=v.match(/^(\d{4})-M(\d{1,2})$/);if(m)return Number(m[1])*100000000+Number(m[2])*1000000;
+ m=v.match(/^(\d{4})(?:Q|T)(\d)$/);if(m)return Number(m[1])*100000000+Number(m[2])*10000000;m=v.match(/^(\d{4})-Q(\d)$/);if(m)return Number(m[1])*100000000+Number(m[2])*10000000;
+ m=v.match(/^(\d{4})S(\d)$/);if(m)return Number(m[1])*100000000+Number(m[2])*10000000;m=v.match(/^(\d{4})-S(\d)$/);if(m)return Number(m[1])*100000000+Number(m[2])*10000000;
  m=v.match(/^(\d{4})B(\d{1,2})$/);if(m)return Number(m[1])*100000000+Number(m[2])*1000000;
  m=v.match(/^(\d{4})W(\d{1,2})$/);if(m)return Number(m[1])*100000000+Number(m[2])*1000000;
  m=v.match(/^(\d{4})D(\d{1,3})$/);if(m)return Number(m[1])*100000000+Number(m[2])*1000000;
@@ -174,6 +174,7 @@ function ineNavOperations(group,topic){
  });
  return out;
 }
+async function ineExplainCapselItems(items){var list=(items||[]).map(function(x){return Object.assign({},x)});await Promise.all(list.map(async function(x){if(!/^Apartat\s+\d+$/i.test(String(x.label||""))||!x.url)return;try{var html=await fetchText(x.url,{cache:"no-store"}),doc=new DOMParser().parseFromString(html,"text/html"),h=doc.querySelector("h1.inebase_titulo")||doc.querySelector("h1"),t=h?String(h.textContent||"").replace(/\s+/g," ").trim():"";if(t)t=t.replace(/\s*[|·-]\s*(?:Instituto Nacional de Estadística|INE).*$/i,"").trim();if(t)x.label=t||x.label}catch(e){}}));return list}
 function ineAddLevel(items,index,labelText){
  var box=$("eurostatLevels");if(!box)return;
  var list=(items||[]).filter(function(x){return x&&x.id&&x.label});
@@ -548,10 +549,10 @@ async function ineSelectLevel(index,val){
  if(box)Array.from(box.querySelectorAll("label")).forEach(function(l){if(Number(l.dataset.ineLevel)>index)l.remove()});
  state.inePath=state.inePath.slice(0,index);state.inePath[index]=item.id;
  if(index===0){
-  var topics=ineNavTopics(item.id);ineAddLevel(topics,1,ineLevelLabel(1));return;
+  var topics=await ineExplainCapselItems(ineNavTopics(item.id));ineAddLevel(topics,1,ineLevelLabel(1));return;
  }
  if(index===1){
-  var group=state.inePath[0],ops=ineNavOperations(group,item.id);ineAddLevel(ops,2,ineLevelLabel(2));return;
+  var group=state.inePath[0],ops=await ineExplainCapselItems(ineNavOperations(group,item.id));ineAddLevel(ops,2,ineLevelLabel(2));return;
  }
  if(index===2){
   status("Consultant l'INE…");
@@ -630,6 +631,7 @@ function recursiveProxyClearFrom(index){
   if(Number(el.dataset.recursiveProxy)>=Number(index))el.remove();
  });
 }
+function addUniversalRootLevel(items,labelText,onChange){var box=$("eurostatLevels");if(!box)return;box.innerHTML="";box.hidden=false;box.style.display="grid";var lab=document.createElement("label");lab.style.display="flex";lab.style.flexDirection="column";lab.style.alignItems="stretch";lab.appendChild(document.createTextNode(labelText+" "));var sel=document.createElement("select");sel.id="universalRootLevel";sel.appendChild(new Option("— Selecciona —",""));(items||[]).forEach(function(x){sel.appendChild(new Option(String(x.label||x.value||""),String(x.value||"")))});lab.appendChild(sel);box.appendChild(lab);sel.onchange=async function(){if(!sel.value)return;try{await onChange(sel.value)}catch(e){status(e&&e.message?String(e.message):String(e),"error")}};if((items||[]).length===1){sel.value=String(items[0].value||"");sel.onchange()}}
 function recursiveProxyStart(kind){
  var box=$("eurostatLevels");if(!box)return;
  var defs=kind==="idescat"
@@ -679,7 +681,7 @@ function recursiveProxyStart(kind){
 }
 
 function setProviderUI(){setLabels();var isEuro=state.provider==="eurostat",isIne=state.provider==="ine",isSweden=state.provider==="pxweb"&&state.pxPreset==="sweden",isFinland=state.provider==="pxweb"&&state.pxPreset==="finland",isIceland=state.provider==="pxweb"&&state.pxPreset==="iceland",isNorway=state.provider==="pxweb"&&state.pxPreset==="norway",isEustat=state.provider==="pxweb"&&state.pxPreset==="eustat",isFlatPx=state.provider==="pxweb"&&isEustat,sl=null,otherBox=$("otherProviderWrap");if(otherBox)otherBox.hidden=!$("provider")||$("provider").value!=="other";var fixedGrid=document.querySelector("#step2>.grid"),euroBox=$("eurostatLevels");if(fixedGrid){fixedGrid.hidden=false;fixedGrid.style.display="";if(isSweden||isFinland||isIceland){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}}if(euroBox)euroBox.hidden=!(isEuro||isSweden||isFinland||isIceland||isNorway||isIne||state.provider==="idescat"||isEustat);if((isEuro||isIne)&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isEustat&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i<3?"":"none"});if(fixedGrid.querySelector("label:nth-child(2)"))fixedGrid.querySelector("label:nth-child(2)").firstChild.textContent="Operació ";if(fixedGrid.querySelector("label:nth-child(3)"))fixedGrid.querySelector("label:nth-child(3)").firstChild.textContent="Taula "}else if(isNorway&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isFlatPx&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}else if(fixedGrid&&!isSweden&&!isFinland&&!isIceland){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display=""})}if(fixedGrid&&(state.provider==="idescat"||isEustat||state.pxPreset==="unece")){fixedGrid.hidden=true;fixedGrid.style.display="none"}var tl=$("table")&&$("table").parentElement,gl=$("geo")&&$("geo").parentElement;if(tl)tl.style.display=(isEuro||isIne||isFlatPx||isNorway||isSweden||isFinland||isIceland)?"none":"";if(gl)gl.style.display=(isEuro||isIne||isFlatPx||isNorway||isSweden||isFinland||isIceland)?"none":"";$("docLink").href=provider().doc;var sel=state.provider==="pxweb"?"other":state.provider;if($("provider")&&[].slice.call($("provider").options).some(function(o){return o.value===sel}))$("provider").value=sel;if($("otherProvider")&&state.provider==="pxweb")$("otherProvider").value="pxweb:"+state.pxPreset}
-async function icelandEnglishRootLabel(label){
+function icelandEnglishRootLabel(label){
  var s=String(label||"").trim(),n=s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
  var m={
   "ibuar":"Population",
@@ -1823,7 +1825,7 @@ async function swedenV2Children(path,target){
    }).filter(function(x){return x.id});
   }catch(e){}
  }
- items.sort(function(x,y){return x.label.localeCompare(y.label,"sv",{numeric:true})});
+ items.sort(function(x,y){return String(x.label||"").localeCompare(String(y.label||""),"sv",{numeric:true})});
  if(target){
   state.pxItems.set(target,items);
   fill($(target),items.map(function(x){
@@ -2231,7 +2233,7 @@ function temporalPeriodicity(categories){
 }
 function previousYearPeriodCode(code){
  var v=String(code||"").trim();
- if(/^\d{4}[MQSBDW]\d{1,3}$/i.test(v)||/^\d{4}-\d{2}(?:-\d{2})?$/.test(v))return v.replace(/^(\d{4})/,function(_,y){return String(Number(y)-1)});
+ if(/^\d{4}[MQSBDW]\d{1,3}$/i.test(v)||/^\d{4}-(?:M|Q|S|B|W|D)\d{1,3}$/i.test(v)||/^\d{4}-\d{2}(?:-\d{2})?$/.test(v))return v.replace(/^(\d{4})/,function(_,y){return String(Number(y)-1)});
  return""
 }
 function setFilterSelection(dim,categories,codes,list){
