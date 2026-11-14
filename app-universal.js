@@ -612,7 +612,7 @@ function setLabels(){var p=state.provider,ls=p==="idescat"?["Organisme","Estadí
 function setProviderUI(){setLabels();var isEuro=state.provider==="eurostat",isIne=state.provider==="ine",isSweden=state.provider==="pxweb"&&state.pxPreset==="sweden",isNorway=state.provider==="pxweb"&&state.pxPreset==="norway",isEustat=state.provider==="pxweb"&&state.pxPreset==="eustat",isFlatPx=state.provider==="pxweb"&&isEustat,sl=document.querySelector("#step1 .grid label:nth-child(2)");if(sl)sl.firstChild.textContent=(isEuro?"Tipus de dades":isEustat||isNorway?"Tema":isFlatPx?"Taula":"Estadística")+" ";var fixedGrid=document.querySelector("#step2>.grid"),euroBox=$("eurostatLevels");if(fixedGrid)fixedGrid.style.display="";if(euroBox)euroBox.hidden=!(isEuro||isSweden||isNorway||isIne);if((isEuro||isIne)&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isEustat&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i<3?"":"none"});if(fixedGrid.querySelector("label:nth-child(2)"))fixedGrid.querySelector("label:nth-child(2)").firstChild.textContent="Operació ";if(fixedGrid.querySelector("label:nth-child(3)"))fixedGrid.querySelector("label:nth-child(3)").firstChild.textContent="Taula "}else if(isNorway&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isFlatPx&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}else if(fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display=""})}var tl=$("table")&&$("table").parentElement,gl=$("geo")&&$("geo").parentElement;if(tl)tl.style.display=(isEuro||isIne||isFlatPx||isNorway)?"none":"";if(gl)gl.style.display=(isEuro||isIne||isFlatPx||isNorway)?"none":"";$("docLink").href=provider().doc;var sel=state.provider==="pxweb"?"pxweb:"+state.pxPreset:state.provider;if($("provider")&&[].slice.call($("provider").options).some(function(o){return o.value===sel}))$("provider").value=sel}
 async function loadStats(){
  var loadToken=state.requestToken,loadProvider=state.provider,loadPreset=state.pxPreset;
- state.swedenPath=[];state.swedenV2Table=false;state.norwayPath=[];
+ state.swedenPath=[];state.swedenV2Table=false;state.norwayPath=[];state.norwayCatalog=[];state.norwayRootItems=[];
  setProviderUI();state.stats=[];state.selected.stat="";fill($("stat"),[]);$("stat").disabled=true;
  // INE: mostra la navegació jeràrquica abans de consultar Tempus3.
  if(state.provider==="ine"){
@@ -648,7 +648,7 @@ async function loadStats(){
  await eustatLoadOperationTree();
  out=state.eustatGroups.map(function(x){return{value:x.id,label:x.label}});
 }
- else if(state.pxPreset==="norway"){var noRoots=await norwayV0Children([]);out=noRoots.map(function(x){return{value:x.id,label:x.label}}).filter(function(x){return x.value})}
+ else if(state.pxPreset==="norway"){await norwayLoadV2Catalog();out=state.norwayRootItems.map(function(x){return{value:x.id,label:x.label}})}
  else if(state.pxPreset==="finland"){
   var finCatalog=null;
   try{finCatalog=await fetchJson(c.base)}
@@ -781,6 +781,66 @@ async function onStatChange(){
   else{state.pxPath=[state.selected.stat];await pxChildren(state.pxPath,"concept")}
  }catch(e){status(e.message,"error")}finally{busy(false)}
 }
+async function norwayLoadV2Catalog(){
+ var all=[],page=1,pageSize=500;
+ for(var k=0;k<30;k++,page++){
+  var u=provider().base+"/tables?pageNumber="+page+"&pageSize="+pageSize+"&lang=en";
+  var d=await fetchJson(u),rows=Array.isArray(d&&d.tables)?d.tables:a(d);
+  all=all.concat(rows||[]);
+  var pg=d&&d.page||d&&d.pagination||{},total=Number(f(pg,"totalPages","pages","pageCount"));
+  if(total&&page>=total)break;
+  if(!rows||!rows.length||rows.length<pageSize)break;
+ }
+ state.norwayCatalog=all.map(function(t){
+  var id=String(f(t,"id","tableId","code","tableCode")).trim();
+  var label=String(f(t,"label","title","text","name")||id).trim();
+  return{id:id,label:label,paths:Array.isArray(t.paths)?t.paths:[]};
+ }).filter(function(t){return t.id});
+ var roots=new Map();
+ state.norwayCatalog.forEach(function(t){
+  (t.paths||[]).forEach(function(path){
+   if(!Array.isArray(path))return;
+   var p=path.map(function(x){return{id:String(f(x,"id","code","path")).trim(),label:String(f(x,"label","text","name","title")||f(x,"id","code","path")).trim()}}).filter(function(x){return x.id});
+   if(!p.length)return;
+   var r=p[0];if(!roots.has(r.id))roots.set(r.id,{id:r.id,label:r.label,type:"l",path:p.map(function(x){return x.id})});
+  });
+ });
+ state.norwayRootItems=Array.from(roots.values());
+}
+function norwayCatalogChildren(path){
+ var p=(path||[]).slice(),out=new Map();
+ state.norwayCatalog.forEach(function(t){
+  (t.paths||[]).forEach(function(path){
+   if(!Array.isArray(path))return;
+   var a1=path.map(function(x){return{id:String(f(x,"id","code","path")).trim(),label:String(f(x,"label","text","name","title")||f(x,"id","code","path")).trim()}}).filter(function(x){return x.id});
+   if(a1.length<=p.length)return;
+   for(var i=0;i<p.length;i++)if(a1[i].id!==p[i])return;
+   var x=a1[p.length],key=x.id;
+   if(!out.has(key))out.set(key,{id:key,label:x.label,type:"l",path:p.concat([key])});
+  });
+  (t.paths||[]).forEach(function(path){
+   if(!Array.isArray(path))return;
+   var a1=path.map(function(x){return{id:String(f(x,"id","code","path")).trim(),label:String(f(x,"label","text","name","title")||f(x,"id","code","path")).trim()}}).filter(function(x){return x.id});
+   if(a1.length!==p.length)return;
+   for(var i=0;i<p.length;i++)if(a1[i].id!==p[i])return;
+   if(String(t.id)===String(p[p.length-1])&&!out.has(t.id))out.set(t.id,{id:t.id,label:t.label,type:"t",path:p.slice(),tableId:t.id});
+  });
+ });
+ var result=Array.from(out.values());
+ var exact=result.find(function(x){return x.type==="t"});
+ if(!exact){
+  state.norwayCatalog.forEach(function(t){
+   (t.paths||[]).forEach(function(path){
+    if(!Array.isArray(path))return;
+    var ids=path.map(function(x){return String(f(x,"id","code","path")).trim()}).filter(Boolean);
+    if(ids.length!==p.length)return;
+    for(var i=0;i<p.length;i++)if(ids[i]!==p[i])return;
+    if(String(t.id)===String(p[p.length-1])&&!out.has(t.id))out.set(t.id,{id:t.id,label:t.label,type:"t",path:p.slice(),tableId:t.id});
+   });
+  });
+ }
+ return Array.from(out.values());
+}
 function norwayNavUrl(path){
  var p=(path||[]).slice();
  return "https://data.ssb.no/api/v0/en/table/"+p.map(function(x){return encodeURIComponent(String(x))}).join("/");
@@ -804,7 +864,7 @@ function norwayLevelLabel(index,list){
 async function norwaySelectRoot(rootCode){
  norwayClearLevels();
  state.norwayPath=[rootCode];
- var children=await norwayV0Children([rootCode]);
+ var children=norwayCatalogChildren([rootCode]);
  state.pxItems.set("norwayLevel0",children);
  if(children.length===1&&(children[0].type==="t"||children[0].type==="table"||pxTable(children[0]))){
   await pxFlatSelectTable(children[0].id);
@@ -852,7 +912,7 @@ async function norwaySelectDynamic(index,val){
   await pxFlatSelectTable(item.id);
   return;
  }
- var next=await norwayV0Children(item.path||state.norwayPath);
+ var next=norwayCatalogChildren(item.path||state.norwayPath);
  state.pxItems.set("norwayLevel"+(index+1),next);
  norwayAddLevel(next,index+1);
 }
