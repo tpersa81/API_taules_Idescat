@@ -389,7 +389,7 @@ async function ineLoadBaseLevel(pageUrl){
    var p=x.padre||"";
    if(!p){groups.push(x);return}
    if(!byParent.has(p)){
-    var g={id:"capsel-group:"+p,label:"Apartat "+p,type:"capsel-group",padre:p,children:[]};
+    var g={id:"capsel-group:"+p,label:"Apartat "+p,type:"capsel-group",padre:p,children:[],url:(function(){try{var u=new URL("https://www.ine.es/dynt3/inebase/index.htm");u.searchParams.set("capsel",String(p));return u.href}catch(e){return ""}})()};
     byParent.set(p,g);groups.push(g);
    }
    byParent.get(p).children.push(x);
@@ -416,6 +416,13 @@ async function ineLoadBaseLevel(pageUrl){
    }catch(e){}
   }
   var groupList=groups.filter(function(x){return x.type==="capsel-group"});
+  // Els grups també són pàgines INEbase pròpies. Resol-los amb el mateix
+  // mecanisme que els capsel individuals, perquè no depenguem de l'ordre
+  // accidental dels .title del document pare.
+  if(groupList.length){
+   groupList=await ineExplainCapselItems(groupList);
+   groupList.forEach(function(g){var dst=groups.find(function(x){return x.id===g.id});if(dst)dst.label=g.label});
+  }
   if(rootTitles.length>=groupList.length&&groupList.length){
    groupList.forEach(function(g,idx){
     var title=String(rootTitles[idx]||"").trim();
@@ -2258,10 +2265,15 @@ function temporalPeriodicity(categories){
  }
  return null
 }
+function temporalCategoryCode(c){
+ var v=c&&c.code!=null?c.code:(c&&c.id!=null?c.id:(c&&c.label!=null?c.label:""));
+ return String(v||"").trim()
+}
 function previousYearPeriodCode(code){
  var v=String(code||"").trim();
  if(/^\d{4}[MQSBDW]\d{1,3}$/i.test(v)||/^\d{4}-(?:M|Q|S|B|W|D)\d{1,3}$/i.test(v)||/^\d{4}-\d{2}(?:-\d{2})?$/.test(v))return v.replace(/^(\d{4})/,function(_,y){return String(Number(y)-1)});
- return""
+ var m=v.match(/^(.*?)(\d{4})(.*)$/);
+ return m?m[1]+String(Number(m[2])-1)+m[3]:""
 }
 function setFilterSelection(dim,categories,codes,list){
  var selected=new Set((codes||[]).map(String));state.filters.set(dim.id,selected);
@@ -2275,11 +2287,11 @@ function addTemporalQuickControls(toolbar,dim,categories,list){
  var input=document.createElement("input");input.type="number";input.min="1";input.max=String(categories.length);input.value=String(Math.min(3,categories.length));input.inputMode="numeric";input.setAttribute("aria-label","Nombre d'últims períodes");
  var text2=document.createElement("span");text2.textContent=" períodes";
  var btn=document.createElement("button");btn.type="button";btn.className="secondary";btn.textContent="Selecciona";
- var choose=function(){var n=Number(input.value);if(!Number.isFinite(n))n=1;n=Math.max(1,Math.min(categories.length,Math.trunc(n)));input.value=String(n);setFilterSelection(dim,categories,categories.slice(0,n).map(function(c){return c.code}),list)};
+ var choose=function(){var n=Number(input.value);if(!Number.isFinite(n))n=1;n=Math.max(1,Math.min(categories.length,Math.trunc(n)));input.value=String(n);setFilterSelection(dim,categories,categories.slice(0,n).map(temporalCategoryCode),list)};
  btn.onclick=choose;input.onkeydown=function(e){if(e.key==="Enter"){e.preventDefault();choose()}};
  row.append(text1,input,text2,btn);toolbar.append(row);
  if(periodicity!=="year"&&categories.length>1){
-  var target=previousYearPeriodCode(categories[0].code),prev=categories[1].code,latest=categories[0].code,found=categories.some(function(c){return String(c.code)===target});
+  var latest=temporalCategoryCode(categories[0]),prev=temporalCategoryCode(categories[1]),target=previousYearPeriodCode(latest),found=categories.some(function(c){return temporalCategoryCode(c)===target||String(c&&c.label||"").trim()===target});
   if(found){
    var rr=document.createElement("div");rr.className="temporal-row";
    var rb=document.createElement("button");rb.type="button";rb.className="secondary";rb.textContent="Últim període, període anterior i mateix període de l'any anterior";
