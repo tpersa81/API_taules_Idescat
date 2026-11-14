@@ -609,7 +609,7 @@ function collection(d){
 }
 function clearBelow(keepStat){state.pivot={rows:[],columns:[]};if(state.provider==="ine")ineClearNavigation();if(!keepStat)fill($("stat"),[]);["concept","cross","node","table","geo"].forEach(resetSelect);eurostatClearLevels();state.metadata=null;state.lastData=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;$("resultCount").textContent="";if($("temporalOrderWrap"))$("temporalOrderWrap").hidden=true}
 function setLabels(){var p=state.provider,ls=p==="idescat"?["Organisme","Estadística","Tema","Encreuament","Entrada","Taula","Geografia"]:p==="pxweb"&&state.pxPreset==="sweden"?["Organisme","Tema","Nivell 2","Nivell 3","Taula","Geografia"]:p==="pxweb"&&state.pxPreset==="norway"?["Organisme","Tema","Nivell 2","Nivell 3","Nivell 4","Geografia"]:p==="pxweb"?["Organisme","Nivell 1","Nivell 2","Nivell 3","Taula","Geografia"]:p==="ine"?["Organisme","Nivell de navegació","","","","",""]:["Organisme","Tipus de dades","Tema","Subtema","Estadística","—"];var l=document.querySelectorAll("#step2 label");document.querySelector("#step1 label:nth-child(1)").firstChild.textContent=ls[0]+" ";l.forEach(function(x,i){x.firstChild.textContent=ls[i+1]+" "})}
-function setProviderUI(){setLabels();var isEuro=state.provider==="eurostat",isIne=state.provider==="ine",isSweden=state.provider==="pxweb"&&state.pxPreset==="sweden",isNorway=state.provider==="pxweb"&&state.pxPreset==="norway",isEustat=state.provider==="pxweb"&&state.pxPreset==="eustat",isFlatPx=state.provider==="pxweb"&&isEustat,sl=document.querySelector("#step1 .grid label:nth-child(2)");if(sl)sl.firstChild.textContent=(isEuro?"Tipus de dades":isEustat||isNorway?"Tema":isFlatPx?"Taula":"Estadística")+" ";var fixedGrid=document.querySelector("#step2>.grid"),euroBox=$("eurostatLevels");if(fixedGrid){fixedGrid.hidden=false;fixedGrid.style.display="";if(isSweden){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}}if(euroBox)euroBox.hidden=!(isEuro||isSweden||isNorway||isIne);if((isEuro||isIne)&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isEustat&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i<3?"":"none"});if(fixedGrid.querySelector("label:nth-child(2)"))fixedGrid.querySelector("label:nth-child(2)").firstChild.textContent="Operació ";if(fixedGrid.querySelector("label:nth-child(3)"))fixedGrid.querySelector("label:nth-child(3)").firstChild.textContent="Taula "}else if(isNorway&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isFlatPx&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}else if(fixedGrid&&!isSweden){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display=""})}var tl=$("table")&&$("table").parentElement,gl=$("geo")&&$("geo").parentElement;if(tl)tl.style.display=(isEuro||isIne||isFlatPx||isNorway||isSweden)?"none":"";if(gl)gl.style.display=(isEuro||isIne||isFlatPx||isNorway||isSweden)?"none":"";$("docLink").href=provider().doc;var sel=state.provider==="pxweb"?"pxweb:"+state.pxPreset:state.provider;if($("provider")&&[].slice.call($("provider").options).some(function(o){return o.value===sel}))$("provider").value=sel}
+function setProviderUI(){setLabels();var isEuro=state.provider==="eurostat",isIne=state.provider==="ine",isSweden=state.provider==="pxweb"&&state.pxPreset==="sweden",isFinland=state.provider==="pxweb"&&state.pxPreset==="finland",isIceland=state.provider==="pxweb"&&state.pxPreset==="iceland",isNorway=state.provider==="pxweb"&&state.pxPreset==="norway",isEustat=state.provider==="pxweb"&&state.pxPreset==="eustat",isFlatPx=state.provider==="pxweb"&&isEustat,sl=document.querySelector("#step1 .grid label:nth-child(2)");if(sl)sl.firstChild.textContent=(isEuro?"Tipus de dades":isEustat||isNorway?"Tema":isFlatPx?"Taula":"Estadística")+" ";var fixedGrid=document.querySelector("#step2>.grid"),euroBox=$("eurostatLevels");if(fixedGrid){fixedGrid.hidden=false;fixedGrid.style.display="";if(isSweden||isFinland||isIceland){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}}if(euroBox)euroBox.hidden=!(isEuro||isSweden||isFinland||isIceland||isNorway||isIne);if((isEuro||isIne)&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isEustat&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i<3?"":"none"});if(fixedGrid.querySelector("label:nth-child(2)"))fixedGrid.querySelector("label:nth-child(2)").firstChild.textContent="Operació ";if(fixedGrid.querySelector("label:nth-child(3)"))fixedGrid.querySelector("label:nth-child(3)").firstChild.textContent="Taula "}else if(isNorway&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isFlatPx&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}else if(fixedGrid&&!isSweden){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display=""})}var tl=$("table")&&$("table").parentElement,gl=$("geo")&&$("geo").parentElement;if(tl)tl.style.display=(isEuro||isIne||isFlatPx||isNorway||isSweden||isFinland||isIceland)?"none":"";if(gl)gl.style.display=(isEuro||isIne||isFlatPx||isNorway||isSweden||isFinland||isIceland)?"none":"";$("docLink").href=provider().doc;var sel=state.provider==="pxweb"?"pxweb:"+state.pxPreset:state.provider;if($("provider")&&[].slice.call($("provider").options).some(function(o){return o.value===sel}))$("provider").value=sel}
 async function loadStats(){
  var loadToken=state.requestToken,loadProvider=state.provider,loadPreset=state.pxPreset;
  state.swedenPath=[];state.swedenV2Table=false;state.norwayPath=[];state.norwayCatalog=[];state.norwayRootItems=[];
@@ -771,7 +771,7 @@ async function onStatChange(){
   if(state.provider==="idescat"){var d=await fetchJson(provider().base+"/"+encodeURIComponent(state.selected.stat)+"?lang=ca");state.catalog=collection(d).map(function(x){return{node:x.id,name:x.label,concept:deriveConcept(x.label),cross:deriveCross(x.label)}});var cs=[...new Set(state.catalog.map(function(x){return x.concept}).filter(Boolean))];fill($("concept"),cs.map(function(x){return{value:x,label:x}}));$("concept").disabled=!cs.length}
   else if(state.provider==="ine"){await ineSelectRoot();$("stat").disabled=true;$("concept").disabled=true;$("cross").disabled=true;$("node").disabled=true;$("table").disabled=true;$("geo").disabled=true}
   else if(state.provider==="eurostat"){await eurostatSelectRoot(state.selected.stat)}
-  else if(state.pxPreset==="sweden"){await swedenSelectRoot(state.selected.stat)}
+  else if(state.pxPreset==="sweden"){await swedenSelectRoot(state.selected.stat)}\n  else if(state.pxPreset==="finland"||state.pxPreset==="iceland"){await pxRecursiveSelectRoot(state.selected.stat)}
   else if(state.pxPreset==="eustat"){
  state.selected.concept="";state.selected.cross="";state.selected.node="";state.selected.table="";
  ["concept","cross","node","table","geo"].forEach(resetSelect);
@@ -907,6 +907,61 @@ async function norwaySelectDynamic(index,val){
  var next=norwayCatalogChildren(item.path||state.norwayPath);
  state.pxItems.set("norwayLevel"+(index+1),next);
  norwayAddLevel(next,index+1);
+}
+function pxRecursiveClearLevels(){
+ var box=$("eurostatLevels");if(box){box.innerHTML="";box.hidden=true}
+ state.pxItems.forEach(function(v,k){if(/^pxRecursiveLevel\\d+$/.test(k))state.pxItems.delete(k)});
+}
+function pxRecursiveLevelLabel(index,list){
+ var isTable=list&&list.length&&list.every(function(x){return x&&((String(x.type||"").toLowerCase()==="table")||String(x.type||"").toLowerCase()==="t"||x.tableId||/\\.px$/i.test(String(x.id||"")))});
+ return isTable?"Taula":"Nivell "+(index+1);
+}
+function pxRecursiveTableItems(list){
+ return (list||[]).filter(function(x){return x&&((String(x.type||"").toLowerCase()==="table")||String(x.type||"").toLowerCase()==="t"||x.tableId||/\\.px$/i.test(String(x.id||"")))});
+}
+async function pxRecursiveChildren(path){
+ var raw=await fetchJson(pxUrl(path)),items=a(raw).map(function(x){
+  var id=String(f(x,"id","code","dbid","path")).trim(),type=String(f(x,"type","class")||"folder").trim().toLowerCase();
+  return{id:id,label:String(f(x,"text","label","name","title")||id).trim(),type:type,path:(path||[]).concat([id]),tableId:type==="t"||type==="table"?id:""};
+ }).filter(function(x){return x.id});
+ return items;
+}
+async function pxRecursiveLoadTable(item){
+ var path=(item&&item.path||[]).slice(),tableId=String(item&&item.tableId||path[path.length-1]||"").trim(),urls=[];
+ if(state.pxPreset==="finland"){
+  if(path.length&&!/\\.px$/i.test(path[path.length-1]))path[path.length-1]+=".px";
+  urls=finlandTableUrls(path);
+ }else urls=[pxUrl(path)];
+ var raw=null,url=urls[0];
+ for(var i=0;i<urls.length&&!raw;i++){try{raw=await fetchJson(urls[i]);url=urls[i]}catch(e){}}
+ if(!raw||!isPxMetadata(raw))throw new Error("La taula de "+(state.pxPreset==="finland"?"Statistics Finland":"Statistics Iceland")+" no ha retornat metadades.");
+ state.selected.table=tableId;state.pxPath=path.slice();state.metadata=pxToJsonStat(raw);
+ if(state.pxPreset==="finland")state.finlandTableUrl=url;
+ renderMetadata(state.metadata);$("tableInfo").hidden=false;
+ $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||raw.label||tableId)+"<span class="path">"+esc(url)+"</span>";
+ $("query").disabled=false;
+}
+function pxRecursiveAddLevel(children,index){
+ var box=$("eurostatLevels");if(!box)return;
+ var list=(children||[]).filter(function(x){return x&&x.id});if(!list.length)return;
+ if(pxRecursiveTableItems(list).length===list.length)list=list.map(function(x){return Object.assign({},x,{type:"table"})});
+ state.pxItems.set("pxRecursiveLevel"+index,list);box.hidden=false;
+ var label=document.createElement("label");label.dataset.eurostatLevel=String(index);label.textContent=pxRecursiveLevelLabel(index,list)+" ";
+ var sel=document.createElement("select");sel.id="pxRecursiveLevel"+index;sel.appendChild(new Option("— Selecciona —",""));label.appendChild(sel);box.appendChild(label);
+ list.forEach(function(x){sel.appendChild(new Option(x.id+" · "+x.label,x.id))});
+ sel.onchange=async function(){var val=sel.value;if(!val)return;try{
+  var item=(state.pxItems.get("pxRecursiveLevel"+index)||[]).find(function(x){return String(x.id)===String(val)});if(!item)return;
+  Array.from(box.querySelectorAll("label")).forEach(function(l){if(Number(l.dataset.eurostatLevel)>index)l.remove()});
+  if(pxRecursiveTableItems([item]).length){await pxRecursiveLoadTable(item);return}
+  pxRecursiveAddLevel(await pxRecursiveChildren(item.path),index+1);
+ }catch(e){status(e&&e.message?e.message:String(e),"error")}};
+ if(list.length===1){sel.value=list[0].id;sel.onchange()}
+}
+async function pxRecursiveSelectRoot(rootCode){
+ pxRecursiveClearLevels();state.pxPath=[rootCode];
+ var children=await pxRecursiveChildren([rootCode]);
+ if(children.length===1&&pxRecursiveTableItems(children).length===1){await pxRecursiveLoadTable(children[0]);return}
+ pxRecursiveAddLevel(children,0);
 }
 function swedenClearLevels(){var box=$("eurostatLevels");if(box){box.innerHTML="";box.hidden=true}}
 function swedenLevelLabel(index,list){var isTableLevel=list&&list.length&&list.every(function(x){var t=String(x&&x.type||"").toLowerCase();return t==="table"||t==="t"||x&&x.tableId});return isTableLevel?"Taula":"Nivell "+(index+1)}
