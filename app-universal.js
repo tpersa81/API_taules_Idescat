@@ -1060,10 +1060,26 @@ async function istacLoadOperations(){
   status("Carregant operacions d'ISTAC… "+Math.min(i+batchSize,all.length)+"/"+all.length);
  }
 
- state.istacDatasets=ops.filter(function(x){return x.id}).sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
- if(!state.istacDatasets.length)throw new Error("ISTAC: no s'han trobat operacions estadístiques.");
+ ops=ops.filter(function(x){return x.id});
+ // Només mostrem operacions que tenen almenys un cub/taula de dades.
+ var usable=[],cubeBatch=12;
+ for(var ci=0;ci<ops.length;ci+=cubeBatch){
+  var cb=ops.slice(ci,ci+cubeBatch);
+  var cr=await Promise.all(cb.map(function(op){
+   var q=encodeURIComponent('ID LIKE "'+String(op.id).replace(/"/g,"")+'%"');
+   var u=provider().base+"/statistical-resources/v1.0/datasets/ISTAC.json?lang=es&limit=1&offset=0&query="+q;
+   return fetchJson(u).then(function(d){
+    return{op:op,has:istacList(d).length>0};
+   }).catch(function(){
+    return{op:op,has:true};
+   });
+  }));
+  cr.forEach(function(x){if(x.has)usable.push(x.op)});
+  status("Carregant operacions d'ISTAC…");
+ }
+ state.istacDatasets=usable.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
+ if(!state.istacDatasets.length)throw new Error("ISTAC: no s'han trobat operacions estadístiques amb cub de dades.");
  return state.istacDatasets;
-}
 async function istacLoadDatasets(){return istacLoadOperations()}
 async function istacLoadOperationTables(opId){
  opId=String(opId||"").trim();
