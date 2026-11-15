@@ -158,7 +158,23 @@ if(state.provider==="ine"&&/^https:\/\/servicios\.ine\.es\//i.test(url)&&!r.ok){
   for(var ip2=0;ip2<ineProxies2.length&&!ineProxyOk2;ip2++){try{var pr2=await fetch(ineProxies2[ip2],{cache:"no-store"});if(pr2.ok){r=pr2;ineProxyOk2=true}else ineProxyErr2=new Error("HTTP "+pr2.status)}catch(e3){ineProxyErr2=e3}}
   if(!ineProxyOk2)throw new Error("No s'ha pogut connectar amb l'API. "+(ineProxyErr2&&ineProxyErr2.message||"HTTP "+r.status)+" · "+url)
 }
-var text="";try{text=await r.text()}catch(e){throw new Error("No s'ha pogut llegir la resposta de l'API (HTTP "+r.status+").")}
+var text="";
+try{
+  // L'API de dades de l'IGE (json/datos) retorna ISO-8859-1; metadatos sol ser UTF-8.
+  // Fem decodificació explícita per evitar "A Coru�a".
+  if(state.provider==="ige"||/ige\.gal\/igebdt\/igeapi\//i.test(String(url))){
+   var buf=await r.arrayBuffer();
+   var bytes=new Uint8Array(buf);
+   var utf8=new TextDecoder("utf-8").decode(bytes);
+   if(/\/json\/datos\//i.test(String(url))||utf8.indexOf("\uFFFD")>=0||/\uFFFD/.test(utf8)){
+    text=new TextDecoder("iso-8859-1").decode(bytes);
+   }else{
+    text=utf8;
+   }
+  }else{
+   text=await r.text();
+  }
+}catch(e){throw new Error("No s'ha pogut llegir la resposta de l'API (HTTP "+r.status+").")}
 var d=null;try{var cleanText=String(text).replace(/^\uFEFF/,"").trim();d=cleanText?JSON.parse(cleanText):null;if(d&&typeof d.contents==="string"){try{d=JSON.parse(String(d.contents).replace(/^\uFEFF/,"").trim())}catch(_){}}}catch(e){if(state.provider==="istac"&&r.ok){try{var m0=String(text).match(/\{[\s\S]*\}/);if(m0)d=JSON.parse(m0[0])}catch(_){}}if(!d){if(!r.ok)throw new Error("Error HTTP "+r.status+": "+text.slice(0,300));throw new Error("Resposta no vàlida de l'API (HTTP "+r.status+").")}}
 if(!r.ok||d&&(d.class==="error"||d.error||d.errors)){
  var detail=d&&(d.detail||d.label||d.message||d.error||d.errors||d.title);
@@ -3394,7 +3410,13 @@ async function onGeoChange(){
 }
 function temporalPeriodicity(categories){
  var arr=(categories||[]).map(function(c){return{code:temporalCategoryCode(c),label:String(c&&c.label||"").trim()}}).filter(function(x){return x.code||x.label});
- if(arr.some(function(x){return /^\d+$/.test(x.code)&&Number(x.code)>=0}))return"quarter";
+ // Anys (2024, 2023...) abans que la heurística de dígits genèrics
+ if(arr.some(function(x){return /^\d{4}$/.test(x.code)||/^\d{4}$/.test(x.label)}))return"year";
+ // Codis numèrics curts (1-4) poden ser trimestres en alguns sistemes
+ if(arr.some(function(x){return /^\d{1,2}$/.test(x.code)&&Number(x.code)>=1&&Number(x.code)<=16})){
+  // només si no semblen anys
+  if(!arr.some(function(x){return /^\d{4}$/.test(x.code)}))return"quarter";
+ }
 
  for(var i=0;i<arr.length;i++){var code=arr[i].code,label=arr[i].label;
   if(/^\d{4}$/.test(code)||/^\d{4}$/.test(label))return"year";
@@ -3413,7 +3435,10 @@ function temporalCategoryCode(c){
 }
 function previousYearPeriodCode(code){
  var v=String(code||"").trim();
- if(/^\d+$/.test(v))return String(Math.max(0,Number(v)-4));
+ // Anys de 4 dígits
+ if(/^\d{4}$/.test(v))return String(Math.max(0,Number(v)-1));
+ // Codis numèrics curts (trimestres 1-4, mesos 1-12...): resta 4 com a heurística de "mateix de l'any anterior" en sèries trimestrals
+ if(/^\d{1,2}$/.test(v))return String(Math.max(0,Number(v)-4));
  if(/^\d{4}[MQSBDW]\d{1,3}$/i.test(v)||/^\d{4}-(?:M|Q|S|B|W|D)\d{1,3}$/i.test(v)||/^\d{4}-\d{2}(?:-\d{2})?$/.test(v))return v.replace(/^(\d{4})/,function(_,y){return String(Number(y)-1)});
  var m=v.match(/^(.*?)(\d{4})(.*)$/);
  return m?m[1]+String(Number(m[2])-1)+m[3]:""
@@ -3433,8 +3458,12 @@ function addTemporalQuickControls(toolbar,dim,categories,list){
  var choose=function(){var n=Number(input.value);if(!Number.isFinite(n))n=1;n=Math.max(1,Math.min(categories.length,Math.trunc(n)));input.value=String(n);setFilterSelection(dim,categories,categories.slice(0,n).map(temporalCategoryCode),list)};
  btn.onclick=choose;input.onkeydown=function(e){if(e.key==="Enter"){e.preventDefault();choose()}};
  row.append(text1,input,text2,btn);toolbar.append(row);
- if(categories.length>1){
-  var latest=temporalCategoryCode(categories[0]),prev=temporalCategoryCode(categories[1]),target=previousYearPeriodCode(latest),found=categories.some(function(c){return temporalCategoryCode(c)===target||String(c&&c.label||"").trim()===target});
+ // Botó de períodes relatius: només té sentit en freqüències infraanuals
+ // (mes, trimestre...). En sèries anuals, "període anterior" i "mateix de l'any
+ // anterior" són el mateix.
+ if(categories.length>1&&periodicity&&periodicity!=="year"){
+  var latest=temporalCategoryCode(categories[0]),prev=temporalCategoryCode(categories[1]),target=previousYearPeriodCode(latest);
+  var found=target&&target!==latest&&target!==prev&&categories.some(function(c){return temporalCategoryCode(c)===target||String(c&&c.label||"").trim()===target});
   if(found){
    var rr=document.createElement("div");rr.className="temporal-row";
    var rb=document.createElement("button");rb.type="button";rb.className="secondary";rb.textContent="Últim període, període anterior i mateix període de l'any anterior";
