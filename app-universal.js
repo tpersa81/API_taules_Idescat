@@ -1078,7 +1078,7 @@ async function istacLoadOperationTables(opId){
    var resources=Array.isArray(p&&p.resources)?p.resources:[];
    resources.forEach(function(r){
     var u=String(r&&r.url||"");
-    var m=u.match(/\\/datasets\\/ISTAC\\/([^/]+)\\/(?:[^/]+)\\.(?:jsonstat|json|csv|xlsx|tsv)$/i);
+    var m=u.match(/\/datasets\/ISTAC\/([^/]+)\/(?:[^/]+)\.(?:jsonstat|json|csv|xlsx|tsv)$/i);
     if(!m)return;
     var id=m[1];
     if(!id||found.has(id))return;
