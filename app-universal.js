@@ -985,7 +985,7 @@ async function igePageItems(url,isRoot){
   try{u=new URL(abs)}catch(e){return}
   if(u.hostname.toLowerCase()!=="www.ige.gal"&&u.hostname.toLowerCase()!=="ige.gal")return;
   var path=u.pathname.toLowerCase(),sec=u.searchParams.get("codigo"),act=u.searchParams.get("codigo"),cod=u.searchParams.get("COD");
-  if((path.indexOf("/mostrar_seccion.jsp")>=0||path==="/web/"||path==="/web/index.jsp")&&sec){
+  if((path.indexOf("/mostrar_seccion.jsp")>=0||path==="/web/"||path==="/web/index.jsp"||path.indexOf("/igebdt/bancodatos/")>=0)&&sec){
    if(isRoot&&String(sec).length<=2){add("section",abs,label,sec);return}
    if(!isRoot&&rootCodes.has(String(sec)))return;
    if(!isRoot&&String(sec).length<=2)return;
