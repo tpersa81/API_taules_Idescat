@@ -936,6 +936,58 @@ function istacValueArray(v){if(!v)return[];if(Array.isArray(v))return v;if(v.val
 function istacMetadataToJsonStat(raw){var src=raw&&raw.metadata?raw.metadata:raw;if(src&&Array.isArray(src.id)&&src.dimension)return pxToJsonStat(src);if(!src||!src.dimensions)return pxToJsonStat(raw);var ds={version:"2.0",class:"dataset",label:istacText(src.name,"es")||String(raw&&raw.label||state.selected.table||""),id:[],size:[],dimension:{}};istacDimensionArray(src).forEach(function(d){var id=String(d&&d.id||"").trim();if(!id)return;var vals=istacValueArray(d.dimensionValues),index={},label={};vals.forEach(function(v,i){var code=String(v&&v.id!=null?v.id:"").trim();if(!code)return;index[code]=i;label[code]=istacText(v&&v.name,"es")||code});ds.id.push(id);ds.size.push(vals.length);ds.dimension[id]={label:istacText(d.name,"es")||id,category:{index:index,label:label}}});return ds}
 function istacMetaField(x,key){var v=x&&x.metadata&&x.metadata[key]!=null?x.metadata[key]:(x&&x[key]!=null?x[key]:null);if(Array.isArray(v))return{id:"",label:istacText(v,"es")};if(v&&typeof v==="object"){var id=v.id||v.code||v.resourceId||v.operationId||"",label=istacText(v.name||v.label||v.title,"es")||String(id||"");return{id:String(id||""),label:label}}return{id:String(v||""),label:String(v||"")}}
 function istacDatasetRecord(x){var id=String(f(x,"id","resourceId","resourceID","code")).trim(),label=istacText(x&&x.name,"es")||String(f(x,"label","title","text")||id).trim(),subject=istacMetaField(x,"subject"),op=istacMetaField(x,"statisticalOperation");if(!subject.label)subject=istacMetaField(x,"subjectCode");return{id:id,label:label,subject:subject.label||"Altres",operation:op.label||"Sense operació",version:String(f(x,"version")||"~latest")}}
+const ISTAC_THEMES=[
+ "Territorio y medio ambiente",
+ "Demografía",
+ "Sociedad",
+ "Economía general",
+ "Empleo",
+ "Sector primario",
+ "Sector secundario",
+ "Sector servicios",
+ "Administración pública",
+ "Ciencia y tecnología",
+ "Recopilación y síntesis"
+];
+function istacNormTheme(v){return String(v||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().replace(/\\s+/g," ").trim()}
+function istacThemeFromValue(v){
+ var s=istacNormTheme(v);
+ if(!s)return"";
+ if(/^01[0]$/.test(s)||s==="territorio y medioambiente"||s==="territorio y medio ambiente")return ISTAC_THEMES[0];
+ if(/^02[0]$/.test(s)||s==="demografia")return ISTAC_THEMES[1];
+ if(/^03[0]$/.test(s)||s==="sociedad")return ISTAC_THEMES[2];
+ if(/^04[0]$/.test(s)||s==="economia general")return ISTAC_THEMES[3];
+ if(/^05[0]$/.test(s)||s==="empleo")return ISTAC_THEMES[4];
+ if(/^06[0]$/.test(s)||s==="sector primario")return ISTAC_THEMES[5];
+ if(/^07[0]$/.test(s)||s==="sector secundario")return ISTAC_THEMES[6];
+ if(/^08[0]$/.test(s)||s==="sector servicios")return ISTAC_THEMES[7];
+ if(/^09[0]$/.test(s)||s==="administracion publica")return ISTAC_THEMES[8];
+ if(/^10[0]$/.test(s)||s==="ciencia y tecnologia")return ISTAC_THEMES[9];
+ if(/^11[0]$/.test(s)||s==="recopilacion y sintesis")return ISTAC_THEMES[10];
+ return""
+}
+function istacOperationThemes(x){
+ var out=[],seen=new Set();
+ function add(v){
+  if(v==null)return;
+  var t=istacThemeFromValue(v);
+  if(t&&!seen.has(t)){seen.add(t);out.push(t)}
+ }
+ function visit(v){
+  if(v==null)return;
+  if(typeof v==="string"||typeof v==="number"){add(v);return}
+  if(Array.isArray(v)){v.forEach(visit);return}
+  if(typeof v==="object"){
+   ["id","code","value","name","label","title"].forEach(function(k){if(v[k]!=null){if(k==="name"||k==="label"||k==="title")add(istacText(v[k],"es"));else add(v[k])}});
+   ["resource","resources","subjectAreas","subjectArea","themes","theme"].forEach(function(k){if(v[k]!=null)visit(v[k])});
+  }
+ }
+ visit(x&&x.subjectAreas);
+ visit(x&&x.subjectArea);
+ visit(x&&x.themes);
+ visit(x&&x.theme);
+ return out;
+}
 async function istacLoadOperations(){
  if(state.istacDatasets&&state.istacDatasets.length&&state.istacDatasets[0]&&state.istacDatasets[0]._kind==="operation")return state.istacDatasets;
  var all=[],offset=0,limit=200;
@@ -950,7 +1002,7 @@ async function istacLoadOperations(){
  state.istacDatasets=all.map(function(x){
   var id=String(f(x,"id","code")).trim();
   var label=istacText(x&&x.name,"es")||id;
-  return{_kind:"operation",id:id,label:label,subject:"Operacions estadístiques",operation:label};
+  return{_kind:"operation",id:id,label:label,subject:"Operacions estadístiques",operation:label,themes:istacOperationThemes(x)};
  }).filter(function(x){return x.id}).sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
  if(!state.istacDatasets.length)throw new Error("ISTAC: no s'han trobat operacions estadístiques.");
  return state.istacDatasets;
@@ -994,39 +1046,65 @@ async function istacSelectTable(rec){
  $("query").disabled=false;
  status("");
 }
-function istacDraw(level,opId){
+function istacDraw(level,theme){
  var box=$("eurostatLevels");if(!box)return;
  box.innerHTML="";box.hidden=false;box.style.display="grid";
  var ops=state.istacDatasets||[];
- // Nivell 0: operació
- var lab0=document.createElement("label");
- lab0.style.display="flex";lab0.style.flexDirection="column";lab0.style.alignItems="stretch";
- lab0.appendChild(document.createTextNode("Operació estadística "));
- var sel0=document.createElement("select");
- sel0.appendChild(new Option("— Selecciona —",""));
- ops.forEach(function(op){sel0.appendChild(new Option(op.label,op.id))});
- if(opId)sel0.value=opId;
- lab0.appendChild(sel0);box.appendChild(lab0);
- sel0.onchange=async function(){
+ var themeSet=new Set();
+ ops.forEach(function(op){(op.themes||[]).forEach(function(t){themeSet.add(t)})});
+ var themes=ISTAC_THEMES.filter(function(t){return themeSet.has(t)});
+ function addSelect(label,items,value,onchange){
+  var lab=document.createElement("label");
+  lab.style.display="flex";lab.style.flexDirection="column";lab.style.alignItems="stretch";
+  lab.appendChild(document.createTextNode(label+" "));
+  var sel=document.createElement("select");
+  sel.appendChild(new Option("— Selecciona —",""));
+  items.forEach(function(x){sel.appendChild(new Option(x.label||x,x.id||x))});
+  if(value)sel.value=value;
+  lab.appendChild(sel);box.appendChild(lab);
+  sel.onchange=onchange;
+  return sel;
+ }
+ var themeItems=themes.map(function(t){return{id:t,label:t}});
+ var selTheme=addSelect("Tema",themeItems,theme||"",async function(){
   clearQueryView();
-  if(!sel0.value){istacDraw(0,"");return}
+  if(!selTheme.value){istacDraw(0,"");return}
+  istacDrawOperations(selTheme.value);
+ });
+ if(themes.length===1){selTheme.value=themes[0];selTheme.onchange()}
+}
+function istacDrawOperations(theme){
+ var box=$("eurostatLevels");if(!box)return;
+ var labels=box.querySelectorAll("label");
+ for(var i=1;i<labels.length;i++)labels[i].remove();
+ var ops=(state.istacDatasets||[]).filter(function(x){return (x.themes||[]).indexOf(theme)>=0});
+ var lab=document.createElement("label");
+ lab.style.display="flex";lab.style.flexDirection="column";lab.style.alignItems="stretch";
+ lab.appendChild(document.createTextNode("Operació estadística "));
+ var sel=document.createElement("select");
+ sel.appendChild(new Option("— Selecciona —",""));
+ ops.forEach(function(op){sel.appendChild(new Option(op.label,op.id))});
+ lab.appendChild(sel);box.appendChild(lab);
+ if(!ops.length){
+  status("ISTAC: no s'han trobat operacions per a aquest tema.","error");
+  return;
+ }
+ sel.onchange=async function(){
+  clearQueryView();
+  if(!sel.value)return;
   status("Carregant taules d'ISTAC…");
   try{
-   var tables=await istacLoadOperationTables(sel0.value);
-   istacDrawTables(sel0.value,tables);
+   var tables=await istacLoadOperationTables(sel.value);
+   istacDrawTables(sel.value,tables);
    status("");
-  }catch(e){status("ISTAC: "+(e&&e.message?e.message:String(e)),"error")}
+  }catch(e){status("ISTAC: "+(e&&e.message?String(e.message):String(e)),"error")}
  };
- if(level>=1&&opId){
-  // taules ja carregades externament
- }
- if(ops.length===1){sel0.value=ops[0].id;sel0.onchange()}
+ if(ops.length===1){sel.value=ops[0].id;sel.onchange()}
 }
 function istacDrawTables(opId,tables){
  var box=$("eurostatLevels");if(!box)return;
- // manté el primer select i afegeix/substitueix el de taules
  var labels=box.querySelectorAll("label");
- for(var i=1;i<labels.length;i++)labels[i].remove();
+ for(var i=2;i<labels.length;i++)labels[i].remove();
  var lab=document.createElement("label");
  lab.style.display="flex";lab.style.flexDirection="column";lab.style.alignItems="stretch";
  lab.appendChild(document.createTextNode("Taula "));
@@ -1043,7 +1121,7 @@ function istacDrawTables(opId,tables){
   if(!sel.value)return;
   var rec=(tables||[]).find(function(x){return x.id===sel.value});
   if(!rec)return;
-  try{await istacSelectTable(rec)}catch(e){status("ISTAC: "+(e&&e.message?e.message:String(e)),"error")}
+  try{await istacSelectTable(rec)}catch(e){status("ISTAC: "+(e&&e.message?String(e.message):String(e)),"error")}
  };
  if(tables.length===1){sel.value=tables[0].id;sel.onchange()}
 }
@@ -1076,7 +1154,7 @@ async function loadStats(){
    .map(function(x){return{value:x.name,label:x.name,name:x.name,code:""}});
 }
  else if(state.provider==="eurostat"){await loadEurostatTOC();out=state.eurostatRoots.map(function(x){return{value:x.code,label:x.label}})}
- else if(state.provider==="istac"){await istacLoadOperations();out=state.istacDatasets.map(function(x){return{value:x.id,label:x.label}})}
+ else if(state.provider==="istac"){await istacLoadOperations();out=[]}
  else if(state.pxPreset==="sweden"){await loadSwedenV2Tables();var swRoot=await swedenV2Children([],null);out=swRoot.map(function(x){return{value:x.id,label:x.label}})}
  else if(state.pxPreset==="eustat"){
  var euCatalog=await fetchJson(c.base);
