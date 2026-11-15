@@ -1086,30 +1086,53 @@ function igeParseSelectorMeta(html,url,tableCode){
   });
  }
  var selects=Array.from(doc.querySelectorAll("select"));
- selects.forEach(function(sel){
+ var selectInfo=selects.map(function(sel){
   var opts=Array.from(sel.options||[]).map(function(o){return{raw:String(o.value||"").trim(),label:igeCleanLabel(o.textContent||"")}}).filter(function(o){return o.raw!==""});
-  if(!opts.length)return;
-  var byId=new Map();
-  opts.forEach(function(o){
-   var mm=o.raw.match(/^([^:]+):(.+)$/),id=mm?String(mm[1]).trim():"";
-   if(id)byId.set(id,(byId.get(id)||[]).concat([o]));
-  });
-  rawDims.forEach(function(rd){
-   if(dimMap.has(rd.id))return;
-   var candidates=byId.get(rd.id)||[];
-   if(!candidates.length)return;
-   var label="";
-   try{
-    var p=sel.previousElementSibling;if(p)label=igeCleanLabel(p.textContent||"");
-    if(!label){var par=sel.parentElement;if(par)label=igeCleanLabel(par.textContent||"").replace(/(?:— Selecciona —|Seleccionar|Seleccionados:).*$/i,"").trim()}
-   }catch(e){}
-   if(!label)label=rd.id;
-   var cats=candidates.map(function(o){
-    var mm=o.raw.match(/^([^:]+):(.+)$/),code=mm?mm[2]:o.raw;
-    return{code:String(code),label:o.label||String(code)};
+  return{sel:sel,opts:opts,used:false};
+ }).filter(function(x){return x.opts.length});
+ function selectorLabel(sel,fallback){
+  var label="";
+  try{
+   var p=sel.previousElementSibling;if(p)label=igeCleanLabel(p.textContent||"");
+   if(!label){var par=sel.parentElement;if(par)label=igeCleanLabel(par.textContent||"").replace(/(?:— Selecciona —|Seleccionar|Seleccionados:).*$/i,"").trim()}
+  }catch(e){}
+  return label||fallback;
+ }
+ rawDims.forEach(function(rd){
+  if(dimMap.has(rd.id))return;
+  var candidate=selectInfo.find(function(si){
+   return !si.used&&si.opts.some(function(o){
+    if(o.raw===rd.defaultSpec)return true;
+    var mm=o.raw.match(/^([^:]+):(.+)$/);
+    return mm&&String(mm[1]).trim()===rd.id;
    });
-   dimMap.set(rd.id,{id:rd.id,label:label,categories:cats,defaultSpec:rd.defaultSpec});
   });
+  if(!candidate)return;
+  var candidates=candidate.opts.filter(function(o){
+   var mm=o.raw.match(/^([^:]+):(.+)$/);
+   return mm&&String(mm[1]).trim()===rd.id;
+  });
+  if(!candidates.length)candidates=candidate.opts;
+  var cats=candidates.map(function(o){
+   var mm=o.raw.match(/^([^:]+):(.+)$/),code=mm?mm[2]:o.raw;
+   return{code:String(code),label:o.label||String(code)};
+  });
+  candidate.used=true;
+  dimMap.set(rd.id,{id:rd.id,label:selectorLabel(candidate.sel,rd.id),categories:cats,defaultSpec:rd.defaultSpec});
+ });
+ // Darrer recurs: assignem selectores encara no utilitzats per ordre a les dimensions
+ // que encara no han pogut ser identificades. Això cobreix taules on l'HTML no
+ // exposa el prefix de dimensió en el value de l'opció.
+ rawDims.forEach(function(rd){
+  if(dimMap.has(rd.id))return;
+  var candidate=selectInfo.find(function(si){return !si.used});
+  if(!candidate)return;
+  var cats=candidate.opts.map(function(o){
+   var mm=o.raw.match(/^([^:]+):(.+)$/),code=mm?mm[2]:o.raw;
+   return{code:String(code),label:o.label||String(code)};
+  });
+  candidate.used=true;
+  dimMap.set(rd.id,{id:rd.id,label:selectorLabel(candidate.sel,rd.id),categories:cats,defaultSpec:rd.defaultSpec});
  });
  rawDims.forEach(function(rd){if(!dimMap.has(rd.id))dimMap.set(rd.id,{id:rd.id,label:rd.id,categories:[],defaultSpec:rd.defaultSpec})});
  return{title:title||"Taula "+tableCode,tableCode:String(tableCode),downloadUrl:download,dims:rawDims.map(function(rd){return dimMap.get(rd.id)})};
@@ -1133,12 +1156,23 @@ function igeRowsToJsonStat(raw,meta){
  var vars=Array.isArray(raw&&raw.variables)?raw.variables:[],rows=Array.isArray(raw&&raw.datos)?raw.datos:[];
  if(!vars.length||!rows.length)return null;
  var md=meta&&Array.isArray(meta.dims)?meta.dims:[];
- var cols=md.map(function(d){
+ var measureIdx=vars.findIndex(function(v){return String(v||"")==="DatoN"});
+ if(measureIdx<0)measureIdx=vars.length-2;
+ var sourceCols=[],vi=0;
+ while(vi<measureIdx){
+  var vn=String(vars[vi]||"").trim();
+  if(/^Cod/i.test(vn)&&vi+1<measureIdx){
+   sourceCols.push({codeIdx:vi,labelIdx:vi+1});vi+=2;
+  }else{
+   sourceCols.push({codeIdx:vi,labelIdx:vi});vi++;
+  }
+ }
+ var cols=md.map(function(d,j){
   var idx=vars.findIndex(function(v){return String(v||"").trim()===String(d.label||"").trim()});
   if(idx>=0)return{dim:d,codeIdx:idx,labelIdx:idx};
   var ci=vars.findIndex(function(v){return /^Cod/i.test(String(v||""))&&String(v).replace(/^Cod/i,"").trim().toLowerCase()===String(d.label||"").trim().toLowerCase()});
   if(ci>=0&&ci+1<vars.length)return{dim:d,codeIdx:ci,labelIdx:ci+1};
-  return{dim:d,codeIdx:-1,labelIdx:-1};
+  return Object.assign({dim:d},sourceCols[j]||{codeIdx:-1,labelIdx:-1});
  });
  var catMaps=new Map();
  cols.forEach(function(c){
