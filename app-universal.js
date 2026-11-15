@@ -1060,7 +1060,15 @@ async function igeSelectDynamic(index,val){
  var children=await igePageItems(item.url,false);
  var tables=children.filter(function(x){return x.type==="table"});
  var activities=children.filter(function(x){return x.type==="activity"});
- var sections=children.filter(function(x){return x.type==="section"});
+ var parentCode=String(item.code||"").trim();
+ var sections=children.filter(function(x){
+  if(x.type!=="section")return false;
+  var code=String(x.code||"").trim();
+  // L'IGE enllaça també amb la mateixa secció i amb nivells superiors.
+  // En navegar, només volem els descendents del nivell actual.
+  if(parentCode&&code)return code!==parentCode&&code.indexOf(parentCode)===0&&code.length>parentCode.length;
+  return true;
+ });
  if(tables.length&&!activities.length&&!sections.length){
   igeAddLevel(tables,index+1,"Taula");status("");return;
  }
