@@ -1062,7 +1062,7 @@ async function igeSelectDynamic(index,val){
  // Les pàgines "actividad estadística" de l'IGE no són nivells de la
  // jerarquia temàtica. Algunes contenen enllaços de navegació com
  // "Castellano", que no s'han de convertir en un nou desplegable.
- var activities=children.filter(function(x){return x.type==="activity"});
+ var activities=children.filter(function(x){return x.type==="activity"&&!/^(Castellano|Galego|Español|Español \(España\)|Spanish)$/i.test(String(x.label||"").trim())});
  var parentCode=String(item.code||"").trim();
  // L'IGE pot retornar enllaços de la mateixa pàgina, nivells superiors
  // i fins i tot el mateix nivell. No els hem de convertir en un nou "Tema".
