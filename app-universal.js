@@ -1068,18 +1068,27 @@ async function istacLoadDatasets(){return istacLoadOperations()}
 async function istacLoadOperationTables(opId){
  opId=String(opId||"").trim();
  if(!opId)return [];
- var q=encodeURIComponent('ID LIKE "'+opId+'%"');
+ // L'API pot respondre 403 quan s'utilitza el paràmetre query sobre /datasets.
+ // Recuperem el catàleg de datasets paginat i filtrem localment per operació.
  var all=[],offset=0,limit=200;
- for(var guard=0;guard<30;guard++){
-  var u=provider().base+"/statistical-resources/v1.0/datasets/ISTAC.json?lang=es&limit="+limit+"&offset="+offset+"&query="+q;
+ for(var guard=0;guard<100;guard++){
+  var u=provider().base+"/statistical-resources/v1.0/datasets/ISTAC.json?lang=es&limit="+limit+"&offset="+offset;
   var d=await fetchJson(u),page=istacList(d);
   if(!page.length)break;
-  all=all.concat(page);
+  page.forEach(function(x){
+   var xid=String(f(x,"id","code","resourceId","resourceID")).trim();
+   var xop=f(x,"statisticalOperation","operation");
+   var opid="";
+   if(xop&&typeof xop==="object")opid=String(f(xop,"id","code")).trim();
+   else opid=String(xop||"").trim();
+   if(!opid&&xid.indexOf(opId)===0)opid=opId;
+   if(opid===opId)all.push(x);
+  });
   if(page.length<limit)break;
   offset+=page.length;
  }
  return all.map(function(x){
-  var id=String(f(x,"id","code")).trim();
+  var id=String(f(x,"id","code","resourceId","resourceID")).trim();
   var label=istacText(x&&x.name,"es")||id;
   return{id:id,label:label,operation:opId};
  }).filter(function(x){return x.id}).sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
