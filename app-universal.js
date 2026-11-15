@@ -34,7 +34,7 @@ async function fetchJson(url,opt){opt=opt||{};var r;try{r=await fetch(url,opt)}c
    }
    if(!ok)throw new Error("No s'ha pogut connectar amb l'API d'ISTAC. "+(err&&err.message||"Failed to fetch")+" · "+url)
   }
-  else if(state.provider===\"ine\"&&/^https:\/\/servicios\.ine\.es\//i.test(url)){
+  else if(state.provider==="ine"&&/^https:\/\/servicios\.ine\.es\//i.test(url)){
    var ineProxyOk=false,ineProxyErr=null;
    var ineProxies=[
     "https://api.allorigins.win/raw?url="+encodeURIComponent(url),
