@@ -71,7 +71,7 @@ async function fetchJson(url,opt){
    }
    if(!ok)throw new Error("No s'ha pogut connectar amb l'API d'ISTAC. "+(err&&err.message||"Failed to fetch")+" · "+url)
   }
-  else if(state.provider==="icane"&&/^https:\/\/datos\.icane\.es\/api\/3\/action\//i.test(url)){var icaneProxyOk=false,icaneProxyErr=null,icaneProxies=["https://api.allorigins.win/raw?url="+encodeURIComponent(url),"https://corsproxy.io/?url="+encodeURIComponent(url),"https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(url)];for(var icp=0;icp<icaneProxies.length&&!icaneProxyOk;icp++){try{var ir=await fetch(icaneProxies[icp],{cache:"no-store"});if(ir.ok){r=ir;icaneProxyOk=true}else icaneProxyErr=new Error("HTTP "+ir.status)}catch(ie){icaneProxyErr=ie}}if(!icaneProxyOk)throw new Error("No s'ha pogut connectar amb l'API d'ICANE. "+(icaneProxyErr&&icaneProxyErr.message||"Failed to fetch")+" · "+url)}
+  else if(state.provider==="icane"&&/^https:\/\/datos\.icane\.es\//i.test(url)){var icaneProxyOk=false,icaneProxyErr=null,icaneProxies=["https://api.allorigins.win/raw?url="+encodeURIComponent(url),"https://corsproxy.io/?url="+encodeURIComponent(url),"https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(url)];for(var icp=0;icp<icaneProxies.length&&!icaneProxyOk;icp++){try{var ir=await fetch(icaneProxies[icp],{cache:"no-store"});if(ir.ok){r=ir;icaneProxyOk=true}else icaneProxyErr=new Error("HTTP "+ir.status)}catch(ie){icaneProxyErr=ie}}if(!icaneProxyOk)throw new Error("No s'ha pogut connectar amb l'API d'ICANE. "+(icaneProxyErr&&icaneProxyErr.message||"Failed to fetch")+" · "+url)}
 else if(state.provider==="ine"&&/^https:\/\/servicios\.ine\.es\//i.test(url)){
    var ineProxyOk=false,ineProxyErr=null;
    var ineProxies=[
@@ -1013,7 +1013,7 @@ async function icaneSelectResource(pkg,rec){
  var raw=await fetchJson(rec.url),ds=pxToJsonStat(raw);
  if(!ds||!Array.isArray(ds.id)||!ds.id.length)throw new Error("la resposta JSON-stat no és vàlida.");
  state.icaneRawData=ds;state.metadata=ds;state.lastQueryUrl=rec.url;renderMetadata(ds);
- $("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(rec.label)+"<span class="path">"+esc(rec.url)+"</span>";
+ $("tableInfo").hidden=false;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(rec.label)+"<span class=\"path\">"+esc(rec.url)+"</span>";
  $("query").disabled=false;status("");
 }
 function icaneSubsetJsonStat(ds,filters){
