@@ -953,17 +953,18 @@ function istacNormTheme(v){return String(v||"").normalize("NFD").replace(/[\u030
 function istacThemeFromValue(v){
  var s=istacNormTheme(v);
  if(!s)return"";
- if(/^01[0]$/.test(s)||s==="territorio y medioambiente"||s==="territorio y medio ambiente")return ISTAC_THEMES[0];
- if(/^02[0]$/.test(s)||s==="demografia")return ISTAC_THEMES[1];
- if(/^03[0]$/.test(s)||s==="sociedad")return ISTAC_THEMES[2];
- if(/^04[0]$/.test(s)||s==="economia general")return ISTAC_THEMES[3];
- if(/^05[0]$/.test(s)||s==="empleo")return ISTAC_THEMES[4];
- if(/^06[0]$/.test(s)||s==="sector primario")return ISTAC_THEMES[5];
- if(/^07[0]$/.test(s)||s==="sector secundario")return ISTAC_THEMES[6];
- if(/^08[0]$/.test(s)||s==="sector servicios")return ISTAC_THEMES[7];
- if(/^09[0]$/.test(s)||s==="administracion publica")return ISTAC_THEMES[8];
- if(/^10[0]$/.test(s)||s==="ciencia y tecnologia")return ISTAC_THEMES[9];
- if(/^11[0]$/.test(s)||s==="recopilacion y sintesis")return ISTAC_THEMES[10];
+ var code=(s.match(/^(0[1-9]0)(?:[_.-]|$)/)||[])[1]||"";
+ if(code==="010"||/^01[0]$/.test(s)||s==="territorio y medioambiente"||s==="territorio y medio ambiente")return ISTAC_THEMES[0];
+ if(code==="020"||/^02[0]$/.test(s)||s==="demografia")return ISTAC_THEMES[1];
+ if(code==="030"||/^03[0]$/.test(s)||s==="sociedad")return ISTAC_THEMES[2];
+ if(code==="040"||/^04[0]$/.test(s)||s==="economia general")return ISTAC_THEMES[3];
+ if(code==="050"||/^05[0]$/.test(s)||s==="empleo")return ISTAC_THEMES[4];
+ if(code==="060"||/^06[0]$/.test(s)||s==="sector primario")return ISTAC_THEMES[5];
+ if(code==="070"||/^07[0]$/.test(s)||s==="sector secundario")return ISTAC_THEMES[6];
+ if(code==="080"||/^08[0]$/.test(s)||s==="sector servicios")return ISTAC_THEMES[7];
+ if(code==="090"||/^09[0]$/.test(s)||s==="administracion publica")return ISTAC_THEMES[8];
+ if(code==="100"||/^10[0]$/.test(s)||s==="ciencia y tecnologia")return ISTAC_THEMES[9];
+ if(code==="110"||/^11[0]$/.test(s)||s==="recopilacion y sintesis")return ISTAC_THEMES[10];
  return""
 }
 function istacOperationThemes(x){
@@ -1066,7 +1067,7 @@ function istacDraw(level,theme){
   return sel;
  }
  var themeItems=themes.map(function(t){return{id:t,label:t}});
- var selTheme=addSelect("Tema",themeItems,theme||"",async function(){
+ var selTheme=addSelect("Grup temàtic",themeItems,theme||"",async function(){
   clearQueryView();
   if(!selTheme.value){istacDraw(0,"");return}
   istacDrawOperations(selTheme.value);
