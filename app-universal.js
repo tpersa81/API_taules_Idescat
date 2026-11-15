@@ -1004,7 +1004,6 @@ async function igePageItems(url,isRoot){
  while((mm=md.exec(String(html||""))))inspectLink(mm[2],mm[1]);
  // Alguns proxies poden retornar HTML escapant l'URL dins del text.
  // Les URL de taules ja es detecten pels enllaços HTML/Markdown anteriors.
- while((m=re.exec(String(html||""))))add("table",m[0],"Taula "+m[1],m[1]);
  return out;
 }
 async function igeLoadRoot(){
