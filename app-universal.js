@@ -1065,7 +1065,7 @@ async function istacLoadOperations(){
  return state.istacDatasets;
 }
 async function istacLoadDatasets(){return istacLoadOperations()}
-async function istacLoadOperationTables(opId){
+async async function istacLoadOperationTables(opId){
  opId=String(opId||"").trim();
  if(!opId)return [];
  // No recorrem tot el catàleg: la paginació de /datasets pot retornar 401
