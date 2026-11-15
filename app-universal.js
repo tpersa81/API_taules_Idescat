@@ -967,7 +967,7 @@ function igeCleanLabel(s){
  return String(s||"").replace(/\s+/g," ").replace(/\s*[-|·]\s*(?:Instituto Galego de Estatística|IGE).*$/i,"").trim();
 }
 function igeRootUrl(){
- return "https://www.ige.gal/web/mostrar_paxina.jsp?idioma=es&paxina=004015";
+ return "https://www.ige.gal/web/index.jsp?idioma=es";
 }
 async function igePageItems(url,isRoot){
  var html=await fetchText(url,{cache:"no-store"});
@@ -984,10 +984,12 @@ async function igePageItems(url,isRoot){
   if(u.hostname.toLowerCase()!=="www.ige.gal"&&u.hostname.toLowerCase()!=="ige.gal")return;
   var path=u.pathname.toLowerCase(),label=aEl.textContent||"";
   var sec=u.searchParams.get("codigo");
-  if(path.indexOf("/mostrar_seccion.jsp")>=0&&sec){
+  if((path.indexOf("/mostrar_seccion.jsp")>=0||path==="/web/"||path==="/web/index.jsp")&&sec){
+   if(isRoot&&String(sec).length<=2){add("section",abs,label,sec);return}
    if(!isRoot&&rootCodes.has(String(sec)))return;
-   if(!isRoot&&String(sec).length<=4)return;
-   add("section",abs,label,sec);return;
+   if(!isRoot&&String(sec).length<=2)return;
+   if(path.indexOf("/mostrar_seccion.jsp")>=0||!isRoot)add("section",abs,label,sec);
+   return;
   }
   var act=u.searchParams.get("codigo");
   if(path.indexOf("/mostrar_actividade_estatistica.jsp")>=0&&act){add("activity",abs,label,act);return}
@@ -1002,8 +1004,17 @@ async function igeLoadRoot(){
  if(state.igeRoot&&state.igeRoot.length)return state.igeRoot;
  status("Carregant grups temàtics de l'IGE…");
  var items=await igePageItems(igeRootUrl(),true);
- var roots=items.filter(function(x){return x.type==="section"&&String(x.code).length<=4});
- if(!roots.length)throw new Error("IGE: no s'han trobat els grups temàtics.");
+ var roots=items.filter(function(x){return x.type==="section"&&String(x.code).length<=2});
+ if(!roots.length){
+  var base="https://www.ige.gal/web/?idioma=es&codigo=";
+  roots=[
+   {id:base+"01",label:"Territorio y medio ambiente",type:"section",url:base+"01",code:"01"},
+   {id:base+"02",label:"Población y condiciones sociales",type:"section",url:base+"02",code:"02"},
+   {id:base+"03",label:"Estructura productiva",type:"section",url:base+"03",code:"03"},
+   {id:base+"04",label:"Conocimiento y tecnología",type:"section",url:base+"04",code:"04"},
+   {id:base+"05",label:"Temas transversales",type:"section",url:base+"05",code:"05"}
+  ];
+ }
  roots.sort(function(a,b){return a.label.localeCompare(b.label,"ca",{numeric:true})});
  state.igeRoot=roots;return roots;
 }
