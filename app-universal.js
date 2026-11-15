@@ -969,13 +969,24 @@ function igeCleanLabel(s){
 function igeRootUrl(){
  return "https://www.ige.gal/web/index.jsp?idioma=es";
 }
+function igeIsNoiseLabel(label){
+ label=String(label||"").replace(/\s+/g," ").trim();
+ if(!label||label.length<2)return true;
+ if(/^(Galego|Castellano|Español|English|English \(en\)|Escuchar|Escoitar)$/i.test(label))return true;
+ if(/^(De acordo|Aceptar|Cookies|Aviso legal|Pol[ií]tica de|Contacto|Mapa web|RSS)$/i.test(label))return true;
+ if(/redes sociais|redes sociales|facebook|twitter|instagram|youtube|linkedin/i.test(label))return true;
+ if(/informaci[oó]n por cuadr[ií]cula|cuadr[ií]cula de 1\s*km/i.test(label))return true;
+ if(/observatorio transfronterizo|readspeaker|compartir/i.test(label))return true;
+ if(/resultados detallados|publicaciones\s*\/\s*folletos|banco de datos municipal/i.test(label))return true;
+ return false;
+}
 async function igePageItems(url,isRoot){
  var html=await fetchText(url,{cache:"no-store"});
  var doc=new DOMParser().parseFromString(html,"text/html"),out=[],seen=new Set();
  var rootCodes=new Set((state.igeRoot||[]).map(function(x){return String(x.code||"")}));
  function add(type,href,label,code){
   href=igeAbsUrl(href,url);label=igeCleanLabel(label);code=String(code||"").trim();
-  if(!href||!label||seen.has(type+"|"+href))return;
+  if(!href||!label||igeIsNoiseLabel(label)||seen.has(type+"|"+href))return;
   seen.add(type+"|"+href);out.push({id:href,label:label,type:type,url:href,code:code});
  }
  function inspectLink(href,label){
@@ -984,33 +995,66 @@ async function igePageItems(url,isRoot){
   var abs=igeAbsUrl(href,url),u;
   try{u=new URL(abs)}catch(e){return}
   if(u.hostname.toLowerCase()!=="www.ige.gal"&&u.hostname.toLowerCase()!=="ige.gal")return;
-  var path=u.pathname.toLowerCase(),sec=u.searchParams.get("codigo"),act=u.searchParams.get("codigo"),cod=u.searchParams.get("COD");
-  if((path.indexOf("/mostrar_seccion.jsp")>=0||path==="/web/"||path==="/web/index.jsp"||path.indexOf("/igebdt/bancodatos/")>=0)&&sec){
-   if(isRoot&&String(sec).length<=2){add("section",abs,label,sec);return}
-   if(!isRoot&&rootCodes.has(String(sec)))return;
-   if(!isRoot&&String(sec).length<=2)return;
-   if(path.indexOf("/mostrar_seccion.jsp")>=0||!isRoot)add("section",abs,label,sec);
+  var path=u.pathname.toLowerCase();
+  var sec=u.searchParams.get("codigo");
+  var cod=u.searchParams.get("COD")||u.searchParams.get("cod");
+  // Seccions temàtiques
+  if(path.indexOf("/mostrar_seccion.jsp")>=0&&sec){
+   var sc=String(sec);
+   if(isRoot){
+    // arrels reals: 0101, 0201, 0306... (4 dígits) o 2 dígits de grup
+    if(sc.length<=4)add("section",abs,label,sc);
+    return;
+   }
+   if(rootCodes.has(sc))return;
+   // Evita reintroduir menú global (codis curts de primer nivell)
+   if(sc.length<=4&&(state.igeRoot||[]).some(function(r){return String(r.code)===sc||String(r.code).slice(0,2)===sc.slice(0,2)&&sc.length===4&&String(r.code).length===4&&String(r.code)!==sc})){
+    // menú lateral amb altres seccions del mateix nivell: només si no és descendent del context es filtrarà després
+   }
+   add("section",abs,label,sc);
    return;
   }
-  if(path.indexOf("/mostrar_actividade_estatistica.jsp")>=0&&act){add("activity",abs,label,act);return}
-  if(path.indexOf("/selector.jsp")>=0&&cod){add("table",abs,label,cod);return}
+  // Activitats estadístiques
+  if(path.indexOf("/mostrar_actividade_estatistica.jsp")>=0&&sec){
+   add("activity",abs,label,String(sec));
+   return;
+  }
+  // Taules del banc de dades
+  if(path.indexOf("/selector.jsp")>=0&&cod){
+   add("table",abs,label,String(cod));
+   return;
+  }
  }
- Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
+ // Prioritza el contingut principal (evita menú/peu)
+ var scope=doc.querySelector("#paxina-contenido, #contenido, main, .paxina-contenido, #main")||doc;
+ Array.from(scope.querySelectorAll("a[href]")).forEach(function(aEl){
   inspectLink(aEl.getAttribute("href")||"",aEl.textContent||"");
  });
- // fetchText pot haver rebut una versió Markdown d'un proxy (especialment Jina).
- // En aquest cas no hi ha elements <a>, però sí enllaços [text](url).
+ // Si el scope restringit no ha trobat res útil, fes fallback a tot el document
+ if(!out.length){
+  Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
+   inspectLink(aEl.getAttribute("href")||"",aEl.textContent||"");
+  });
+ }
+ // Markdown de proxies
  var md=/\[([^\]]+)\]\(([^)]+)\)/g,mm;
  while((mm=md.exec(String(html||""))))inspectLink(mm[2],mm[1]);
- // Alguns proxies poden retornar HTML escapant l'URL dins del text.
- // Les URL de taules ja es detecten pels enllaços HTML/Markdown anteriors.
  return out;
 }
 async function igeLoadRoot(){
  if(state.igeRoot&&state.igeRoot.length)return state.igeRoot;
  status("Carregant grups temàtics de l'IGE…");
  var items=await igePageItems(igeRootUrl(),true);
- var roots=items.filter(function(x){return x.type==="section"&&String(x.code).length<=2});
+ var roots=items.filter(function(x){
+  if(x.type!=="section")return false;
+  var c=String(x.code||"");
+  // Menú principal de la home: codis de 4 dígits (0101, 0306, ...)
+  return /^\d{4}$/.test(c);
+ });
+ // Dedup per codi
+ var seenRoot=new Set();
+ roots=roots.filter(function(x){var c=String(x.code);if(seenRoot.has(c))return false;seenRoot.add(c);return true});
+
  if(!roots.length){
   var base="https://www.ige.gal/web/?idioma=es&codigo=";
   roots=[
@@ -1058,14 +1102,7 @@ async function igeSelectDynamic(index,val){
  if(item.type==="table"){await igeSelectTable(item);return}
  status("Consultant l'IGE…");
  var children=await igePageItems(item.url,false);
- var tables=children.filter(function(x){return x.type==="table"});
- // Les pàgines "actividad estadística" de l'IGE no són nivells de la
- // jerarquia temàtica. Algunes contenen enllaços de navegació com
- // "Castellano", que no s'han de convertir en un nou desplegable.
- var activities=children.filter(function(x){return x.type==="activity"&&!/^(Castellano|Galego|Español|Español \(España\)|Spanish)$/i.test(String(x.label||"").trim())});
  var parentCode=String(item.code||"").trim();
- // L'IGE pot retornar enllaços de la mateixa pàgina, nivells superiors
- // i fins i tot el mateix nivell. No els hem de convertir en un nou "Tema".
  var pathIds=state.igePath.slice(0,index+1).map(function(x){return String(x)});
  var pathCodes=[];
  for(var pi=0;pi<=index;pi++){
@@ -1074,29 +1111,54 @@ async function igeSelectDynamic(index,val){
   if(prevItem&&prevItem.code)pathCodes.push(String(prevItem.code).trim());
  }
  var currentLabels=new Set((items||[]).map(function(x){return String(x.label||"").trim().toLowerCase()}));
+
+ function isDescendantCode(code){
+  code=String(code||"").trim();
+  if(!code)return false;
+  if(!parentCode)return true;
+  // Codis IGE jeràrquics: 0306 → 0306001001, 0306xx...
+  return code.indexOf(parentCode)===0&&code.length>parentCode.length;
+ }
+
+ var tables=children.filter(function(x){return x.type==="table"});
+ // Si la pàgina ja té taules (pàgina d'activitat), no mesclem menús globals
+ if(tables.length){
+  igeAddLevel(tables,index+1,"Taula");
+  status("");
+  return;
+ }
+
+ var activities=children.filter(function(x){
+  if(x.type!=="activity")return false;
+  if(igeIsNoiseLabel(x.label))return false;
+  var id=String(x.id||"");
+  if(pathIds.indexOf(id)>=0)return false;
+  var code=String(x.code||"").trim();
+  if(code&&pathCodes.indexOf(code)>=0)return false;
+  // Només activitats filles del node actual
+  if(parentCode&&code&&!isDescendantCode(code))return false;
+  return true;
+ });
  var sections=children.filter(function(x){
   if(x.type!=="section")return false;
+  if(igeIsNoiseLabel(x.label))return false;
   var id=String(x.id||"");
   var code=String(x.code||"").trim();
   var label=String(x.label||"").trim().toLowerCase();
   if(pathIds.indexOf(id)>=0)return false;
   if(currentLabels.has(label))return false;
   if(code&&pathCodes.indexOf(code)>=0)return false;
-  if(parentCode&&code){
-   // Si disposem de codis jeràrquics, només acceptem descendents.
-   if(code.indexOf(parentCode)!==0||code.length<=parentCode.length)return false;
-  }
+  if(parentCode&&code&&!isDescendantCode(code))return false;
+  // Evita el menú lateral d'altres branques temàtiques
+  if(parentCode&&code&&code.slice(0,2)!==parentCode.slice(0,2))return false;
   return true;
  });
- if(tables.length&&!activities.length&&!sections.length){
-  igeAddLevel(tables,index+1,"Taula");status("");return;
- }
+
  var next=sections.concat(activities);
- if(tables.length)next=next.concat(tables);
  next.sort(function(a,b){return a.label.localeCompare(b.label,"ca",{numeric:true})});
  if(next.length){
-  var onlyTables=next.every(function(x){return x.type==="table"});
-  igeAddLevel(next,index+1,onlyTables?"Taula":"Tema");
+  var onlyAct=next.every(function(x){return x.type==="activity"});
+  igeAddLevel(next,index+1,onlyAct?"Operació estadística":"Tema");
   status("");
   return;
  }
