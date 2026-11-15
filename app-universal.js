@@ -958,14 +958,14 @@ function icelandEnglishRootLabel(label){
  };
  return m[n]||s;
 }
-function istacList(d){if(Array.isArray(d))return d;if(d&&Array.isArray(d.dataset))return d.dataset;if(d&&Array.isArray(d.operation))return d.operation;if(d&&Array.isArray(d.operations))return d.operations;if(d&&Array.isArray(d.data))return d.data;if(d&&Array.isArray(d.datasets))return d.datasets;if(d&&Array.isArray(d.results))return d.results;if(d&&Array.isArray(d.items))return d.items;if(d&&Array.isArray(d.category))return d.category;return[]}
+function istacList(d){if(Array.isArray(d))return d;if(d&&Array.isArray(d.dataset))return d.dataset;if(d&&Array.isArray(d.query))return d.query;if(d&&Array.isArray(d.operation))return d.operation;if(d&&Array.isArray(d.operations))return d.operations;if(d&&Array.isArray(d.data))return d.data;if(d&&Array.isArray(d.datasets))return d.datasets;if(d&&Array.isArray(d.results))return d.results;if(d&&Array.isArray(d.items))return d.items;if(d&&Array.isArray(d.category))return d.category;return[]}
 function istacText(x,lang){if(x==null)return"";if(typeof x==="string"||typeof x==="number")return String(x);if(Array.isArray(x)){var exact=x.find(function(v){return v&&String(v.lang||"").toLowerCase()===String(lang||"es").toLowerCase()});if(exact)return istacText(exact.value!=null?exact.value:exact.text,lang);for(var i=0;i<x.length;i++){var t=istacText(x[i],lang);if(t)return t}return""}if(typeof x==="object"){if(x.value!=null&&typeof x.value!=="object")return String(x.value);if(x.text!=null)return istacText(x.text,lang);if(x.name!=null)return istacText(x.name,lang)}return""}
 function istacDimensionArray(meta){var d=meta&&meta.dimensions&&meta.dimensions.dimension;if(Array.isArray(d))return d;if(d&&typeof d==="object")return Object.keys(d).map(function(k){return d[k]});return[]}
 function istacValueArray(v){if(!v)return[];if(Array.isArray(v))return v;if(v.value&&Array.isArray(v.value))return v.value;return[]}
 function istacMetadataToJsonStat(raw){var src=raw&&raw.metadata?raw.metadata:raw;if(src&&Array.isArray(src.id)&&src.dimension)return pxToJsonStat(src);if(!src||!src.dimensions)return pxToJsonStat(raw);var ds={version:"2.0",class:"dataset",label:istacText(src.name,"es")||String(raw&&raw.label||state.selected.table||""),id:[],size:[],dimension:{}};istacDimensionArray(src).forEach(function(d){var id=String(d&&d.id||"").trim();if(!id)return;var vals=istacValueArray(d.dimensionValues),index={},label={};vals.forEach(function(v,i){var code=String(v&&v.id!=null?v.id:"").trim();if(!code)return;index[code]=i;label[code]=istacText(v&&v.name,"es")||code});ds.id.push(id);ds.size.push(vals.length);ds.dimension[id]={label:istacText(d.name,"es")||id,category:{index:index,label:label}}});return ds}
 function istacMetaField(x,key){var v=x&&x.metadata&&x.metadata[key]!=null?x.metadata[key]:(x&&x[key]!=null?x[key]:null);if(Array.isArray(v))return{id:"",label:istacText(v,"es")};if(v&&typeof v==="object"){var id=v.id||v.code||v.resourceId||v.operationId||"",label=istacText(v.name||v.label||v.title,"es")||String(id||"");return{id:String(id||""),label:label}}return{id:String(v||""),label:String(v||"")}}
 function istacDatasetRecord(x){var id=String(f(x,"id","resourceId","resourceID","code")).trim(),label=istacText(x&&x.name,"es")||String(f(x,"label","title","text")||id).trim(),subject=istacMetaField(x,"subject"),op=istacMetaField(x,"statisticalOperation");if(!subject.label)subject=istacMetaField(x,"subjectCode");return{id:id,label:label,subject:subject.label||"Altres",operation:op.label||"Sense operació",version:String(f(x,"version")||"~latest")}}
-let ISTAC_THEMES=[]; // omplert des de TEMAS_CANARIAS (nivell arrel)
+const ISTAC_THEMES=[]; // omplert des de TEMAS_CANARIAS (nivell arrel)
 state.istacThemeMap=state.istacThemeMap||new Map(); // id T010000 → nom
 
 function istacNormTheme(v){return String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim()}
@@ -1069,20 +1069,40 @@ async function istacLoadOperationTables(opId){
  opId=String(opId||"").trim();
  if(!opId)return [];
  var q=encodeURIComponent('ID LIKE "'+opId+'%"');
- var all=[],offset=0,limit=200;
- for(var guard=0;guard<30;guard++){
-  var u=provider().base+"/statistical-resources/v1.0/datasets/ISTAC.json?lang=es&limit="+limit+"&offset="+offset+"&query="+q;
-  var d=await fetchJson(u),page=istacList(d);
-  if(!page.length)break;
-  all=all.concat(page);
-  if(page.length<limit)break;
-  offset+=page.length;
+ async function loadKind(kind){
+  var all=[],offset=0,limit=200;
+  for(var guard=0;guard<50;guard++){
+   var u=provider().base+"/statistical-resources/v1.0/"+kind+"/ISTAC.json?lang=es&limit="+limit+"&offset="+offset+"&query="+q;
+   var d=null;
+   try{d=await fetchJson(u)}catch(e){break}
+   var page=istacList(d);
+   if(!page.length){
+    // total pot ser 0
+    break;
+   }
+   page.forEach(function(x){
+    var id=String(f(x,"id","code")).trim();
+    if(!id)return;
+    var label=istacText(x&&x.name,"es")||id;
+    all.push({id:id,label:label,operation:opId,kind:kind==="queries"?"query":"dataset"});
+   });
+   if(page.length<limit)break;
+   offset+=page.length;
+  }
+  return all;
  }
- return all.map(function(x){
-  var id=String(f(x,"id","code")).trim();
-  var label=istacText(x&&x.name,"es")||id;
-  return{id:id,label:label,operation:opId};
- }).filter(function(x){return x.id}).sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
+ var datasets=await loadKind("datasets");
+ var queries=[];
+ try{queries=await loadKind("queries")}catch(e){queries=[]}
+ // dedup per id (prioritza dataset)
+ var seen=new Set(),out=[];
+ datasets.concat(queries).forEach(function(x){
+  if(seen.has(x.id))return;
+  seen.add(x.id);
+  out.push(x);
+ });
+ out.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
+ return out;
 }
 function istacUnique(items,key){var seen=new Set(),out=[];items.forEach(function(x){var v=String(x[key]||"").trim();if(v&&!seen.has(v)){seen.add(v);out.push(v)}});return out.sort(function(a,b){return a.localeCompare(b,"ca",{numeric:true})})}
 async function istacSelectTable(rec){
@@ -1193,9 +1213,10 @@ function istacDrawTables(opId,tables){
  (tables||[]).forEach(function(tb){sel.appendChild(new Option(tb.label,tb.id))});
  lab.appendChild(sel);box.appendChild(lab);
  if(!(tables||[]).length){
-  status("ISTAC: aquesta operació no té cubs disponibles al catàleg.","error");
+  status("ISTAC: aquesta operació no té taules ni consultes al catàleg obert (statistical-resources). Moltes operacions només tenen fitxa descriptiva, sense cubs descarregables.","error");
   return;
  }
+
  sel.onchange=async function(){
   clearQueryView();
   if(!sel.value)return;
@@ -2731,6 +2752,7 @@ async function onGeoChange(){
 }
 function temporalPeriodicity(categories){
  var arr=(categories||[]).map(function(c){return{code:temporalCategoryCode(c),label:String(c&&c.label||"").trim()}}).filter(function(x){return x.code||x.label});
+ if(arr.some(function(x){return /^\d+$/.test(x.code)&&Number(x.code)>=0}))return"quarter";
 
  for(var i=0;i<arr.length;i++){var code=arr[i].code,label=arr[i].label;
   if(/^\d{4}$/.test(code)||/^\d{4}$/.test(label))return"year";
