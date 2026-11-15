@@ -1295,18 +1295,96 @@ function igeParseSelectorMeta(html,url,tableCode){
 }
 async function igeSelectTable(rec){
  status("Carregant la taula de l'IGE…");
- var html=await fetchText(rec.url,{cache:"no-store"});
- var meta=igeParseSelectorMeta(html,rec.url,rec.code||"");
- if(!meta.dims.length)throw new Error("IGE: no s'han pogut obtenir les dimensions de la taula.");
- state.igeSelector=meta;state.selected.stat=meta.tableCode;state.selected.concept=meta.tableCode;state.selected.cross=meta.tableCode;state.selected.node=meta.tableCode;state.selected.table=meta.tableCode;state.selected.geo="";
+ var tableCode=String(rec.code||"").trim();
+ if(!tableCode){
+  // intenta COD de la URL
+  try{tableCode=String(new URL(rec.url).searchParams.get("COD")||"").trim()}catch(e){}
+ }
+ if(!tableCode)throw new Error("IGE: no s'ha pogut determinar el codi de la taula.");
+ var metaUrl="https://www.ige.gal/igebdt/igeapi/json/metadatos/"+encodeURIComponent(tableCode)+"/selector";
+ var raw=await fetchJson(metaUrl);
+ var meta=igeParseMetadatosSelector(raw,tableCode,rec.url);
+ if(!meta||!meta.dims||!meta.dims.length)throw new Error("no s'han pogut obtenir les dimensions de la taula.");
+ // Assegura categories no buides
+ meta.dims=meta.dims.filter(function(d){return d&&d.id!=null&&Array.isArray(d.categories)&&d.categories.length});
+ if(!meta.dims.length)throw new Error("no s'han pogut obtenir les dimensions de la taula.");
+ state.igeSelector=meta;
+ state.selected.stat=meta.tableCode;
+ state.selected.concept=meta.tableCode;
+ state.selected.cross=meta.tableCode;
+ state.selected.node=meta.tableCode;
+ state.selected.table=meta.tableCode;
+ state.selected.geo="";
  var ds={class:"dataset",version:"2.0",label:meta.title,id:meta.dims.map(function(d){return d.id}),size:meta.dims.map(function(d){return d.categories.length}),dimension:{}};
  meta.dims.forEach(function(d){
-  var idx={},lab={};d.categories.forEach(function(c,i){idx[c.code]=i;lab[c.code]=c.label});
+  var idx={},lab={};
+  d.categories.forEach(function(c,i){idx[c.code]=i;lab[c.code]=c.label});
   ds.dimension[d.id]={label:d.label,category:{index:d.categories.map(function(c){return c.code}),label:lab}};
  });
- state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;
- $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(meta.title)+"<span class=\"path\">"+esc(rec.url)+"</span><p>Este producto emplea la API de datos del Instituto Galego de Estatística (IGE), pero no está certificado o aprobado por el IGE.</p>";
- $("query").disabled=false;status("");
+ state.metadata=ds;
+ renderMetadata(ds);
+ $("tableInfo").hidden=false;
+ $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(meta.title)+"<span class=\"path\">"+esc(metaUrl)+"</span><p>Este producto emplea la API de datos del Instituto Galego de Estatística (IGE), pero no está certificado o aprobado por el IGE.</p>";
+ $("query").disabled=false;
+ status("");
+}
+function igeParseMetadatosSelector(raw,tableCode,pageUrl){
+ // Format API: [ {meta taula}, [eixos...], [valors...], [nivells...], {config} ]
+ var arr=Array.isArray(raw)?raw:(raw&&Array.isArray(raw.data)?raw.data:null);
+ if(!arr||!arr.length)return null;
+ var head=arr[0]&&typeof arr[0]==="object"&&!Array.isArray(arr[0])?arr[0]:{};
+ var title=String(head.TITESP||head.TITTABLA||("Taula "+tableCode)).trim();
+ var axes=[],values=[];
+ for(var i=1;i<arr.length;i++){
+  var el=arr[i];
+  if(!Array.isArray(el)||!el.length||typeof el[0]!=="object")continue;
+  if(el[0].DIMEN!=null||(el[0].EJE!=null&&el[0].CODELEM==null&&el[0].TXTELEM==null&&el[0].n0==null)){
+   // definició d'eixos
+   if(el[0].DIMEN!=null)axes=el;
+  }
+  if(el[0].CODELEM!=null||el[0].TXTELEM!=null){
+   values=values.concat(el);
+  }
+ }
+ if(!axes.length){
+  // reconstrueix eixos a partir dels valors
+  var seen=new Map();
+  values.forEach(function(v){
+   var e=String(v.EJE);
+   if(!seen.has(e))seen.set(e,{EJE:v.EJE,DIMEN:"Eix "+e});
+  });
+  axes=Array.from(seen.values());
+ }
+ var byEje=new Map();
+ values.forEach(function(v){
+  var e=String(v.EJE);
+  if(!byEje.has(e))byEje.set(e,[]);
+  byEje.get(e).push(v);
+ });
+ var dims=axes.map(function(ax){
+  var id=String(ax.EJE);
+  var label=String(ax.DIMEN||("Eix "+id)).trim();
+  var cats=(byEje.get(id)||[]).slice().sort(function(a,b){
+   return Number(a.ORDEN||a.ORDENDAT||0)-Number(b.ORDEN||b.ORDENDAT||0);
+  }).map(function(v){
+   var code=String(v.CODELEM!=null?v.CODELEM:"").trim();
+   var lab=String(v.TXTELEM!=null?v.TXTELEM:code).trim();
+   return{code:code,label:lab||code};
+  }).filter(function(c){return c.code!==""});
+  // dedup codes
+  var seenC=new Set(),out=[];
+  cats.forEach(function(c){if(seenC.has(c.code))return;seenC.add(c.code);out.push(c)});
+  return{id:id,label:label,categories:out,defaultSpec:id};
+ }).filter(function(d){return d.categories.length});
+ return{
+  title:title,
+  tableCode:String(tableCode),
+  downloadUrl:"",
+  dims:dims,
+  unit:String(head.UNITABLA||""),
+  source:String(head.FUENTE||""),
+  pageUrl:pageUrl||""
+ };
 }
 function igeRowsToJsonStat(raw,meta){
  var vars=Array.isArray(raw&&raw.variables)?raw.variables:[],rows=Array.isArray(raw&&raw.datos)?raw.datos:[];
@@ -1357,17 +1435,20 @@ function igeRowsToJsonStat(raw,meta){
  out.value=vals;return out;
 }
 async function igeQuery(filters){
- var meta=state.igeSelector;if(!meta)throw new Error("IGE: no hi ha una taula seleccionada.");
+ var meta=state.igeSelector;if(!meta)throw new Error("no hi ha una taula seleccionada.");
  var parts=[];
  meta.dims.forEach(function(d){
-  var selected=filters&&filters[d.id]&&filters[d.id].length?filters[d.id]:d.categories.map(function(c){return c.code});
-  if(!selected.length)return;
+  var selected=filters&&filters[d.id]&&filters[d.id].length?filters[d.id]:null;
+  // Si no hi ha filtre, omet l'eix (= tots els valors, segons l'API de l'IGE)
+  if(!selected||!selected.length)return;
+  // Si estan tots seleccionats, també podem ometre'l
+  if(selected.length>=(d.categories||[]).length)return;
   parts.push(d.id+":"+selected.map(String).join(":"));
  });
  var path=parts.join(",");
- var u=provider().base+"/json/datos/"+encodeURIComponent(meta.tableCode)+"/"+path;
+ var u=provider().base+"/json/datos/"+encodeURIComponent(meta.tableCode)+(path?"/"+path:"");
  var raw=await fetchJson(u),ds=igeRowsToJsonStat(raw,meta);
- if(!ds)throw new Error("IGE: la resposta de dades no s'ha pogut convertir a JSON-stat.");
+ if(!ds)throw new Error("la resposta de dades no s'ha pogut convertir a JSON-stat.");
  return{data:ds,url:u};
 }
 async function icaneLoadCatalog(){
