@@ -1177,6 +1177,7 @@ function istacDrawOperations(theme){
  var box=$("eurostatLevels");if(!box)return;
  var labels=box.querySelectorAll("label");
  for(var i=1;i<labels.length;i++)labels[i].remove();
+ var oldMsg=box.querySelector(".istac-no-cube");if(oldMsg)oldMsg.remove();
  var ops=(state.istacDatasets||[]).filter(function(x){return (x.themes||[]).indexOf(theme)>=0});
  var lab=document.createElement("label");
  lab.style.display="flex";lab.style.flexDirection="column";lab.style.alignItems="stretch";
@@ -1207,8 +1208,8 @@ function istacDrawTables(opId,tables){
  for(var i=2;i<labels.length;i++)labels[i].remove();
  if(!(tables||[]).length){
   var msg=document.createElement("div");
-  msg.className="empty";
-  msg.textContent="ISTAC: aquesta operació no té taules o consultes de dades associades.";
+  msg.className="empty istac-no-cube";
+  msg.textContent="ISTAC: aquesta operació no té cub de dades associat";
   box.appendChild(msg);
   status("");
   return;
