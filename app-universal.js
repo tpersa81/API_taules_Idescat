@@ -1072,7 +1072,7 @@ async function istacLoadOperationTables(opId){
  // És més fiable que paginar /datasets, que pot retornar 401 en offsets alts.
  var catUrl="https://datos.canarias.es/catalogos/estadisticas/api/3/action/package_search?q="+encodeURIComponent(opId)+"&rows=1000";
  try{
-  var cd=await fetchJson(catUrl),pk=cd&&cd.result&&Array.isArray(cd.result.results)?cd.result.results:[];
+  var catText=await fetchText(catUrl),cd=JSON.parse(String(catText||"")),pk=cd&&cd.result&&Array.isArray(cd.result.results)?cd.result.results:[];
   var found=new Map();
   pk.forEach(function(p){
    var resources=Array.isArray(p&&p.resources)?p.resources:[];
