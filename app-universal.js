@@ -1204,6 +1204,7 @@ function istacDrawOperations(theme){
 }
 function istacDrawTables(opId,tables){
  var box=$("eurostatLevels");if(!box)return;
+ var oldMsg=box.querySelector(".istac-no-cube");if(oldMsg)oldMsg.remove();
  var labels=box.querySelectorAll("label");
  for(var i=2;i<labels.length;i++)labels[i].remove();
  if(!(tables||[]).length){
