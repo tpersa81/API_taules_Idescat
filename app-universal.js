@@ -1059,7 +1059,10 @@ async function igeSelectDynamic(index,val){
  status("Consultant l'IGE…");
  var children=await igePageItems(item.url,false);
  var tables=children.filter(function(x){return x.type==="table"});
- var activities=children.filter(function(x){return x.type==="activity"});
+ // Les pàgines "actividad estadística" de l'IGE no són nivells de la
+ // jerarquia temàtica. Algunes contenen enllaços de navegació com
+ // "Castellano", que no s'han de convertir en un nou desplegable.
+ var activities=[];
  var parentCode=String(item.code||"").trim();
  // L'IGE pot retornar enllaços de la mateixa pàgina, nivells superiors
  // i fins i tot el mateix nivell. No els hem de convertir en un nou "Tema".
@@ -1085,10 +1088,10 @@ async function igeSelectDynamic(index,val){
   }
   return true;
  });
- if(tables.length&&!activities.length&&!sections.length){
+ if(tables.length&&!sections.length){
   igeAddLevel(tables,index+1,"Taula");status("");return;
  }
- var next=sections.concat(activities);
+ var next=sections.slice();
  if(tables.length)next=next.concat(tables);
  next.sort(function(a,b){return a.label.localeCompare(b.label,"ca",{numeric:true})});
  if(next.length){
