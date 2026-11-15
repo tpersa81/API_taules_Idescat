@@ -969,7 +969,7 @@ function igeCleanLabel(s){
 function igeRootUrl(){
  return "https://www.ige.gal/web/index.jsp?idioma=es";
 }
-async function igePageItems(url,isRoot){
+async async function igePageItems(url,isRoot){
  var html=await fetchText(url,{cache:"no-store"});
  var doc=new DOMParser().parseFromString(html,"text/html"),out=[],seen=new Set();
  var rootCodes=new Set((state.igeRoot||[]).map(function(x){return String(x.code||"")}));
@@ -978,12 +978,13 @@ async function igePageItems(url,isRoot){
   if(!href||!label||seen.has(type+"|"+href))return;
   seen.add(type+"|"+href);out.push({id:href,label:label,type:type,url:href,code:code});
  }
- Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
-  var href=aEl.getAttribute("href")||"",abs=igeAbsUrl(href,url),u;
+ function inspectLink(href,label){
+  href=String(href||"").replace(/&amp;/g,"&").trim();
+  if(!href)return;
+  var abs=igeAbsUrl(href,url),u;
   try{u=new URL(abs)}catch(e){return}
   if(u.hostname.toLowerCase()!=="www.ige.gal"&&u.hostname.toLowerCase()!=="ige.gal")return;
-  var path=u.pathname.toLowerCase(),label=aEl.textContent||"";
-  var sec=u.searchParams.get("codigo");
+  var path=u.pathname.toLowerCase(),sec=u.searchParams.get("codigo"),act=u.searchParams.get("codigo"),cod=u.searchParams.get("COD");
   if((path.indexOf("/mostrar_seccion.jsp")>=0||path==="/web/"||path==="/web/index.jsp")&&sec){
    if(isRoot&&String(sec).length<=2){add("section",abs,label,sec);return}
    if(!isRoot&&rootCodes.has(String(sec)))return;
@@ -991,13 +992,19 @@ async function igePageItems(url,isRoot){
    if(path.indexOf("/mostrar_seccion.jsp")>=0||!isRoot)add("section",abs,label,sec);
    return;
   }
-  var act=u.searchParams.get("codigo");
   if(path.indexOf("/mostrar_actividade_estatistica.jsp")>=0&&act){add("activity",abs,label,act);return}
-  var cod=u.searchParams.get("COD");
   if(path.indexOf("/selector.jsp")>=0&&cod){add("table",abs,label,cod);return}
+ }
+ Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
+  inspectLink(aEl.getAttribute("href")||"",aEl.textContent||"");
  });
- var re=/https?:\/\/www\.ige\.gal\/igebdt\/selector\.jsp\?[^"'<>\s]*?\bCOD=(\d+)/gi,m;
- while((m=re.exec(html)))add("table",m[0],"Taula "+m[1],m[1]);
+ // fetchText pot haver rebut una versió Markdown d'un proxy (especialment Jina).
+ // En aquest cas no hi ha elements <a>, però sí enllaços [text](url).
+ var md=/\[([^\]]+)\]\(([^)]+)\)/g,mm;
+ while((mm=md.exec(String(html||""))))inspectLink(mm[2],mm[1]);
+ // Alguns proxies poden retornar HTML escapant l'URL dins del text.
+ var re=/https?:\\/\\/www\\.ige\\.gal\\/igebdt\\/selector\\.jsp\\?[^"'<>\\s]*?\\bCOD=(\\d+)/gi,m;
+ while((m=re.exec(String(html||""))))add("table",m[0],"Taula "+m[1],m[1]);
  return out;
 }
 async function igeLoadRoot(){
