@@ -46,6 +46,9 @@ async function fetchJson(url,opt){
   url=istacJsonUrl(url);
   opt.headers=Object.assign({"Accept":"application/json"},opt.headers||{});
  }
+ if(state.provider==="ige"||/ige\.gal\/igebdt\/igeapi\//i.test(String(url))){
+  opt.headers=Object.assign({"Accept":"application/json"},opt.headers||{});
+ }
  var r;try{r=await fetch(url,opt)}catch(e){
   if(state.provider==="pxweb"&&((state.pxPreset==="iceland"&&/^https:\/\/px\.hagstofa\.is\//i.test(url))||(state.pxPreset==="finland"&&/^https:\/\/pxdata\.stat\.fi\//i.test(url)))){
    try{r=await fetch("https://cors.tools/proxy?url="+encodeURIComponent(url),opt)}
@@ -72,7 +75,28 @@ async function fetchJson(url,opt){
    if(!ok)throw new Error("No s'ha pogut connectar amb l'API d'ISTAC. "+(err&&err.message||"Failed to fetch")+" · "+url)
   }
   else if(state.provider==="icane"&&/^https:\/\/datos\.icane\.es\//i.test(url)){var icaneProxyOk=false,icaneProxyErr=null,icaneProxies=["https://api.allorigins.win/raw?url="+encodeURIComponent(url),"https://corsproxy.io/?url="+encodeURIComponent(url),"https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(url)];for(var icp=0;icp<icaneProxies.length&&!icaneProxyOk;icp++){try{var ir=await fetch(icaneProxies[icp],{cache:"no-store"});if(ir.ok){r=ir;icaneProxyOk=true}else icaneProxyErr=new Error("HTTP "+ir.status)}catch(ie){icaneProxyErr=ie}}if(!icaneProxyOk)throw new Error("No s'ha pogut connectar amb l'API d'ICANE. "+(icaneProxyErr&&icaneProxyErr.message||"Failed to fetch")+" · "+url)}
-else if(state.provider==="ige"&&/^https:\/\/www\.ige\.gal\/igebdt\/igeapi\//i.test(url)){var igeProxyOk=false,igeProxyErr=null,igeProxies=["https://api.allorigins.win/raw?url="+encodeURIComponent(url),"https://corsproxy.io/?url="+encodeURIComponent(url),"https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(url)];for(var igp=0;igp<igeProxies.length&&!igeProxyOk;igp++){try{var igr=await fetch(igeProxies[igp],{cache:"no-store"});if(igr.ok){r=igr;igeProxyOk=true}else igeProxyErr=new Error("HTTP "+igr.status)}catch(ige){igeProxyErr=ige}}if(!igeProxyOk)throw new Error("No s'ha pogut connectar amb l'API de l'IGE. "+(igeProxyErr&&igeProxyErr.message||"Failed to fetch")+" · "+url)}
+else if(state.provider==="ige"&&/^https:\/\/(?:www\.)?ige\.gal\/igebdt\//i.test(url)){
+   var igeProxyOk=false,igeProxyErr=null;
+   var igeProxies=[
+    "https://cors.tools/proxy?url="+encodeURIComponent(url),
+    "https://api.allorigins.win/raw?url="+encodeURIComponent(url),
+    "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(url),
+    "https://corsproxy.io/?url="+encodeURIComponent(url)
+   ];
+   for(var igp=0;igp<igeProxies.length&&!igeProxyOk;igp++){
+    try{
+     var igr=await fetch(igeProxies[igp],{cache:"no-store"});
+     if(igr.ok){
+      var igt=await igr.clone().text();
+      var igs=String(igt||"").replace(/^\uFEFF/,"").trim();
+      // Descartem HTML de proxies trencats
+      if(igs&&igs[0]!=="<"){r=igr;igeProxyOk=true}
+      else igeProxyErr=new Error("Proxy HTML invàlid");
+     }else igeProxyErr=new Error("HTTP "+igr.status);
+    }catch(ige){igeProxyErr=ige}
+   }
+   if(!igeProxyOk)throw new Error("No s'ha pogut connectar amb l'API de l'IGE. "+(igeProxyErr&&igeProxyErr.message||"Failed to fetch")+" · "+url)
+  }
 else if(state.provider==="ine"&&/^https:\/\/servicios\.ine\.es\//i.test(url)){
    var ineProxyOk=false,ineProxyErr=null;
    var ineProxies=[
@@ -83,6 +107,26 @@ else if(state.provider==="ine"&&/^https:\/\/servicios\.ine\.es\//i.test(url)){
    for(var ip=0;ip<ineProxies.length&&!ineProxyOk;ip++){try{var pr=await fetch(ineProxies[ip],{cache:"no-store"});if(pr.ok){r=pr;ineProxyOk=true}else ineProxyErr=new Error("HTTP "+pr.status)}catch(e2){ineProxyErr=e2}}
    if(!ineProxyOk)throw new Error("No s'ha pogut connectar amb l'API. "+(ineProxyErr&&ineProxyErr.message||"Failed to fetch")+" · "+url)
   }else throw new Error("No s'ha pogut connectar amb l'API. "+(e&&e.message||"Failed to fetch")+" · "+url)
+}
+if(state.provider==="ige"&&/^https:\/\/(?:www\.)?ige\.gal\/igebdt\//i.test(url)&&r&&!r.ok){
+  var igeOk2=false,igeErr2=null;
+  var igeProx2=[
+   "https://cors.tools/proxy?url="+encodeURIComponent(url),
+   "https://api.allorigins.win/raw?url="+encodeURIComponent(url),
+   "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(url)
+  ];
+  for(var ig2=0;ig2<igeProx2.length&&!igeOk2;ig2++){
+   try{
+    var igr2=await fetch(igeProx2[ig2],{cache:"no-store"});
+    if(igr2.ok){
+     var t2=await igr2.clone().text();
+     var s2=String(t2||"").replace(/^\uFEFF/,"").trim();
+     if(s2&&s2[0]!=="<"){r=igr2;igeOk2=true}
+     else igeErr2=new Error("Proxy HTML invàlid");
+    }else igeErr2=new Error("HTTP "+igr2.status);
+   }catch(e5){igeErr2=e5}
+  }
+  if(!igeOk2)throw new Error("No s'ha pogut connectar amb l'API de l'IGE. "+(igeErr2&&igeErr2.message||("HTTP "+r.status))+" · "+url);
 }
 if(state.provider==="istac"&&/^https:\/\/datos\.canarias\.es\/api\/estadisticas\//i.test(url)&&r&&!r.ok){
   var istacOk=false,istacErr=null;
