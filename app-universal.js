@@ -52,13 +52,22 @@ async function fetchJson(url,opt){
    catch(e2){throw new Error("No s'ha pogut connectar amb l'API. "+(e2&&e2.message||"Failed to fetch")+" · "+url)}
   }else if(state.provider==="istac"&&/^https:\/\/datos\.canarias\.es\/api\/estadisticas\//i.test(url)){
    var ok=false,err=null,ps=[
+    "https://cors.tools/proxy?url="+encodeURIComponent(url),
     "https://api.allorigins.win/raw?url="+encodeURIComponent(url),
-    "https://corsproxy.io/?url="+encodeURIComponent(url),
-    "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(url)
+    "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(url),
+    "https://corsproxy.io/?url="+encodeURIComponent(url)
    ];
    for(var pi=0;pi<ps.length&&!ok;pi++){
-    try{var prx=await fetch(ps[pi],{cache:"no-store"});if(prx.ok){r=prx;ok=true}else err=new Error("HTTP "+prx.status)}
-    catch(ex){err=ex}
+    try{
+     var prx=await fetch(ps[pi],{cache:"no-store"});
+     if(prx.ok){
+      var pt=await prx.clone().text();
+      var ptrim=String(pt||"").replace(/^\uFEFF/,"").trim();
+      // Evita HTML de proxies trencats (p. ex. corsproxy.io)
+      if(ptrim&&ptrim[0]!=="<"){r=prx;ok=true}
+      else err=new Error("Proxy HTML invàlid");
+     }else err=new Error("HTTP "+prx.status);
+    }catch(ex){err=ex}
    }
    if(!ok)throw new Error("No s'ha pogut connectar amb l'API d'ISTAC. "+(err&&err.message||"Failed to fetch")+" · "+url)
   }
@@ -72,6 +81,26 @@ async function fetchJson(url,opt){
    for(var ip=0;ip<ineProxies.length&&!ineProxyOk;ip++){try{var pr=await fetch(ineProxies[ip],{cache:"no-store"});if(pr.ok){r=pr;ineProxyOk=true}else ineProxyErr=new Error("HTTP "+pr.status)}catch(e2){ineProxyErr=e2}}
    if(!ineProxyOk)throw new Error("No s'ha pogut connectar amb l'API. "+(ineProxyErr&&ineProxyErr.message||"Failed to fetch")+" · "+url)
   }else throw new Error("No s'ha pogut connectar amb l'API. "+(e&&e.message||"Failed to fetch")+" · "+url)
+}
+if(state.provider==="istac"&&/^https:\/\/datos\.canarias\.es\/api\/estadisticas\//i.test(url)&&r&&!r.ok){
+  var istacOk=false,istacErr=null;
+  var istacProxies=[
+   "https://cors.tools/proxy?url="+encodeURIComponent(url),
+   "https://api.allorigins.win/raw?url="+encodeURIComponent(url),
+   "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(url)
+  ];
+  for(var ipi=0;ipi<istacProxies.length&&!istacOk;ipi++){
+   try{
+    var ipr=await fetch(istacProxies[ipi],{cache:"no-store"});
+    if(ipr.ok){
+     var itx=await ipr.clone().text();
+     var itr=String(itx||"").replace(/^\uFEFF/,"").trim();
+     if(itr&&itr[0]!=="<"){r=ipr;istacOk=true}
+     else istacErr=new Error("Proxy HTML invàlid");
+    }else istacErr=new Error("HTTP "+ipr.status);
+   }catch(e4){istacErr=e4}
+  }
+  if(!istacOk)throw new Error("No s'ha pogut connectar amb l'API d'ISTAC. "+(istacErr&&istacErr.message||("HTTP "+r.status))+" · "+url);
 }
 if(state.provider==="ine"&&/^https:\/\/servicios\.ine\.es\//i.test(url)&&!r.ok){
   var ineProxyOk2=false,ineProxyErr2=null;
