@@ -1080,6 +1080,7 @@ async function istacLoadOperations(){
  state.istacDatasets=usable.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
  if(!state.istacDatasets.length)throw new Error("ISTAC: no s'han trobat operacions estadístiques amb cub de dades.");
  return state.istacDatasets;
+}
 async function istacLoadDatasets(){return istacLoadOperations()}
 async function istacLoadOperationTables(opId){
  opId=String(opId||"").trim();
