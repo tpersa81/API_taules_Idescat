@@ -989,7 +989,7 @@ function istacOperationThemes(x){
  visit(x&&x.theme);
  return out;
 }
-async function istacLoadOperations(){
+async async function istacLoadOperations(){
  if(state.istacDatasets&&state.istacDatasets.length&&state.istacDatasets[0]&&state.istacDatasets[0]._kind==="operation")return state.istacDatasets;
 
  // L'API d'operacions no exposa de manera fiable la classificació temàtica.
