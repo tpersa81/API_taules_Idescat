@@ -1065,7 +1065,7 @@ async function istacLoadOperations(){
  return state.istacDatasets;
 }
 async function istacLoadDatasets(){return istacLoadOperations()}
-async async function istacLoadOperationTables(opId){
+async function istacLoadOperationTables(opId){
  opId=String(opId||"").trim();
  if(!opId)return [];
  var q=encodeURIComponent('ID LIKE "'+opId+'%"');
