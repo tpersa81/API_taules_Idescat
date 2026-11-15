@@ -1057,7 +1057,7 @@ async function istacLoadOperations(){
    if(!themes.length)themes=istacOperationThemes(pair.list);
    ops.push({_kind:"operation",id:id,label:label,subject:themes[0]||"Altres",operation:label,themes:themes.length?themes:["Altres"]});
   });
-  status("Carregant operacions d'ISTAC… "+Math.min(i+batchSize,all.length)+"/"+all.length);
+  status("Carregant operacions d'ISTAC…");
  }
 
  ops=ops.filter(function(x){return x.id});
