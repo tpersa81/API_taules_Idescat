@@ -1003,7 +1003,7 @@ async function igePageItems(url,isRoot){
  var md=/\[([^\]]+)\]\(([^)]+)\)/g,mm;
  while((mm=md.exec(String(html||""))))inspectLink(mm[2],mm[1]);
  // Alguns proxies poden retornar HTML escapant l'URL dins del text.
- var re=/https?:\\/\\/www\\.ige\\.gal\\/igebdt\\/selector\\.jsp\\?[^"'<>\\s]*?\\bCOD=(\\d+)/gi,m;
+ // Les URL de taules ja es detecten pels enllaços HTML/Markdown anteriors.
  while((m=re.exec(String(html||""))))add("table",m[0],"Taula "+m[1],m[1]);
  return out;
 }
