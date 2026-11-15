@@ -1068,27 +1068,8 @@ async function istacLoadDatasets(){return istacLoadOperations()}
 async function istacLoadOperationTables(opId){
  opId=String(opId||"").trim();
  if(!opId)return [];
- // El catàleg CKAN d'ISTAC indexa els cubs per l'operació estadística.
- // És més fiable que paginar /datasets, que pot retornar 401 en offsets alts.
- var catUrl="https://datos.canarias.es/catalogos/estadisticas/api/3/action/package_search?q="+encodeURIComponent(opId)+"&rows=1000";
- try{
-  var catText=await fetchText(catUrl),cd=JSON.parse(String(catText||"")),pk=cd&&cd.result&&Array.isArray(cd.result.results)?cd.result.results:[];
-  var found=new Map();
-  pk.forEach(function(p){
-   var resources=Array.isArray(p&&p.resources)?p.resources:[];
-   resources.forEach(function(r){
-    var u=String(r&&r.url||"");
-    var m=u.match(/\/datasets\/ISTAC\/([^/]+)\/(?:[^/]+)\.(?:jsonstat|json|csv|xlsx|tsv)$/i);
-    if(!m)return;
-    var id=m[1];
-    if(!id||found.has(id))return;
-    var title=istacText(p&&p.title,"es")||istacText(r&&r.name,"es")||id;
-    found.set(id,{id:id,label:title,operation:opId});
-   });
-  });
-  if(found.size)return Array.from(found.values()).sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
- }catch(e){}
- // Fallback a l'API estadística, sense paginar offsets alts.
+ // No recorrem tot el catàleg: la paginació de /datasets pot retornar 401
+ // en offsets alts. La consulta filtrada evita arribar a aquests offsets.
  var q=encodeURIComponent('ID LIKE "'+opId+'%"');
  var u=provider().base+"/statistical-resources/v1.0/datasets/ISTAC.json?lang=es&limit=1000&offset=0&query="+q;
  var d=await fetchJson(u),all=istacList(d);
