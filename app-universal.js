@@ -965,7 +965,7 @@ function istacValueArray(v){if(!v)return[];if(Array.isArray(v))return v;if(v.val
 function istacMetadataToJsonStat(raw){var src=raw&&raw.metadata?raw.metadata:raw;if(src&&Array.isArray(src.id)&&src.dimension)return pxToJsonStat(src);if(!src||!src.dimensions)return pxToJsonStat(raw);var ds={version:"2.0",class:"dataset",label:istacText(src.name,"es")||String(raw&&raw.label||state.selected.table||""),id:[],size:[],dimension:{}};istacDimensionArray(src).forEach(function(d){var id=String(d&&d.id||"").trim();if(!id)return;var vals=istacValueArray(d.dimensionValues),index={},label={};vals.forEach(function(v,i){var code=String(v&&v.id!=null?v.id:"").trim();if(!code)return;index[code]=i;label[code]=istacText(v&&v.name,"es")||code});ds.id.push(id);ds.size.push(vals.length);ds.dimension[id]={label:istacText(d.name,"es")||id,category:{index:index,label:label}}});return ds}
 function istacMetaField(x,key){var v=x&&x.metadata&&x.metadata[key]!=null?x.metadata[key]:(x&&x[key]!=null?x[key]:null);if(Array.isArray(v))return{id:"",label:istacText(v,"es")};if(v&&typeof v==="object"){var id=v.id||v.code||v.resourceId||v.operationId||"",label=istacText(v.name||v.label||v.title,"es")||String(id||"");return{id:String(id||""),label:label}}return{id:String(v||""),label:String(v||"")}}
 function istacDatasetRecord(x){var id=String(f(x,"id","resourceId","resourceID","code")).trim(),label=istacText(x&&x.name,"es")||String(f(x,"label","title","text")||id).trim(),subject=istacMetaField(x,"subject"),op=istacMetaField(x,"statisticalOperation");if(!subject.label)subject=istacMetaField(x,"subjectCode");return{id:id,label:label,subject:subject.label||"Altres",operation:op.label||"Sense operació",version:String(f(x,"version")||"~latest")}}
-let ISTAC_THEMES=[]; // omplert des de TEMAS_CANARIAS (nivell arrel)
+const ISTAC_THEMES=[]; // omplert des de TEMAS_CANARIAS (nivell arrel)
 state.istacThemeMap=state.istacThemeMap||new Map(); // id T010000 → nom
 
 function istacNormTheme(v){return String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim()}
@@ -1068,13 +1068,18 @@ async function istacLoadDatasets(){return istacLoadOperations()}
 async function istacLoadOperationTables(opId){
  opId=String(opId||"").trim();
  if(!opId)return [];
- // No recorrem tot el catàleg: la paginació de /datasets pot retornar 401
- // en offsets alts. La consulta filtrada evita arribar a aquests offsets.
  var q=encodeURIComponent('ID LIKE "'+opId+'%"');
- var u=provider().base+"/statistical-resources/v1.0/datasets/ISTAC.json?lang=es&limit=1000&offset=0&query="+q;
- var d=await fetchJson(u),all=istacList(d);
+ var all=[],offset=0,limit=200;
+ for(var guard=0;guard<30;guard++){
+  var u=provider().base+"/statistical-resources/v1.0/datasets/ISTAC.json?lang=es&limit="+limit+"&offset="+offset+"&query="+q;
+  var d=await fetchJson(u),page=istacList(d);
+  if(!page.length)break;
+  all=all.concat(page);
+  if(page.length<limit)break;
+  offset+=page.length;
+ }
  return all.map(function(x){
-  var id=String(f(x,"id","code","resourceId","resourceID")).trim();
+  var id=String(f(x,"id","code")).trim();
   var label=istacText(x&&x.name,"es")||id;
   return{id:id,label:label,operation:opId};
  }).filter(function(x){return x.id}).sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
@@ -2986,7 +2991,7 @@ async function runQuery(){
    var u2=provider().base+"/data/"+encodeURIComponent(euroCode)+"?"+buildEurostatParams().toString();
    ds=await fetchJson(u2);state.lastQueryUrl=u2
   }
-  else if(state.provider==="istac"){var parts=[],sf=selectedFilters();Object.keys(sf).forEach(function(k){if(sf[k]&&sf[k].length)parts.push(k+":"+sf[k].join("|"))});var iu=provider().base+"/statistical-resources/v1.0/datasets/ISTAC/"+encodeURIComponent(state.selected.table)+"/~latest.jsonstat?lang=es";if(parts.length)iu+="&dim="+encodeURIComponent(parts.join(":"));ds=await fetchJson(iu);state.lastQueryUrl=iu}
+  else if(state.provider==="istac"){var parts=[],sf=selectedFilters();Object.keys(sf).forEach(function(k){if(sf[k]&&sf[k].length)parts.push(k+":"+sf[k].join("|"))});var iu=provider().base+"/statistical-resources/v1.0/datasets/ISTAC/"+encodeURIComponent(state.selected.table)+"/~latest.json?lang=es";if(parts.length)iu+="&dim="+encodeURIComponent(parts.join(":"));ds=await fetchJson(iu);ds=istacMetadataToJsonStat(ds);state.lastQueryUrl=iu}
   else if(state.provider==="pxweb"){
    var query={query:[],response:{format:state.pxPreset==="eustat"?"json-stat":"json-stat2"}};
    dims(state.metadata).forEach(function(d){
