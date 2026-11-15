@@ -949,7 +949,7 @@ const ISTAC_THEMES=[
  "Ciencia y tecnología",
  "Recopilación y síntesis"
 ];
-function istacNormTheme(v){return String(v||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().replace(/\\s+/g," ").trim()}
+function istacNormTheme(v){return String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/\s+/g," ").trim()}
 function istacThemeFromValue(v){
  var s=istacNormTheme(v);
  if(!s)return"";
