@@ -969,7 +969,7 @@ function igeCleanLabel(s){
 function igeRootUrl(){
  return "https://www.ige.gal/web/index.jsp?idioma=es";
 }
-async async function igePageItems(url,isRoot){
+async function igePageItems(url,isRoot){
  var html=await fetchText(url,{cache:"no-store"});
  var doc=new DOMParser().parseFromString(html,"text/html"),out=[],seen=new Set();
  var rootCodes=new Set((state.igeRoot||[]).map(function(x){return String(x.code||"")}));
