@@ -184,11 +184,11 @@ async function fetchText(url,opt){
  opt=opt||{};var r=null,last=null;
  try{r=await fetch(url,opt);if(r.ok)return await r.text();last=new Error("HTTP "+r.status)}catch(e){last=e}
  var proxies=[
-  "https://r.jina.ai/http://"+url.replace(/^https?:\/\//i,""),
+  "https://cors.tools/proxy?url="+encodeURIComponent(url),
   "https://api.allorigins.win/raw?url="+encodeURIComponent(url),
   "https://api.allorigins.win/get?url="+encodeURIComponent(url),
-  "https://corsproxy.io/?url="+encodeURIComponent(url),
   "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(url),
+  "https://corsproxy.io/?url="+encodeURIComponent(url),
   "https://cors.isomorphic-git.org/"+url
  ];
  for(var i=0;i<proxies.length;i++){
@@ -1025,17 +1025,17 @@ async function igePageItems(url,isRoot){
    return;
   }
  }
- // Prioritza el contingut principal (evita menú/peu)
- var scope=doc.querySelector("#paxina-contenido, #contenido, main, .paxina-contenido, #main")||doc;
- Array.from(scope.querySelectorAll("a[href]")).forEach(function(aEl){
-  inspectLink(aEl.getAttribute("href")||"",aEl.textContent||"");
- });
- // Si el scope restringit no ha trobat res útil, fes fallback a tot el document
- if(!out.length){
-  Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
+ // Prioritza el contingut principal, però sempre completa amb la resta del document
+ // per si el proxy retalla el DOM o el menú porta seccions filles.
+ var scope=doc.querySelector("#paxina-contenido, #contenido, main, .paxina-contenido, #main");
+ if(scope){
+  Array.from(scope.querySelectorAll("a[href]")).forEach(function(aEl){
    inspectLink(aEl.getAttribute("href")||"",aEl.textContent||"");
   });
  }
+ Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
+  inspectLink(aEl.getAttribute("href")||"",aEl.textContent||"");
+ });
  // Markdown de proxies
  var md=/\[([^\]]+)\]\(([^)]+)\)/g,mm;
  while((mm=md.exec(String(html||""))))inspectLink(mm[2],mm[1]);
@@ -1045,28 +1045,42 @@ async function igeLoadRoot(){
  if(state.igeRoot&&state.igeRoot.length)return state.igeRoot;
  status("Carregant grups temàtics de l'IGE…");
  var items=await igePageItems(igeRootUrl(),true);
- var roots=items.filter(function(x){
+ var themes=items.filter(function(x){
   if(x.type!=="section")return false;
   var c=String(x.code||"");
-  // Menú principal de la home: codis de 4 dígits (0101, 0306, ...)
   return /^\d{4}$/.test(c);
  });
- // Dedup per codi
- var seenRoot=new Set();
- roots=roots.filter(function(x){var c=String(x.code);if(seenRoot.has(c))return false;seenRoot.add(c);return true});
-
+ var seen=new Set();
+ themes=themes.filter(function(x){var c=String(x.code);if(seen.has(c))return false;seen.add(c);return true});
+ // Agrupa per prefix de 2 dígits per tenir "Estructura productiva", etc.
+ var groupNames={
+  "01":"Territorio y medio ambiente",
+  "02":"Población y condiciones sociales",
+  "03":"Estructura productiva",
+  "04":"Conocimiento y tecnología",
+  "05":"Temas transversales",
+  "07":"Síntesis y panoramas"
+ };
+ var byGroup=new Map();
+ themes.forEach(function(th){
+  var g=String(th.code).slice(0,2);
+  if(!byGroup.has(g))byGroup.set(g,[]);
+  byGroup.get(g).push(th);
+ });
+ var roots=[];
+ // Nivell 0 = grups; els fills es carregaran des de la home filtrant pel prefix
+ byGroup.forEach(function(list,g){
+  var label=groupNames[g]||("Grupo "+g);
+  // URL del primer tema del grup (o cerca per codigo del grup)
+  var url="https://www.ige.gal/web/index.jsp?idioma=es";
+  roots.push({id:"ige-group-"+g,label:label,type:"group",url:url,code:g,_children:list.slice().sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})})});
+ });
  if(!roots.length){
-  var base="https://www.ige.gal/web/?idioma=es&codigo=";
-  roots=[
-   {id:base+"01",label:"Territorio y medio ambiente",type:"section",url:base+"01",code:"01"},
-   {id:base+"02",label:"Población y condiciones sociales",type:"section",url:base+"02",code:"02"},
-   {id:base+"03",label:"Estructura productiva",type:"section",url:base+"03",code:"03"},
-   {id:base+"04",label:"Conocimiento y tecnología",type:"section",url:base+"04",code:"04"},
-   {id:base+"05",label:"Temas transversales",type:"section",url:base+"05",code:"05"}
-  ];
+  roots=themes.map(function(x){return x});
  }
  roots.sort(function(a,b){return a.label.localeCompare(b.label,"ca",{numeric:true})});
- state.igeRoot=roots;return roots;
+ state.igeRoot=roots;
+ return roots;
 }
 function igeClearLevels(){
  var box=$("eurostatLevels");if(box){box.innerHTML="";box.hidden=true}
@@ -1084,7 +1098,7 @@ function igeAddLevel(items,index,labelText){
  state.igeItems.set("igeLevel"+index,list);
  sel.onchange=async function(){
   clearQueryView();if(!sel.value)return;
-  try{await igeSelectDynamic(index,sel.value)}catch(e){status("IGE: "+(e&&e.message?String(e.message):String(e)),"error")}
+  try{await igeSelectDynamic(index,sel.value)}catch(e){status((/^IGE:/i.test(String(e&&e.message||e))?"":"IGE: ")+(e&&e.message?String(e.message):String(e)),"error")}
  };
  if(list.length===1){sel.value=list[0].id;sel.onchange()}
 }
@@ -1100,61 +1114,97 @@ async function igeSelectDynamic(index,val){
  if(box)Array.from(box.querySelectorAll("[data-ige-level]")).forEach(function(l){if(Number(l.dataset.igeLevel)>index)l.remove()});
  state.igePath=state.igePath.slice(0,index+1);state.igePath[index]=item.id;
  if(item.type==="table"){await igeSelectTable(item);return}
+ if(item.type==="group"&&Array.isArray(item._children)&&item._children.length){
+  igeAddLevel(item._children,index+1,"Tema");
+  status("");
+  return;
+ }
  status("Consultant l'IGE…");
  var children=await igePageItems(item.url,false);
  var parentCode=String(item.code||"").trim();
- var pathIds=state.igePath.slice(0,index+1).map(function(x){return String(x)});
- var pathCodes=[];
+ var pathIds=new Set(state.igePath.slice(0,index+1).map(function(x){return String(x)}));
+ var pathCodes=new Set();
  for(var pi=0;pi<=index;pi++){
   var prev=state.igeItems.get("igeLevel"+pi)||[];
   var prevItem=prev.find(function(x){return String(x.id)===String(state.igePath[pi])});
-  if(prevItem&&prevItem.code)pathCodes.push(String(prevItem.code).trim());
+  if(prevItem&&prevItem.code)pathCodes.add(String(prevItem.code).trim());
  }
  var currentLabels=new Set((items||[]).map(function(x){return String(x.label||"").trim().toLowerCase()}));
 
  function isDescendantCode(code){
   code=String(code||"").trim();
-  if(!code)return false;
-  if(!parentCode)return true;
-  // Codis IGE jeràrquics: 0306 → 0306001001, 0306xx...
-  return code.indexOf(parentCode)===0&&code.length>parentCode.length;
+  if(!code||!parentCode)return !!code;
+  if(code.indexOf(parentCode)===0&&code.length>parentCode.length)return true;
+  // Si el pare és grup curt (03), accepta 0306, 0301, ...
+  if(parentCode.length<=2&&code.indexOf(parentCode)===0&&code.length>parentCode.length)return true;
+  return false;
+ }
+ function sameBranch(code){
+  code=String(code||"").trim();
+  if(!code||!parentCode)return true;
+  if(isDescendantCode(code))return true;
+  // mateix bloc de 2 dígits (03xx) quan el pare té 4 dígits — només com a fallback
+  return code.slice(0,2)===parentCode.slice(0,2)&&code.length>=4;
  }
 
- var tables=children.filter(function(x){return x.type==="table"});
- // Si la pàgina ja té taules (pàgina d'activitat), no mesclem menús globals
+ var tables=children.filter(function(x){return x.type==="table"&&!igeIsNoiseLabel(x.label)});
+ // Pàgina d'activitat amb taules: només taules
  if(tables.length){
   igeAddLevel(tables,index+1,"Taula");
   status("");
   return;
  }
 
- var activities=children.filter(function(x){
-  if(x.type!=="activity")return false;
-  if(igeIsNoiseLabel(x.label))return false;
-  var id=String(x.id||"");
-  if(pathIds.indexOf(id)>=0)return false;
-  var code=String(x.code||"").trim();
-  if(code&&pathCodes.indexOf(code)>=0)return false;
-  // Només activitats filles del node actual
-  if(parentCode&&code&&!isDescendantCode(code))return false;
-  return true;
- });
- var sections=children.filter(function(x){
-  if(x.type!=="section")return false;
-  if(igeIsNoiseLabel(x.label))return false;
-  var id=String(x.id||"");
-  var code=String(x.code||"").trim();
-  var label=String(x.label||"").trim().toLowerCase();
-  if(pathIds.indexOf(id)>=0)return false;
-  if(currentLabels.has(label))return false;
-  if(code&&pathCodes.indexOf(code)>=0)return false;
-  if(parentCode&&code&&!isDescendantCode(code))return false;
-  // Evita el menú lateral d'altres branques temàtiques
-  if(parentCode&&code&&code.slice(0,2)!==parentCode.slice(0,2))return false;
-  return true;
- });
+ function pickActivities(strict){
+  return children.filter(function(x){
+   if(x.type!=="activity")return false;
+   if(igeIsNoiseLabel(x.label))return false;
+   var id=String(x.id||""),code=String(x.code||"").trim();
+   if(pathIds.has(id))return false;
+   if(code&&pathCodes.has(code))return false;
+   if(strict&&parentCode&&code&&!isDescendantCode(code))return false;
+   if(!strict&&parentCode&&code&&!sameBranch(code))return false;
+   // Descarta activitats "promocionals" del menú lateral (codi d'una altra branca)
+   if(parentCode&&code&&code.length>=4&&parentCode.length>=4&&code.slice(0,4)!==parentCode.slice(0,4)&&!isDescendantCode(code))return false;
+   return true;
+  });
+ }
+ function pickSections(strict){
+  return children.filter(function(x){
+   if(x.type!=="section")return false;
+   if(igeIsNoiseLabel(x.label))return false;
+   var id=String(x.id||""),code=String(x.code||"").trim();
+   var label=String(x.label||"").trim().toLowerCase();
+   if(pathIds.has(id))return false;
+   if(currentLabels.has(label))return false;
+   if(code&&pathCodes.has(code))return false;
+   if(strict&&parentCode&&code&&!isDescendantCode(code))return false;
+   if(!strict&&parentCode&&code&&!sameBranch(code))return false;
+   return true;
+  });
+ }
+
+ var activities=pickActivities(true);
+ var sections=pickSections(true);
+ // Fallback menys estricte si el filtre jeràrquic deixa la llista buida
+ if(!activities.length&&!sections.length){
+  activities=pickActivities(false);
+  sections=pickSections(false);
+ }
+ // Últim recurs: qualsevol activity no sorollosa no visitada
+ if(!activities.length&&!sections.length){
+  activities=children.filter(function(x){
+   return x.type==="activity"&&!igeIsNoiseLabel(x.label)&&!pathIds.has(String(x.id||""))&&!pathCodes.has(String(x.code||"").trim());
+  });
+ }
 
  var next=sections.concat(activities);
+ // Dedup per codi/label
+ var seen=new Set();
+ next=next.filter(function(x){
+  var k=(x.code||"")+"|"+String(x.label||"").toLowerCase();
+  if(seen.has(k))return false;seen.add(k);return true;
+ });
  next.sort(function(a,b){return a.label.localeCompare(b.label,"ca",{numeric:true})});
  if(next.length){
   var onlyAct=next.every(function(x){return x.type==="activity"});
@@ -1162,7 +1212,7 @@ async function igeSelectDynamic(index,val){
   status("");
   return;
  }
- throw new Error("IGE: no s'han trobat temes ni taules en aquest apartat.");
+ throw new Error("no s'han trobat temes ni taules en aquest apartat.");
 }
 function igeParseSelectorMeta(html,url,tableCode){
  var doc=new DOMParser().parseFromString(html,"text/html"),title="";
