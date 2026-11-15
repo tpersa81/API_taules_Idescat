@@ -1061,12 +1061,28 @@ async function igeSelectDynamic(index,val){
  var tables=children.filter(function(x){return x.type==="table"});
  var activities=children.filter(function(x){return x.type==="activity"});
  var parentCode=String(item.code||"").trim();
+ // L'IGE pot retornar enllaços de la mateixa pàgina, nivells superiors
+ // i fins i tot el mateix nivell. No els hem de convertir en un nou "Tema".
+ var pathIds=state.igePath.slice(0,index+1).map(function(x){return String(x)});
+ var pathCodes=[];
+ for(var pi=0;pi<=index;pi++){
+  var prev=state.igeItems.get("igeLevel"+pi)||[];
+  var prevItem=prev.find(function(x){return String(x.id)===String(state.igePath[pi])});
+  if(prevItem&&prevItem.code)pathCodes.push(String(prevItem.code).trim());
+ }
+ var currentLabels=new Set((items||[]).map(function(x){return String(x.label||"").trim().toLowerCase()}));
  var sections=children.filter(function(x){
   if(x.type!=="section")return false;
+  var id=String(x.id||"");
   var code=String(x.code||"").trim();
-  // L'IGE enllaça també amb la mateixa secció i amb nivells superiors.
-  // En navegar, només volem els descendents del nivell actual.
-  if(parentCode&&code)return code!==parentCode&&code.indexOf(parentCode)===0&&code.length>parentCode.length;
+  var label=String(x.label||"").trim().toLowerCase();
+  if(pathIds.indexOf(id)>=0)return false;
+  if(currentLabels.has(label))return false;
+  if(code&&pathCodes.indexOf(code)>=0)return false;
+  if(parentCode&&code){
+   // Si disposem de codis jeràrquics, només acceptem descendents.
+   if(code.indexOf(parentCode)!==0||code.length<=parentCode.length)return false;
+  }
   return true;
  });
  if(tables.length&&!activities.length&&!sections.length){
