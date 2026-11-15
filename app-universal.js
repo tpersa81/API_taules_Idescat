@@ -1126,7 +1126,7 @@ async function igeSelectTable(rec){
   ds.dimension[d.id]={label:d.label,category:{index:d.categories.map(function(c){return c.code}),label:lab}};
  });
  state.metadata=ds;renderMetadata(ds);$("tableInfo").hidden=false;
- $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(meta.title)+"<span class="path">"+esc(rec.url)+"</span><p>Este producto emplea la API de datos del Instituto Galego de Estatística (IGE), pero no está certificado o aprobado por el IGE.</p>";
+ $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(meta.title)+"<span class=\"path\">"+esc(rec.url)+"</span><p>Este producto emplea la API de datos del Instituto Galego de Estatística (IGE), pero no está certificado o aprobado por el IGE.</p>";
  $("query").disabled=false;status("");
 }
 function igeRowsToJsonStat(raw,meta){
