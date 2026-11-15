@@ -991,6 +991,11 @@ function istacOperationThemes(x){
 }
 async function istacLoadOperations(){
  if(state.istacDatasets&&state.istacDatasets.length&&state.istacDatasets[0]&&state.istacDatasets[0]._kind==="operation")return state.istacDatasets;
+
+ // L'API d'operacions no exposa de manera fiable la classificació temàtica.
+ // Aquesta relació sí que està en els recursos estadístics: cada cub/taula
+ // conté statisticalOperation i subjectAreas. Per tant, construïm la relació
+ // Operació → Grup temàtic a partir del catàleg de recursos.
  var all=[],offset=0,limit=200;
  for(var guard=0;guard<20;guard++){
   var u="https://datos.canarias.es/api/estadisticas/operations/v1.0/operations.json?lang=es&limit="+limit+"&offset="+offset;
@@ -1000,11 +1005,47 @@ async function istacLoadOperations(){
   if(page.length<limit)break;
   offset+=page.length;
  }
- state.istacDatasets=all.map(function(x){
+
+ var ops=all.map(function(x){
   var id=String(f(x,"id","code")).trim();
   var label=istacText(x&&x.name,"es")||id;
   return{_kind:"operation",id:id,label:label,subject:"Operacions estadístiques",operation:label,themes:istacOperationThemes(x)};
- }).filter(function(x){return x.id}).sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
+ }).filter(function(x){return x.id});
+
+ var byId=new Map();
+ ops.forEach(function(x){byId.set(x.id,x)});
+
+ var roffset=0,rlimit=200;
+ for(var rguard=0;rguard<50;rguard++){
+  var ru=provider().base+"/statistical-resources/v1.0/datasets/ISTAC.json?lang=es&limit="+rlimit+"&offset="+roffset;
+  var rd=await fetchJson(ru),rpage=istacList(rd);
+  if(!rpage.length)break;
+  rpage.forEach(function(x){
+   var so=x&&x.statisticalOperation;
+   if(Array.isArray(so))so=so[0];
+   var opId=String(so&&f(so,"id","code")||"").trim();
+   if(!opId){
+    var sid=String(f(x,"id","code")||"").trim();
+    var m=sid.match(/^([A-Za-z0-9]+)_/);
+    if(m)opId=m[1];
+   }
+   if(!opId)return;
+   var op=byId.get(opId);
+   if(!op){
+    var opLabel=istacText(so&&so.name,"es")||opId;
+    op={_kind:"operation",id:opId,label:opLabel,subject:"Operacions estadístiques",operation:opLabel,themes:[]};
+    byId.set(opId,op);
+    ops.push(op);
+   }
+   istacOperationThemes(x).forEach(function(t){
+    if(op.themes.indexOf(t)<0)op.themes.push(t);
+   });
+  });
+  if(rpage.length<rlimit)break;
+  roffset+=rpage.length;
+ }
+
+ state.istacDatasets=ops.filter(function(x){return x.id}).sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
  if(!state.istacDatasets.length)throw new Error("ISTAC: no s'han trobat operacions estadístiques.");
  return state.istacDatasets;
 }
