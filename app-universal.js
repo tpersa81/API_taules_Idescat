@@ -2731,7 +2731,6 @@ async function onGeoChange(){
 }
 function temporalPeriodicity(categories){
  var arr=(categories||[]).map(function(c){return{code:temporalCategoryCode(c),label:String(c&&c.label||"").trim()}}).filter(function(x){return x.code||x.label});
- if(arr.some(function(x){return /^\d+$/.test(x.code)&&Number(x.code)>=0}))return"quarter";
 
  for(var i=0;i<arr.length;i++){var code=arr[i].code,label=arr[i].label;
   if(/^\d{4}$/.test(code)||/^\d{4}$/.test(label))return"year";
