@@ -1086,8 +1086,8 @@ async function istacLoadOperationTables(opId){
     var label=istacText(x&&x.name,"es")||id;
     all.push({id:id,label:label,operation:opId,kind:kind==="queries"?"query":"dataset"});
    });
-   if(page.length<limit)break;
-   offset+=page.length;
+   // Per obtenir els temes arrel no cal paginar: el primer bloc ja els conté.
+   break;
   }
   return all;
  }
