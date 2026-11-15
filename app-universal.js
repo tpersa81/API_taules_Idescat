@@ -1065,7 +1065,7 @@ async function istacLoadOperations(){
  return state.istacDatasets;
 }
 async function istacLoadDatasets(){return istacLoadOperations()}
-async function istacLoadOperationTables(opId){
+async async function istacLoadOperationTables(opId){
  opId=String(opId||"").trim();
  if(!opId)return [];
  var q=encodeURIComponent('ID LIKE "'+opId+'%"');
@@ -1205,6 +1205,14 @@ function istacDrawTables(opId,tables){
  var box=$("eurostatLevels");if(!box)return;
  var labels=box.querySelectorAll("label");
  for(var i=2;i<labels.length;i++)labels[i].remove();
+ if(!(tables||[]).length){
+  var msg=document.createElement("div");
+  msg.className="empty";
+  msg.textContent="ISTAC: aquesta operació no té taules o consultes de dades associades.";
+  box.appendChild(msg);
+  status("");
+  return;
+ }
  var lab=document.createElement("label");
  lab.style.display="flex";lab.style.flexDirection="column";lab.style.alignItems="stretch";
  lab.appendChild(document.createTextNode("Taula "));
@@ -1212,10 +1220,6 @@ function istacDrawTables(opId,tables){
  sel.appendChild(new Option("— Selecciona —",""));
  (tables||[]).forEach(function(tb){sel.appendChild(new Option(tb.label,tb.id))});
  lab.appendChild(sel);box.appendChild(lab);
- if(!(tables||[]).length){
-  status("ISTAC: aquesta operació no té taules ni consultes al catàleg obert (statistical-resources). Moltes operacions només tenen fitxa descriptiva, sense cubs descarregables.","error");
-  return;
- }
 
  sel.onchange=async function(){
   clearQueryView();
@@ -2791,7 +2795,7 @@ function addTemporalQuickControls(toolbar,dim,categories,list){
  var choose=function(){var n=Number(input.value);if(!Number.isFinite(n))n=1;n=Math.max(1,Math.min(categories.length,Math.trunc(n)));input.value=String(n);setFilterSelection(dim,categories,categories.slice(0,n).map(temporalCategoryCode),list)};
  btn.onclick=choose;input.onkeydown=function(e){if(e.key==="Enter"){e.preventDefault();choose()}};
  row.append(text1,input,text2,btn);toolbar.append(row);
- if(periodicity!=="year"&&categories.length>1){
+ if(categories.length>1){
   var latest=temporalCategoryCode(categories[0]),prev=temporalCategoryCode(categories[1]),target=previousYearPeriodCode(latest),found=categories.some(function(c){return temporalCategoryCode(c)===target||String(c&&c.label||"").trim()===target});
   if(found){
    var rr=document.createElement("div");rr.className="temporal-row";
