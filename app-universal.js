@@ -22,7 +22,19 @@ async function fetchJson(url,opt){opt=opt||{};var r;try{r=await fetch(url,opt)}c
   if(state.provider==="pxweb"&&((state.pxPreset==="iceland"&&/^https:\/\/px\.hagstofa\.is\//i.test(url))||(state.pxPreset==="finland"&&/^https:\/\/pxdata\.stat\.fi\//i.test(url)))){
    try{r=await fetch("https://cors.tools/proxy?url="+encodeURIComponent(url),opt)}
    catch(e2){throw new Error("No s'ha pogut connectar amb l'API. "+(e2&&e2.message||"Failed to fetch")+" · "+url)}
-  }else if(state.provider===\"istac\"&&/^https:\/\/datos\.canarias\.es\/api\/estadisticas\//i.test(url)){var ok=false,err=null,ps=[\"https://api.allorigins.win/raw?url=\"+encodeURIComponent(url),\"https://corsproxy.io/?url=\"+encodeURIComponent(url),\"https://api.codetabs.com/v1/proxy?quest=\"+encodeURIComponent(url)];for(var pi=0;pi<ps.length&&!ok;pi++){try{var prx=await fetch(ps[pi],{cache:\"no-store\"});if(prx.ok){r=prx;ok=true}else err=new Error(\"HTTP \"+prx.status)}catch(ex){err=ex}}if(!ok)throw new Error(\"No s'ha pogut connectar amb l'API d'ISTAC. \"+(err&&err.message||\"Failed to fetch\")+\" · \"+url)}else if(state.provider===\"ine\"&&/^https:\/\/servicios\.ine\.es\//i.test(url)){
+  }else if(state.provider==="istac"&&/^https:\/\/datos\.canarias\.es\/api\/estadisticas\//i.test(url)){
+   var ok=false,err=null,ps=[
+    "https://api.allorigins.win/raw?url="+encodeURIComponent(url),
+    "https://corsproxy.io/?url="+encodeURIComponent(url),
+    "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(url)
+   ];
+   for(var pi=0;pi<ps.length&&!ok;pi++){
+    try{var prx=await fetch(ps[pi],{cache:"no-store"});if(prx.ok){r=prx;ok=true}else err=new Error("HTTP "+prx.status)}
+    catch(ex){err=ex}
+   }
+   if(!ok)throw new Error("No s'ha pogut connectar amb l'API d'ISTAC. "+(err&&err.message||"Failed to fetch")+" · "+url)
+  }
+  else if(state.provider===\"ine\"&&/^https:\/\/servicios\.ine\.es\//i.test(url)){
    var ineProxyOk=false,ineProxyErr=null;
    var ineProxies=[
     "https://api.allorigins.win/raw?url="+encodeURIComponent(url),
