@@ -1016,7 +1016,7 @@ function recursiveProxyStart(kind){
  draw(highest);
 }
 
-function setProviderUI(){setLabels();var isEuro=state.provider==="eurostat",isIne=state.provider==="ine",isIstac=state.provider==="istac",isIcane=state.provider==="icane",isIeca=state.provider==="ieca",isIge=state.provider==="ige",isSweden=state.provider==="pxweb"&&state.pxPreset==="sweden",isFinland=state.provider==="pxweb"&&state.pxPreset==="finland",isIceland=state.provider==="pxweb"&&state.pxPreset==="iceland",isNorway=state.provider==="pxweb"&&state.pxPreset==="norway",isEustat=state.provider==="pxweb"&&state.pxPreset==="eustat",isFlatPx=state.provider==="pxweb"&&isEustat,sl=null,otherBox=$("otherProviderWrap");if(otherBox)otherBox.hidden=!$("provider")||$("provider").value!=="other";var fixedGrid=document.querySelector("#step2>.grid"),euroBox=$("eurostatLevels");if(fixedGrid){fixedGrid.hidden=false;fixedGrid.style.display="";if(isSweden||isFinland||isIceland){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}}if(euroBox)euroBox.hidden=!(isEuro||isIstac||isIcane||isIeca||isIge||isSweden||isFinland||isIceland||isNorway||isIne||state.provider==="idescat"||isEustat);if((isEuro||isIne||isIstac||isIcane||isIeca||isIge)&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isEustat&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i<3?"":"none"});if(fixedGrid.querySelector("label:nth-child(2)"))fixedGrid.querySelector("label:nth-child(2)").firstChild.textContent="Operació ";if(fixedGrid.querySelector("label:nth-child(3)"))fixedGrid.querySelector("label:nth-child(3)").firstChild.textContent="Taula "}else if(isNorway&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isFlatPx&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}else if(fixedGrid&&!isSweden&&!isFinland&&!isIceland){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display=""})}if(fixedGrid&&(state.provider==="idescat"||isIstac||isIcane||isIeca||isIge||isEustat||state.pxPreset==="unece")){fixedGrid.hidden=true;fixedGrid.style.display="none"}var tl=$("table")&&$("table").parentElement,gl=$("geo")&&$("geo").parentElement;if(tl)tl.style.display=(isEuro||isIne||isIstac||isIcane||isIeca||isIge||isFlatPx||isNorway||isSweden||isFinland||isIceland)?"none":"";if(gl)gl.style.display=(isEuro||isIne||isIstac||isIcane||isIeca||isIge||isFlatPx||isNorway||isSweden||isFinland||isIceland)?"none":""; var sel=(state.provider==="pxweb"||state.provider==="istac"||state.provider==="icane"||state.provider==="ige")?"other":state.provider;if($("provider")&&[].slice.call($("provider").options).some(function(o){return o.value===sel}))$("provider").value=sel;if($("otherProvider"))$("otherProvider").value=state.provider==="istac"?"istac":state.provider==="icane"?"icane":state.provider==="ieca"?"ieca":state.provider==="ige"?"ige":(state.provider==="pxweb"&&state.pxPreset?"pxweb:"+state.pxPreset:"")}
+function setProviderUI(){setLabels();var isEuro=state.provider==="eurostat",isIne=state.provider==="ine",isIstac=state.provider==="istac",isIcane=state.provider==="icane",isIeca=state.provider==="ieca",isIge=state.provider==="ige",isSweden=state.provider==="pxweb"&&state.pxPreset==="sweden",isFinland=state.provider==="pxweb"&&state.pxPreset==="finland",isIceland=state.provider==="pxweb"&&state.pxPreset==="iceland",isNorway=state.provider==="pxweb"&&state.pxPreset==="norway",isEustat=state.provider==="pxweb"&&state.pxPreset==="eustat",isFlatPx=state.provider==="pxweb"&&isEustat,sl=null,otherBox=$("otherProviderWrap");if(otherBox)otherBox.hidden=!$("provider")||$("provider").value!=="other";var fixedGrid=document.querySelector("#step2>.grid"),euroBox=$("eurostatLevels");if(fixedGrid){fixedGrid.hidden=false;fixedGrid.style.display="";if(isSweden||isFinland||isIceland){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}}if(euroBox)euroBox.hidden=!(isEuro||isIstac||isIcane||isIeca||isIge||isSweden||isFinland||isIceland||isNorway||isIne||state.provider==="idescat"||isEustat);if((isEuro||isIne||isIstac||isIcane||isIeca||isIge)&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isEustat&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i<3?"":"none"});if(fixedGrid.querySelector("label:nth-child(2)"))fixedGrid.querySelector("label:nth-child(2)").firstChild.textContent="Operació ";if(fixedGrid.querySelector("label:nth-child(3)"))fixedGrid.querySelector("label:nth-child(3)").firstChild.textContent="Taula "}else if(isNorway&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isFlatPx&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}else if(fixedGrid&&!isSweden&&!isFinland&&!isIceland){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display=""})}if(fixedGrid&&(state.provider==="idescat"||isIstac||isIcane||isIeca||isIge||isEustat||state.pxPreset==="unece")){fixedGrid.hidden=true;fixedGrid.style.display="none"}var tl=$("table")&&$("table").parentElement,gl=$("geo")&&$("geo").parentElement;if(tl)tl.style.display=(isEuro||isIne||isIstac||isIcane||isIeca||isIge||isFlatPx||isNorway||isSweden||isFinland||isIceland)?"none":"";if(gl)gl.style.display=(isEuro||isIne||isIstac||isIcane||isIeca||isIge||isFlatPx||isNorway||isSweden||isFinland||isIceland)?"none":""; var sel=(state.provider==="pxweb"||state.provider==="istac"||state.provider==="icane"||state.provider==="ieca"||state.provider==="ige")?"other":state.provider;if($("provider")&&[].slice.call($("provider").options).some(function(o){return o.value===sel}))$("provider").value=sel;if($("otherProvider"))$("otherProvider").value=state.provider==="istac"?"istac":state.provider==="icane"?"icane":state.provider==="ieca"?"ieca":state.provider==="ige"?"ige":(state.provider==="pxweb"&&state.pxPreset?"pxweb:"+state.pxPreset:"")}
 function icelandEnglishRootLabel(label){
  var s=String(label||"").trim(),n=s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
  var m={
@@ -1182,7 +1182,7 @@ function igeAddLevel(items,index,labelText){
  state.igeItems.set("igeLevel"+index,list);
  sel.onchange=async function(){
   clearQueryView();if(!sel.value)return;
-  try{await igeSelectDynamic(index,sel.value)}catch(e){status((/^IGE:/i.test(String(e&&e.message||e))?"":"IGE: ")+(e&&e.message?String(e.message):String(e)),"error")}
+  try{await igeSelectDynamic(index,sel.value)}catch(e){var msg=String(e&&e.message||e);var pre=state.provider==="ieca"?"IECA: ":(state.provider==="ige"?"IGE: ":"");if(/^(IGE|IECA):/i.test(msg))pre="";status(pre+msg,"error")}
  };
  if(list.length===1){sel.value=list[0].id;sel.onchange()}
 }
@@ -1266,20 +1266,31 @@ async function iecaLoadOperations(theme){
   url=String(url||"").trim();
   label=String(label||"").replace(/\s+/g," ").trim();
   if(!url||!label||label.length<3)return;
-  // només pàgines d'operació DEGA (no temes, no externs genèrics)
-  if(/tema-[a-z0-9-]+/i.test(url)&&url.indexOf(theme.slug)>=0)return;
-  if(/datos-por-temas|\/dega\/?$/i.test(url))return;
-  if(seen.has(url))return;
-  // accepta rutes /dega/slug o absolut IECA
+  if(/twitter|facebook|linkedin|mailto|javascript|#/i.test(url))return;
   var abs=url;
   if(url.indexOf("http")!==0){
    if(url.charAt(0)==="/")abs="https://www.juntadeandalucia.es"+url;
    else abs="https://www.juntadeandalucia.es/institutodeestadisticaycartografia/dega/"+url.replace(/^\.\//,"");
   }
-  if(abs.indexOf("/dega/")<0&&abs.indexOf("estadistica-cartografia")<0)return;
-  if(/twitter|facebook|linkedin|mailto|javascript/i.test(abs))return;
-  seen.add(url);
-  ops.push({id:"ieca-op-"+ops.length,label:label,type:"ieca-operation",url:abs});
+  // Ignora navegació del propi portal
+  if(/datos-por-temas|\/dega\/?$/i.test(abs))return;
+  if(theme.slug&&new RegExp("/"+theme.slug+"/?$","i").test(abs))return;
+  if(seen.has(abs))return;
+  seen.add(abs);
+  var isDega=/\/institutodeestadisticaycartografia\/dega\/[a-z0-9-]+/i.test(abs)&&!/tema-/i.test(abs);
+  var isActividad=/\/actividad\/detalle\//i.test(abs)||/estadistica-cartografia\/actividad/i.test(abs);
+  // Només operacions DEGA o fitxes d'activitat de la Junta
+  if(!isDega&&!isActividad)return;
+  var l=label.toLowerCase();
+  if(/^(inicio|home|contacto|aviso|accesibilidad|mapa web)$/i.test(label))return;
+  if(l.indexOf("datos por temas")>=0)return;
+  ops.push({
+   id:"ieca-op-"+ops.length,
+   label:label+(isDega?"":" · (fitxa)"),
+   type:"ieca-operation",
+   url:abs,
+   isDega:!!isDega
+  });
  }
  try{
   var doc=new DOMParser().parseFromString(html,"text/html");
@@ -1289,22 +1300,24 @@ async function iecaLoadOperations(theme){
  }catch(e){}
  var re=/href=["']([^"']+)["'][^>]*>([^<]+)/gi,m;
  while((m=re.exec(String(html||""))))addOp(m[1],m[2]);
- // filtra enllaços de navegació genèrics
- ops=ops.filter(function(o){
-  var l=o.label.toLowerCase();
-  if(/^(inicio|home|contacto|aviso|accesibilidad|mapa web)$/i.test(o.label))return false;
-  if(l.indexOf("datos por temas")>=0)return false;
-  return true;
+ // Prefereix pàgines DEGA (sovint tenen idNode BADEA)
+ ops.sort(function(a,b){
+  if(a.isDega!==b.isDega)return a.isDega?-1:1;
+  return a.label.localeCompare(b.label,"es",{numeric:true,sensitivity:"base"});
  });
- ops.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true,sensitivity:"base"})});
  if(!ops.length)throw new Error("no s'han trobat operacions en aquest tema.");
  return ops;
 }
 async function iecaLoadBadeaNodes(operation){
  status("Carregant nodes BADEA…");
- var html=await fetchText(operation.url,{cache:"no-store"});
+ var html;
+ try{
+  html=await fetchText(operation.url,{cache:"no-store"});
+ }catch(e){
+  throw new Error("no s'ha pogut obrir la fitxa de l'operació ("+(e&&e.message||"fetch")+")");
+ }
  var nodes=[],seen=new Set();
- function addNode(idNode,label,href){
+ function addNode(idNode,label){
   idNode=String(idNode||"").trim();
   if(!idNode||seen.has(idNode))return;
   seen.add(idNode);
@@ -1317,19 +1330,18 @@ async function iecaLoadBadeaNodes(operation){
    url:"https://www.juntadeandalucia.es/institutodeestadisticaycartografia/badea/informe/anual/json?node="+encodeURIComponent(idNode)
   });
  }
- // Enllaços badea/informe/anual?...idNode=
- var re=/href=["']([^"']*badea\/informe\/anual[^"']*idNode=(\d+)[^"']*)["'][^>]*>([^<]*)/gi,m;
- while((m=re.exec(String(html||"")))){
-  addNode(m[2],m[3]||m[2],m[1]);
- }
- // Regex genèric idNode=
- var re2=/idNode=(\d+)/gi;
+ var re=/href=["']([^"']*badea\/informe\/[^"']*idNode=(\d+)[^"']*)["'][^>]*>([^<]*)/gi,m;
+ while((m=re.exec(String(html||""))))addNode(m[2],m[3]||m[2]);
+ // Qualsevol idNode= a la pàgina
  var labels={};
  re.lastIndex=0;
  while((m=re.exec(String(html||""))))labels[m[2]]=String(m[3]||"").replace(/\s+/g," ").trim();
+ var re2=/idNode=(\d+)/gi;
  while((m=re2.exec(String(html||""))))addNode(m[1],labels[m[1]]||("Informe "+m[1]));
- if(!nodes.length)throw new Error("aquesta operació no té enllaços a consultes BADEA (idNode).");
- // Si només n'hi ha un, el caller pot saltar al nivell intern
+ // CodOper sense idNode no dóna arbre de consultes directament
+ if(!nodes.length){
+  throw new Error("aquesta operació no té enllaços a consultes BADEA (idNode). Moltes fitxes externes només enllacen publicacions, no l'API.");
+ }
  return nodes;
 }
 function iecaTreeChildren(nodos){
@@ -5029,4 +5041,4 @@ function bind(){
  $("node").onchange=async function(){clearQueryView();if(state.provider==="ine")return;if(state.provider==="eurostat")await eurostatSelectLevel("node");else await onNodeChange()};$("table").onchange=onTableChange;$("geo").onchange=onGeoChange;$("tabData").onclick=function(){$("tabData").classList.add("active");$("tabPivot").classList.remove("active");$("results").hidden=false;$("pivotBuilder").hidden=true};$("tabPivot").onclick=function(){$("tabPivot").classList.add("active");$("tabData").classList.remove("active");$("results").hidden=true;$("pivotBuilder").hidden=false;renderPivotBuilder()};$("results").addEventListener("click",function(e){var b=e.target.closest("button[data-page]");if(b&&!b.disabled)setResultPage(Number(b.dataset.page))});$("results").addEventListener("change",function(e){if(e.target.matches("select[data-page-select]"))setResultPage(Number(e.target.value));if(e.target.matches("select[data-page-size]"))setResultPageSize(Number(e.target.value))});$("temporalOrder").onchange=function(){setTemporalOrder(this.value)};$("query").onclick=runQuery;$("exportCsv").onclick=exportCSV;$("exportXlsx").onclick=exportXLSX;$("addToCart").onclick=addCart;$("cartExport").onclick=exportCart;$("cartClear").onclick=function(){state.cart=[];renderCart()};$("cartToggle").onclick=function(){var p=$("cartPanel");p.hidden=false;$("cartToggle").setAttribute("aria-expanded","true");p.scrollIntoView({behavior:"smooth",block:"start"})};$("clear").onclick=function(){if(state.metadata)renderMetadata(state.metadata)}
 }
 function updateUrl(){var q=new URLSearchParams();q.set("provider",state.provider);if(state.provider==="pxweb")q.set("px",state.pxPreset);if(state.selected.stat)q.set("stat",state.selected.stat);history.replaceState(null,"","?"+q.toString())}
-(async function(){bind();renderCart();var q=new URLSearchParams(location.search);state.provider=q.get("provider")||"idescat";state.pxPreset=q.get("px")||"finland";$("provider").value=(state.provider==="pxweb"||state.provider==="istac"||state.provider==="icane"||state.provider==="ige")?"other":state.provider;$("otherProvider").value=state.provider==="istac"?"istac":state.provider==="icane"?"icane":state.provider==="ieca"?"ieca":state.provider==="ige"?"ige":(state.provider==="pxweb"&&state.pxPreset?"pxweb:"+state.pxPreset:"");setProviderUI();try{await loadStats()}catch(e){status(e.message,"error")}})();
+(async function(){bind();renderCart();var q=new URLSearchParams(location.search);state.provider=q.get("provider")||"idescat";state.pxPreset=q.get("px")||"finland";$("provider").value=(state.provider==="pxweb"||state.provider==="istac"||state.provider==="icane"||state.provider==="ieca"||state.provider==="ige")?"other":state.provider;$("otherProvider").value=state.provider==="istac"?"istac":state.provider==="icane"?"icane":state.provider==="ieca"?"ieca":state.provider==="ige"?"ige":(state.provider==="pxweb"&&state.pxPreset?"pxweb:"+state.pxPreset:"");setProviderUI();try{await loadStats()}catch(e){status(e.message,"error")}})();
