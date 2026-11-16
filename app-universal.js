@@ -1,6 +1,6 @@
 
 const MAX_CELLS=20000;
-const state={provider:"idescat",pxPreset:"finland",stats:[],istacDatasets:[],istacPath:[],icanePackages:[],icaneRawData:null,igeRoot:[],igePath:[],igeItems:new Map(),igeSelector:null,metadata:null,lastData:null,lastQueryUrl:"",finlandTableUrl:"",ineVarCache:new Map(),filters:new Map(),page:1,pageSize:100,temporalOrder:"desc",requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],ineNav:null,ineNavLoaded:false,ineOperations:null,inePath:[],ineItems:new Map(),swedenV2Tables:null,swedenV2Table:false,swedenPath:[],eustatCatalog:[],eustatGroups:[],eustatOperations:[],eustatTables:[],eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[],norwayPath:[],norwayCatalog:[],norwayRootItems:[]};
+const state={provider:"idescat",pxPreset:"finland",stats:[],istacDatasets:[],istacPath:[],icanePackages:[],icaneRawData:null,igeRoot:[],igePath:[],igeItems:new Map(),igeSelector:null,igeMode:null,metadata:null,lastData:null,lastQueryUrl:"",finlandTableUrl:"",ineVarCache:new Map(),filters:new Map(),page:1,pageSize:100,temporalOrder:"desc",requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],ineNav:null,ineNavLoaded:false,ineOperations:null,inePath:[],ineItems:new Map(),swedenV2Tables:null,swedenV2Table:false,swedenPath:[],eustatCatalog:[],eustatGroups:[],eustatOperations:[],eustatTables:[],eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[],norwayPath:[],norwayCatalog:[],norwayRootItems:[]};
 const $=id=>document.getElementById(id);
 function debugGlobalError(e){
  var msg=e&&e.message?String(e.message):String(e||"Error"),
@@ -1188,8 +1188,14 @@ function igeAddLevel(items,index,labelText){
 }
 async function igeSelectRoot(){
  igeClearLevels();
- var roots=await igeLoadRoot();
- igeAddLevel(roots,0,"Grup temàtic");
+ state.igeMode=null;
+ state.igeSelector=null;
+ var modes=[
+  {id:"ige-mode-tables",label:"Taules del banc de dades",type:"ige-mode",mode:"tables"},
+  {id:"ige-mode-indicators",label:"Indicadors",type:"ige-mode",mode:"indicators"},
+  {id:"ige-mode-series",label:"Sèries de conjuntura",type:"ige-mode",mode:"series"}
+ ];
+ igeAddLevel(modes,0,"Tipus de dades");
 }
 async function igeSelectDynamic(index,val){
  var items=state.igeItems.get("igeLevel"+index)||[],item=items.find(function(x){return String(x.id)===String(val)});
@@ -1198,6 +1204,54 @@ async function igeSelectDynamic(index,val){
  if(box)Array.from(box.querySelectorAll("[data-ige-level]")).forEach(function(l){if(Number(l.dataset.igeLevel)>index)l.remove()});
  state.igePath=state.igePath.slice(0,index+1);state.igePath[index]=item.id;
  if(item.type==="table"){await igeSelectTable(item);return}
+ if(item.type==="ige-indicator"||item.type==="ige-series"){await igeSelectIndiOrSeries(item);return}
+ if(item.type==="ige-mode"){
+  state.igeMode=item.mode;
+  if(item.mode==="tables"){
+   status("Carregant grups temàtics de l'IGE…");
+   var roots=await igeLoadRoot();
+   igeAddLevel(roots,index+1,"Grup temàtic");
+   status("");
+   return;
+  }
+  if(item.mode==="indicators"){
+   status("Carregant grups d'indicadors…");
+   var igroups=await igeLoadIndicatorGroups();
+   igeAddLevel(igroups,index+1,"Grup d'indicadors");
+   status("");
+   return;
+  }
+  if(item.mode==="series"){
+   status("Carregant grups de sèries…");
+   var sgroups=await igeLoadSeriesGroups();
+   igeAddLevel(sgroups,index+1,"Grup de sèries");
+   status("");
+   return;
+  }
+ }
+ if(item.type==="ige-indicator-group"){
+  status("Carregant indicadors…");
+  var indis=await igeLoadIndicators(item.code);
+  igeAddLevel(indis,index+1,"Indicador");
+  status("");
+  return;
+ }
+ if(item.type==="ige-series-group"){
+  status("Carregant subgrups de sèries…");
+  var subs=await igeLoadSeriesSubgroups(item.code);
+  if(subs.length){igeAddLevel(subs,index+1,"Subgrup");status("");return}
+  // alguns grups enllacen sèries directament
+  var series=await igeLoadSeriesList(item.code,null);
+  if(series.length){igeAddLevel(series,index+1,"Sèrie");status("");return}
+  throw new Error("no s'han trobat sèries en aquest grup.");
+ }
+ if(item.type==="ige-series-subgroup"){
+  status("Carregant sèries…");
+  var series2=await igeLoadSeriesList(item.groupCode,item.code);
+  igeAddLevel(series2,index+1,"Sèrie");
+  status("");
+  return;
+ }
  if(item.type==="group"&&Array.isArray(item._children)&&item._children.length){
   igeAddLevel(item._children,index+1,"Tema");
   status("");
@@ -1440,6 +1494,180 @@ function igeParseSelectorMeta(html,url,tableCode){
  rawDims.forEach(function(rd){if(!dimMap.has(rd.id))dimMap.set(rd.id,{id:rd.id,label:rd.id,categories:[],defaultSpec:rd.defaultSpec})});
  return{title:title||"Taula "+tableCode,tableCode:String(tableCode),downloadUrl:download,dims:rawDims.map(function(rd){return dimMap.get(rd.id)})};
 }
+async function igeLoadIndicatorGroups(){
+ var html=await fetchText("https://www.ige.gal/igebdt/igeapi/indicadores.jsp?idioma=es",{cache:"no-store"});
+ var doc=new DOMParser().parseFromString(html,"text/html");
+ var out=[],seen=new Set();
+ Array.from(doc.querySelectorAll('a[href*="grupo="]')).forEach(function(a){
+  var href=a.getAttribute("href")||"";
+  var m=href.match(/grupo=(G\d+)/i);
+  if(!m)return;
+  var code=m[1].toUpperCase();
+  if(seen.has(code))return;
+  var label=igeCleanLabel(a.textContent||"");
+  if(!label||igeIsNoiseLabel(label))return;
+  seen.add(code);
+  out.push({id:"ige-indig-"+code,label:label,type:"ige-indicator-group",code:code,url:"https://www.ige.gal/igebdt/igeapi/indicadores.jsp?idioma=es&grupo="+encodeURIComponent(code)});
+ });
+ out.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
+ if(!out.length)throw new Error("no s'han trobat grups d'indicadors.");
+ return out;
+}
+async function igeLoadIndicators(groupCode){
+ var url="https://www.ige.gal/igebdt/igeapi/indicadores.jsp?idioma=es&grupo="+encodeURIComponent(groupCode);
+ var html=await fetchText(url,{cache:"no-store"});
+ var doc=new DOMParser().parseFromString(html,"text/html");
+ var out=[],seen=new Set();
+ Array.from(doc.querySelectorAll('a[href*="indicador="]')).forEach(function(a){
+  var href=a.getAttribute("href")||"";
+  var m=href.match(/indicador=([A-Za-z0-9_]+)/);
+  if(!m)return;
+  var code=m[1];
+  if(seen.has(code))return;
+  var label=igeCleanLabel(a.textContent||"");
+  if(!label||igeIsNoiseLabel(label))return;
+  seen.add(code);
+  out.push({id:"ige-indi-"+code,label:label,type:"ige-indicator",code:code,url:"https://www.ige.gal/igebdt/igeapi/json/datosindi/"+encodeURIComponent(code)});
+ });
+ // Markdown fallback
+ var md=/\[([^\]]+)\]\(([^)]*indicador=([A-Za-z0-9_]+)[^)]*)\)/g,mm;
+ while((mm=md.exec(String(html||"")))){
+  var code2=mm[3];
+  if(seen.has(code2))continue;
+  var lab2=igeCleanLabel(mm[1]);
+  if(!lab2)continue;
+  seen.add(code2);
+  out.push({id:"ige-indi-"+code2,label:lab2,type:"ige-indicator",code:code2,url:"https://www.ige.gal/igebdt/igeapi/json/datosindi/"+encodeURIComponent(code2)});
+ }
+ out.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
+ if(!out.length)throw new Error("no s'han trobat indicadors en aquest grup.");
+ return out;
+}
+async function igeLoadSeriesGroups(){
+ var html=await fetchText("https://www.ige.gal/igebdt/igeapi/series.jsp?idioma=es",{cache:"no-store"});
+ var doc=new DOMParser().parseFromString(html,"text/html");
+ var out=[],seen=new Set();
+ Array.from(doc.querySelectorAll('a[href*="series.jsp"]')).forEach(function(a){
+  var href=(a.getAttribute("href")||"").replace(/&amp;/g,"&");
+  if(/subgrupo=/i.test(href)||/serie=/i.test(href))return;
+  var m=href.match(/grupo=([^&]+)/i);
+  if(!m)return;
+  var code=decodeURIComponent(m[1]);
+  if(seen.has(code))return;
+  var label=igeCleanLabel(a.textContent||"");
+  if(!label||igeIsNoiseLabel(label))return;
+  seen.add(code);
+  out.push({id:"ige-serg-"+code,label:label,type:"ige-series-group",code:code,url:"https://www.ige.gal/igebdt/igeapi/series.jsp?idioma=es&grupo="+encodeURIComponent(code)});
+ });
+ out.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
+ if(!out.length)throw new Error("no s'han trobat grups de sèries.");
+ return out;
+}
+async function igeLoadSeriesSubgroups(groupCode){
+ var url="https://www.ige.gal/igebdt/igeapi/series.jsp?idioma=es&grupo="+encodeURIComponent(groupCode);
+ var html=await fetchText(url,{cache:"no-store"});
+ var doc=new DOMParser().parseFromString(html,"text/html");
+ var out=[],seen=new Set();
+ Array.from(doc.querySelectorAll('a[href*="subgrupo="]')).forEach(function(a){
+  var href=(a.getAttribute("href")||"").replace(/&amp;/g,"&");
+  var m=href.match(/subgrupo=([^&]+)/i);
+  if(!m)return;
+  var code=decodeURIComponent(m[1]);
+  if(seen.has(code))return;
+  var label=igeCleanLabel(a.textContent||"");
+  if(!label||igeIsNoiseLabel(label))return;
+  seen.add(code);
+  out.push({id:"ige-sersg-"+groupCode+"-"+code,label:label,type:"ige-series-subgroup",code:code,groupCode:groupCode,url:"https://www.ige.gal/igebdt/igeapi/series.jsp?idioma=es&grupo="+encodeURIComponent(groupCode)+"&subgrupo="+encodeURIComponent(code)});
+ });
+ out.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
+ return out;
+}
+async function igeLoadSeriesList(groupCode,subCode){
+ var url="https://www.ige.gal/igebdt/igeapi/series.jsp?idioma=es&grupo="+encodeURIComponent(groupCode);
+ if(subCode)url+="&subgrupo="+encodeURIComponent(subCode);
+ var html=await fetchText(url,{cache:"no-store"});
+ var doc=new DOMParser().parseFromString(html,"text/html");
+ var out=[],seen=new Set();
+ Array.from(doc.querySelectorAll('a[href*="serie="]')).forEach(function(a){
+  var href=(a.getAttribute("href")||"").replace(/&amp;/g,"&");
+  var m=href.match(/serie=([^&]+)/i);
+  if(!m)return;
+  var code=decodeURIComponent(m[1]);
+  if(seen.has(code))return;
+  var label=igeCleanLabel(a.textContent||"");
+  if(!label||igeIsNoiseLabel(label))return;
+  seen.add(code);
+  out.push({id:"ige-ser-"+code,label:label,type:"ige-series",code:code,url:"https://www.ige.gal/igebdt/igeapi/json/datosserc/"+encodeURIComponent(code)});
+ });
+ // Fallback: markdown
+ var md=/\[([^\]]+)\]\(([^)]*serie=([^&)]+)[^)]*)\)/g,mm;
+ while((mm=md.exec(String(html||"")))){
+  var code2=decodeURIComponent(mm[3]);
+  if(seen.has(code2))continue;
+  var lab2=igeCleanLabel(mm[1]);
+  if(!lab2)continue;
+  seen.add(code2);
+  out.push({id:"ige-ser-"+code2,label:lab2,type:"ige-series",code:code2,url:"https://www.ige.gal/igebdt/igeapi/json/datosserc/"+encodeURIComponent(code2)});
+ }
+ out.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
+ if(!out.length)throw new Error("no s'han trobat sèries en aquest apartat.");
+ return out;
+}
+async function igeSelectIndiOrSeries(rec){
+ status("Carregant dades de l'IGE…");
+ var kind=rec.type==="ige-series"?"series":"indicator";
+ var raw=await fetchJson(rec.url);
+ var vars=Array.isArray(raw&&raw.variables)?raw.variables:[];
+ var rows=Array.isArray(raw&&raw.datos)?raw.datos:[];
+ if(!vars.length||!rows.length)throw new Error("aquest indicador/sèrie no té dades disponibles.");
+ // Construeix dimensions a partir de les columnes
+ var dims=[];
+ function addDim(id,label,codeIdx,labelIdx,role){
+  var cats=[],seen=new Set();
+  rows.forEach(function(r){
+   var code=String(r[codeIdx]==null?"":r[codeIdx]).trim();
+   if(!code||seen.has(code))return;
+   seen.add(code);
+   var lab=labelIdx>=0?String(r[labelIdx]==null?code:r[labelIdx]).trim():code;
+   cats.push({code:code,label:lab||code});
+  });
+  if(cats.length)dims.push({id:id,label:label,role:role||"",categories:cats});
+ }
+ var vi=function(name){return vars.findIndex(function(v){return String(v).toLowerCase()===name})};
+ var iCodT=vi("codtempo"),iTempo=vi("tempo");
+ var iCodE=vi("codespazo"),iEsp=vi("espazo");
+ if(iCodT>=0||iTempo>=0)addDim("tempo","Tempo",iCodT>=0?iCodT:iTempo,iTempo>=0?iTempo:-1,"time");
+ if(iCodE>=0||iEsp>=0)addDim("espazo","Espazo",iCodE>=0?iCodE:iEsp,iEsp>=0?iEsp:-1,"");
+ // Altres columnes (excepte valor)
+ var skip=new Set(["daton","datot","dato","indicador","serie"]);
+ vars.forEach(function(v,idx){
+  var vn=String(v).toLowerCase();
+  if(skip.has(vn)||idx===iCodT||idx===iTempo||idx===iCodE||idx===iEsp)return;
+  if(/^cod/.test(vn))return; // es tracta amb la columna etiqueta
+  addDim(vn,String(v),idx,-1,"");
+ });
+ if(!dims.length)throw new Error("no s'han pogut obtenir dimensions.");
+ var meta={
+  kind:kind,
+  title:rec.label||rec.code,
+  tableCode:rec.code,
+  downloadUrl:rec.url,
+  dims:dims
+ };
+ state.igeSelector=meta;
+ state.selected.stat=rec.code;state.selected.concept=rec.code;state.selected.cross=rec.code;state.selected.node=rec.code;state.selected.table=rec.code;
+ var ds={class:"dataset",version:"2.0",label:meta.title,id:dims.map(function(d){return d.id}),size:dims.map(function(d){return d.categories.length}),dimension:{}};
+ dims.forEach(function(d){
+  var lab={};d.categories.forEach(function(c){lab[c.code]=c.label});
+  ds.dimension[d.id]={label:d.label,category:{index:d.categories.map(function(c){return c.code}),label:lab}};
+  if(d.role){ds.dimension[d.id].role=d.role;ds.dimension[d.id].extension={role:d.role}}
+ });
+ state.metadata=ds;renderMetadata(ds);
+ $("tableInfo").hidden=false;
+ $("tableInfo").innerHTML="<strong>"+(kind==="series"?"Sèrie":"Indicador")+":</strong> "+esc(meta.title)+"<span class=\"path\">"+esc(rec.url)+"</span><p>Este producto emplea la API de datos del Instituto Galego de Estatística (IGE), pero no está certificado o aprobado por el IGE.</p>";
+ $("query").disabled=false;
+ status("");
+}
 async function igeSelectTable(rec){
  status("Carregant la taula de l'IGE…");
  var tableCode=String(rec.code||"").trim();
@@ -1588,20 +1816,138 @@ function igeRowsToJsonStat(raw,meta){
 }
 async function igeQuery(filters){
  var meta=state.igeSelector;if(!meta)throw new Error("no hi ha una taula seleccionada.");
+ // Indicadors / sèries de conjuntura
+ if(meta.kind==="indicator"||meta.kind==="series"){
+  var u=meta.downloadUrl;
+  if(!u)throw new Error("no hi ha URL de dades.");
+  var raw=await fetchJson(u);
+  var ds=igeFlatToJsonStat(raw,meta,filters);
+  if(!ds)throw new Error("la resposta de dades no s'ha pogut convertir a JSON-stat.");
+  return{data:ds,url:u};
+ }
  var parts=[];
  meta.dims.forEach(function(d){
   var selected=filters&&filters[d.id]&&filters[d.id].length?filters[d.id]:null;
-  // Si no hi ha filtre, omet l'eix (= tots els valors, segons l'API de l'IGE)
   if(!selected||!selected.length)return;
-  // Si estan tots seleccionats, també podem ometre'l
   if(selected.length>=(d.categories||[]).length)return;
   parts.push(d.id+":"+selected.map(String).join(":"));
  });
  var path=parts.join(",");
- var u=provider().base+"/json/datos/"+encodeURIComponent(meta.tableCode)+(path?"/"+path:"");
- var raw=await fetchJson(u),ds=igeRowsToJsonStat(raw,meta);
- if(!ds)throw new Error("la resposta de dades no s'ha pogut convertir a JSON-stat.");
+ // JSON-stat 2.0 (UTF-8) — evita ISO-8859-1 i el parse manual de files
+ var u=provider().base+"/jsonstat2/datos/"+encodeURIComponent(meta.tableCode)+(path?"/"+path:"");
+ var ds=await fetchJson(u);
+ if(!ds||ds.class!=="dataset"&&!ds.dimension){
+  // fallback al format pla
+  var u2=provider().base+"/json/datos/"+encodeURIComponent(meta.tableCode)+(path?"/"+path:"");
+  var raw=await fetchJson(u2);
+  ds=igeRowsToJsonStat(raw,meta);
+  if(!ds)throw new Error("la resposta de dades no s'ha pogut convertir a JSON-stat.");
+  return{data:ds,url:u2};
+ }
+ // Enrich labels from selector metadata
+ if(meta&&Array.isArray(meta.dims)&&ds.dimension){
+  meta.dims.forEach(function(d){
+   if(ds.dimension[d.id]&&d.label)ds.dimension[d.id].label=d.label;
+   if(d.role){
+    ds.dimension[d.id].role=d.role;
+    ds.dimension[d.id].extension=Object.assign({},ds.dimension[d.id].extension||{},{role:d.role});
+   }
+  });
+  if(!ds.label&&meta.title)ds.label=meta.title;
+ }
  return{data:ds,url:u};
+}
+/** Converteix la resposta plana {variables,datos} d'indicadors/sèries a JSON-stat 2.0 */
+function igeFlatToJsonStat(raw,meta,filters){
+ var vars=Array.isArray(raw&&raw.variables)?raw.variables:[];
+ var rows=Array.isArray(raw&&raw.datos)?raw.datos:[];
+ if(!vars.length||!rows.length)return null;
+ // Cerca columna de valor numèric
+ var measureIdx=vars.findIndex(function(v){return /^(datoN|dato|DatoN)$/i.test(String(v))});
+ if(measureIdx<0)measureIdx=vars.length-1;
+ var dimCols=[];
+ for(var i=0;i<vars.length;i++){
+  if(i===measureIdx)continue;
+  var vn=String(vars[i]||"");
+  // Saltem etiquetes si hi ha columna Cod* abans
+  if(i>0&&/^Cod/i.test(String(vars[i-1]||""))&&!/^Cod/i.test(vn))continue;
+  if(/^datoT$/i.test(vn))continue; // text formatat del valor
+  dimCols.push({idx:i,id:vn,label:vn});
+ }
+ // Millor: si meta.dims existeix, mapeja
+ if(meta&&Array.isArray(meta.dims)&&meta.dims.length){
+  dimCols=meta.dims.map(function(d){
+   var idL=String(d.id||"").toLowerCase(),labL=String(d.label||"").toLowerCase();
+   if(idL==="tempo"||/tempo|time|period/i.test(labL)){
+    var ci=vars.findIndex(function(v){return /^codtempo$/i.test(String(v))});
+    var li=vars.findIndex(function(v){return /^tempo$/i.test(String(v))});
+    var idx=ci>=0?ci:(li>=0?li:-1);
+    return{idx:idx,labelIdx:li,id:d.id,label:d.label,role:d.role||"time"};
+   }
+   if(idL==="espazo"||/espazo|espacio|geo/i.test(labL)){
+    var ci2=vars.findIndex(function(v){return /^codespazo$/i.test(String(v))});
+    var li2=vars.findIndex(function(v){return /^espazo$/i.test(String(v))});
+    return{idx:ci2>=0?ci2:li2,labelIdx:li2,id:d.id,label:d.label,role:d.role};
+   }
+   var idx=vars.findIndex(function(v){var x=String(v).toLowerCase();return x===idL||x===labL});
+   return{idx:idx,id:d.id,label:d.label,role:d.role};
+  }).filter(function(c){return c.idx>=0});
+ }
+ if(!dimCols.length)return null;
+ // Filtre client (l'API d'indicadors/sèries retorna la sèrie completa)
+ if(filters&&typeof filters==="object"){
+  rows=rows.filter(function(r){
+   return dimCols.every(function(c){
+    var selected=filters[c.id];
+    if(!selected||!selected.length)return true;
+    var code=String(r[c.idx]==null?"":r[c.idx]).trim();
+    return selected.indexOf(code)>=0||selected.indexOf(String(code))>=0;
+   });
+  });
+  if(!rows.length)return null;
+ }
+ var catMaps=dimCols.map(function(){return{codes:[],index:new Map(),label:{}}});
+ rows.forEach(function(r){
+  dimCols.forEach(function(c,j){
+   var code=String(r[c.idx]==null?"":r[c.idx]).trim();
+   if(!code)return;
+   var lab=c.labelIdx>=0?String(r[c.labelIdx]==null?code:r[c.labelIdx]).trim():code;
+   if(!catMaps[j].index.has(code)){
+    catMaps[j].index.set(code,catMaps[j].codes.length);
+    catMaps[j].codes.push(code);
+    catMaps[j].label[code]=lab||code;
+   }
+  });
+ });
+ var size=catMaps.map(function(m){return m.codes.length});
+ var id=dimCols.map(function(c){return c.id});
+ var dimension={};
+ dimCols.forEach(function(c,j){
+  dimension[c.id]={label:c.label||c.id,category:{index:catMaps[j].codes,label:catMaps[j].label}};
+  if(c.role){dimension[c.id].role=c.role;dimension[c.id].extension={role:c.role}}
+ });
+ // values in row-major order of dimCols
+ var n=size.reduce(function(a,b){return a*b},1);
+ var values=new Array(n).fill(null);
+ rows.forEach(function(r){
+  var coords=[],ok=true;
+  dimCols.forEach(function(c,j){
+   var code=String(r[c.idx]==null?"":r[c.idx]).trim();
+   var ix=catMaps[j].index.get(code);
+   if(ix==null){ok=false;return}
+   coords.push(ix);
+  });
+  if(!ok)return;
+  var flat=0;
+  for(var k=0;k<coords.length;k++){
+   var stride=1;for(var s=k+1;s<size.length;s++)stride*=size[s];
+   flat+=coords[k]*stride;
+  }
+  var num=r[measureIdx];
+  var val=num==null||num===""?null:Number(String(num).replace(",","."));
+  values[flat]=Number.isFinite(val)?val:null;
+ });
+ return{class:"dataset",version:"2.0",label:(meta&&meta.title)||"",id:id,size:size,dimension:dimension,value:values};
 }
 async function icaneLoadCatalog(){
  if(state.icanePackages&&state.icanePackages.length)return state.icanePackages;
