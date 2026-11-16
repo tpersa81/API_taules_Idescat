@@ -175,7 +175,7 @@ try{
    text=await r.text();
   }
 }catch(e){throw new Error("No s'ha pogut llegir la resposta de l'API (HTTP "+r.status+").")}
-var d=null;try{var cleanText=String(text).replace(/^\uFEFF/,"").trim();d=cleanText?JSON.parse(cleanText):null;if(d&&typeof d.contents==="string"){try{d=JSON.parse(String(d.contents).replace(/^\uFEFF/,"").trim())}catch(_){}}}catch(e){if(state.provider==="istac"&&r.ok){try{var m0=String(text).match(/\{[\s\S]*\}/);if(m0)d=JSON.parse(m0[0])}catch(_){}}if(!d){if(!r.ok)throw new Error("Error HTTP "+r.status+": "+text.slice(0,300));throw new Error("Resposta no vàlida de l'API (HTTP "+r.status+").")}}
+var d=null;try{var cleanText=String(text).replace(/^\uFEFF/,"").trim();d=cleanText?JSON.parse(cleanText):null;if(d&&typeof d.contents==="string"){try{d=JSON.parse(String(d.contents).replace(/^\uFEFF/,"").trim())}catch(_){}}}catch(e){if(state.provider==="istac"&&r.ok){try{var m0=String(text).match(/\{[\s\S]*\}/);if(m0)d=JSON.parse(m0[0])}catch(_){}}if(!d){if(!r.ok)throw new Error("Error HTTP "+r.status+": "+text.slice(0,300));throw new Error("Resposta no vàlida de l'API (HTTP "+r.status+"). "+String(text||"").replace(/\s+/g," ").slice(0,180))}}
 if(!r.ok||d&&(d.class==="error"||d.error||d.errors)){
  var detail=d&&(d.detail||d.label||d.message||d.error||d.errors||d.title);
  if(detail&&typeof detail==="object"){if(Array.isArray(detail))detail=detail.map(function(x){return x&&typeof x==="object"?String(x.message||x.detail||x.error||JSON.stringify(x)):String(x)}).join(" · ");else detail=detail.message||detail.detail||detail.error||JSON.stringify(detail)}
@@ -1016,7 +1016,7 @@ function recursiveProxyStart(kind){
  draw(highest);
 }
 
-function setProviderUI(){setLabels();var isEuro=state.provider==="eurostat",isIne=state.provider==="ine",isIstac=state.provider==="istac",isIcane=state.provider==="icane",isIge=state.provider==="ige",isNomis=state.provider==="nomis",isSweden=state.provider==="pxweb"&&state.pxPreset==="sweden",isFinland=state.provider==="pxweb"&&state.pxPreset==="finland",isIceland=state.provider==="pxweb"&&state.pxPreset==="iceland",isNorway=state.provider==="pxweb"&&state.pxPreset==="norway",isEustat=state.provider==="pxweb"&&state.pxPreset==="eustat",isFlatPx=state.provider==="pxweb"&&isEustat,sl=null,otherBox=$("otherProviderWrap");if(otherBox)otherBox.hidden=!$("provider")||$("provider").value!=="other";var fixedGrid=document.querySelector("#step2>.grid"),euroBox=$("eurostatLevels");if(fixedGrid){fixedGrid.hidden=false;fixedGrid.style.display="";if(isSweden||isFinland||isIceland){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}}if(euroBox)euroBox.hidden=!(isEuro||isIstac||isIcane||isIge||isSweden||isFinland||isIceland||isNorway||isIne||state.provider==="idescat"||isEustat);if((isEuro||isIne||isIstac||isIcane||isIge||isNomis)&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isEustat&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i<3?"":"none"});if(fixedGrid.querySelector("label:nth-child(2)"))fixedGrid.querySelector("label:nth-child(2)").firstChild.textContent="Operació ";if(fixedGrid.querySelector("label:nth-child(3)"))fixedGrid.querySelector("label:nth-child(3)").firstChild.textContent="Taula "}else if(isNorway&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isFlatPx&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}else if(fixedGrid&&!isSweden&&!isFinland&&!isIceland){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display=""})}if(fixedGrid&&(state.provider==="idescat"||isIstac||isIcane||isIge||isEustat||state.pxPreset==="unece")){fixedGrid.hidden=true;fixedGrid.style.display="none"} if(isNomis&&fixedGrid){fixedGrid.hidden=false;fixedGrid.style.display="";Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}var tl=$("table")&&$("table").parentElement,gl=$("geo")&&$("geo").parentElement;if(tl)tl.style.display=(isEuro||isIne||isIstac||isIcane||isIge||isFlatPx||isNorway||isSweden||isFinland||isIceland)?"none":"";if(gl)gl.style.display=(isEuro||isIne||isIstac||isIcane||isIge||isFlatPx||isNorway||isSweden||isFinland||isIceland)?"none":""; var sel=(state.provider==="pxweb"||state.provider==="istac"||state.provider==="icane"||state.provider==="ige"||state.provider==="nomis")?"other":state.provider;if($("provider")&&[].slice.call($("provider").options).some(function(o){return o.value===sel}))$("provider").value=sel;if($("otherProvider"))$("otherProvider").value=state.provider==="istac"?"istac":state.provider==="icane"?"icane":state.provider==="ige"?"ige":state.provider==="nomis"?"nomis":(state.provider==="pxweb"&&state.pxPreset?"pxweb:"+state.pxPreset:"")}
+function setProviderUI(){setLabels();var isEuro=state.provider==="eurostat",isIne=state.provider==="ine",isIstac=state.provider==="istac",isIcane=state.provider==="icane",isIge=state.provider==="ige",isNomis=state.provider==="nomis",isSweden=state.provider==="pxweb"&&state.pxPreset==="sweden",isFinland=state.provider==="pxweb"&&state.pxPreset==="finland",isIceland=state.provider==="pxweb"&&state.pxPreset==="iceland",isNorway=state.provider==="pxweb"&&state.pxPreset==="norway",isEustat=state.provider==="pxweb"&&state.pxPreset==="eustat",isFlatPx=state.provider==="pxweb"&&isEustat,sl=null,otherBox=$("otherProviderWrap");if(otherBox)otherBox.hidden=!$("provider")||$("provider").value!=="other";var fixedGrid=document.querySelector("#step2>.grid"),euroBox=$("eurostatLevels");if(fixedGrid){fixedGrid.hidden=false;fixedGrid.style.display="";if(isSweden||isFinland||isIceland){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}}if(euroBox)euroBox.hidden=!(isEuro||isIstac||isIcane||isIge||isSweden||isFinland||isIceland||isNorway||isIne||state.provider==="idescat"||isEustat);if((isEuro||isIne||isIstac||isIcane||isIge||isNomis)&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isEustat&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i<3?"":"none"});if(fixedGrid.querySelector("label:nth-child(2)"))fixedGrid.querySelector("label:nth-child(2)").firstChild.textContent="Operació ";if(fixedGrid.querySelector("label:nth-child(3)"))fixedGrid.querySelector("label:nth-child(3)").firstChild.textContent="Taula "}else if(isNorway&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isFlatPx&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}else if(fixedGrid&&!isSweden&&!isFinland&&!isIceland){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display=""})}if(fixedGrid&&(state.provider==="idescat"||isIstac||isIcane||isIge||isEustat||state.pxPreset==="unece")){fixedGrid.hidden=true;fixedGrid.style.display="none"} if(isNomis&&fixedGrid){fixedGrid.hidden=false;fixedGrid.style.display="";Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}var tl=$("table")&&$("table").parentElement,gl=$("geo")&&$("geo").parentElement;if(tl)tl.style.display=(isEuro||isIne||isIstac||isIcane||isIge||isFlatPx||isNorway||isSweden||isFinland||isIceland)?"none":"";if(gl)gl.style.display=(isEuro||isIne||isIstac||isIcane||isIge||isFlatPx||isNorway||isSweden||isFinland||isIceland)?"none":""; var sel=(state.provider==="pxweb"||state.provider==="istac"||state.provider==="icane"||state.provider==="ige"||state.provider==="nomis")?"other":state.provider;if($("provider")&&[].slice.call($("provider").options).some(function(o){return o.value===sel}))$("provider").value=sel;if($("otherProvider"))$("otherProvider").value=state.provider==="istac"?"istac":state.provider==="icane"?"icane":state.provider==="ige"?"ige":state.provider==="nomis"?"nomis":state.provider==="nomis"?"nomis":(state.provider==="pxweb"&&state.pxPreset?"pxweb:"+state.pxPreset:"")}
 function icelandEnglishRootLabel(label){
  var s=String(label||"").trim(),n=s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
  var m={
@@ -2637,25 +2637,40 @@ function eurostatNodeByPath(path){
 function deriveConcept(s){s=String(s||"");var p=s.indexOf(".");return p>=0?s.slice(0,p):s}
 function deriveCross(s){s=String(s||"").trim();var p=s.indexOf(". ");if(p<0)return"";var r=s.slice(p+2),q=r.indexOf(". A");return(q>=0?r.slice(0,q):r).trim()}
 
-async function nomisLoadDatasets(){
- var base=provider().base.replace(/\/+$/,""),url=base+"/dataset/def.sdmx.json",raw=await fetchJson(url);
+async function nomisLoadDatasets(search){
+ var base=provider().base.replace(/\/+$/,"");
+ // Evita el catàleg sencer (~5MB). Nomis accepta ?search=
+ var q=String(search||"").trim();
+ var url=base+"/dataset/def.sdmx.json"+(q?("?search="+encodeURIComponent(q)):"");
+ // Sense cerca, limita amb una cerca genèrica útil
+ if(!q)url=base+"/dataset/def.sdmx.json?search=population";
+ var raw=await fetchJson(url);
  var kf=raw&&raw.structure&&raw.structure.keyfamilies&&raw.structure.keyfamilies.keyfamily;
- if(!Array.isArray(kf))kf=raw&&raw.structure&&raw.structure.keyfamilies&&Array.isArray(raw.structure.keyfamilies)?raw.structure.keyfamilies:[];
- return kf.map(function(x){
-  var id=String(x&&x.id||"").trim(),name=x&&x.name;
+ if(!Array.isArray(kf))kf=kf?[kf]:[];
+ var out=kf.map(function(x){
+  var id=String(x&&x.id||"").trim();
+  var name=x&&x.name;
   var label=String(name&&name.value||name||id).trim();
-  return{id:id,label:label};
+  return{id:id,label:label||id};
  }).filter(function(x){return x.id});
+ // Ordena i treu duplicats
+ var seen=new Set();
+ out=out.filter(function(x){if(seen.has(x.id))return false;seen.add(x.id);return true});
+ out.sort(function(a,b){return a.label.localeCompare(b.label,"en",{numeric:true,sensitivity:"base"})});
+ return out;
 }
 function nomisExtractCodes(raw){
  var found=[];
  var lists=raw&&raw.structure&&raw.structure.codelists&&raw.structure.codelists.codelist;
  if(!Array.isArray(lists))lists=lists?[lists]:[];
  lists.forEach(function(cl){
-  var codes=Array.isArray(cl&&cl.code)?cl.code:[];
+  var codes=Array.isArray(cl&&cl.code)?cl.code:(cl&&cl.code?[cl.code]:[]);
   codes.forEach(function(x){
-   var id=String(x&&x.value!=null?x.value:"").trim();
-   var d=x&&x.description,lab=typeof d==="object"?String(d.value||d.text||d["#text"]||"").trim():String(d||"").trim();
+   var id=String(x&&x.value!=null?x.value:(x&&x.id!=null?x.id:"")).trim();
+   var d=x&&x.description;
+   var lab="";
+   if(typeof d==="object"&&d)lab=String(d.value||d.text||d["#text"]||"").trim();
+   else lab=String(d||x&&x.label||"").trim();
    if(id)found.push({code:id,label:lab||id});
   });
  });
@@ -2670,68 +2685,126 @@ function nomisExtractCodes(raw){
  var seen=new Set();
  return found.filter(function(x){if(seen.has(x.code))return false;seen.add(x.code);return true});
 }
+async function nomisFetchDimCodes(base,datasetId,dimId,codelist){
+ var cats=[];
+ dimId=String(dimId||"").trim();
+ var dimLower=dimId.toLowerCase();
+ // 1) Endpoint específic del dataset (funciona per GEOGRAPHY i sovint d'altres)
+ var candidates=[
+  base+"/dataset/"+encodeURIComponent(datasetId)+"/"+encodeURIComponent(dimLower)+".def.sdmx.json",
+  base+"/dataset/"+encodeURIComponent(datasetId)+"/"+encodeURIComponent(dimId)+".def.sdmx.json"
+ ];
+ // 2) Codelist global (alguns dimensions 404, d'altres no)
+ if(codelist){
+  candidates.push(base+"/codelist/"+encodeURIComponent(codelist)+".def.sdmx.json");
+ }
+ var lastErr=null;
+ for(var i=0;i<candidates.length;i++){
+  try{
+   var raw=await fetchJson(candidates[i]);
+   cats=nomisExtractCodes(raw);
+   if(cats.length)return cats;
+  }catch(e){lastErr=e}
+ }
+ // 3) Geography amb context UK
+ if(dimLower==="geography"){
+  try{
+   var u=base+"/dataset/"+encodeURIComponent(datasetId)+"/geography.def.sdmx.json";
+   var raw2=await fetchJson(u);
+   cats=nomisExtractCodes(raw2);
+   if(cats.length)return cats;
+  }catch(e2){lastErr=e2}
+ }
+ if(lastErr&&!cats.length){
+  // No llencem: dimensió opcional
+  console.warn("ONS/Nomis: sense categories per a "+dimId,lastErr);
+ }
+ return cats;
+}
 async function nomisSelectDataset(id){
- var base=provider().base.replace(/\/+$/,""),defUrl=base+"/dataset/"+encodeURIComponent(id)+"/def.sdmx.json";
- var def=await fetchJson(defUrl),structure=def&&def.structure||{},kfs=structure.keyfamilies&&structure.keyfamilies.keyfamily;
+ status("Carregant dimensions ONS/Nomis…");
+ var base=provider().base.replace(/\/+$/,"");
+ var defUrl=base+"/dataset/"+encodeURIComponent(id)+"/def.sdmx.json";
+ var def=await fetchJson(defUrl);
+ var structure=def&&def.structure||{};
+ var kfs=structure.keyfamilies&&structure.keyfamilies.keyfamily;
  var kf=Array.isArray(kfs)?kfs[0]:kfs;
+ if(!kf)throw new Error("ONS: definició del dataset buida o no reconeguda ("+id+").");
  var dimsDef=kf&&kf.components&&kf.components.dimension||[];
- if(!Array.isArray(dimsDef))dimsDef=[dimsDef];
- var out={id:[],size:[],dimension:{},value:[]};
+ if(!Array.isArray(dimsDef))dimsDef=dimsDef?[dimsDef]:[];
  var timedim=kf&&kf.components&&kf.components.timedimension;
  if(timedim)dimsDef=dimsDef.concat([{conceptref:timedim.conceptref,codelist:timedim.codelist}]);
+ var out={class:"dataset",version:"2.0",label:"",id:[],size:[],dimension:{},value:[]};
+ var title=String(kf&&kf.name&&kf.name.value||kf&&kf.name||id);
+ out.label=title;
  for(var i=0;i<dimsDef.length;i++){
-  var dd=dimsDef[i],dimId=String(dd&&dd.conceptref||"").trim(),cl=String(dd&&dd.codelist||"").trim();
+  var dd=dimsDef[i]||{};
+  var dimId=String(dd.conceptref||"").trim();
+  var cl=String(dd.codelist||"").trim();
   if(!dimId)continue;
-  var cats=[];
-  // Geography is hierarchical in NOMIS, so its top level must come from
-  // the dataset-specific dimension endpoint. Other dimensions have a
-  // documented complete codelist endpoint.
-  if(dimId.toUpperCase()==="GEOGRAPHY"){
-   try{
-    var gr=await fetchJson(base+"/dataset/"+encodeURIComponent(id)+"/geography.def.sdmx.json");
-    cats=nomisExtractCodes(gr);
-   }catch(e){}
-  }
-  if(!cats.length&&cl){
-   try{
-    var cr=await fetchJson(base+"/codelist/"+encodeURIComponent(cl)+".def.sdmx.json");
-    cats=nomisExtractCodes(cr);
-   }catch(e){}
-  }
-  // Last fallback: ask NOMIS for the dimension in dataset context.
-  if(!cats.length){
-   try{
-    var u=base+"/dataset/"+encodeURIComponent(id)+"/"+encodeURIComponent(dimId.toLowerCase())+".def.sdmx.json";
-    var raw=await fetchJson(u),q=new URLSearchParams();
-    if(dimId.toUpperCase()!=="GEOGRAPHY")q.set("geography","2092957697");
-    var rr=Object.keys(Object.fromEntries(q)).length?await fetchJson(u+"?"+q.toString()):raw;
-    cats=nomisExtractCodes(rr);
-   }catch(e){}
-  }
+  // FREQ sovint és residual a Nomis
+  if(dimId.toUpperCase()==="FREQ")continue;
+  var cats=await nomisFetchDimCodes(base,id,dimId,cl);
   if(!cats.length)continue;
+  // Geografia: massa valors → queda't amb el primer nivell / mostreig raonable
+  if(dimId.toUpperCase()==="GEOGRAPHY"&&cats.length>400){
+   // Preferix codis de país/regió si es detecten etiquetes; si no, primers 200
+   var prefer=cats.filter(function(c){
+    var l=String(c.label||"").toLowerCase();
+    return /united kingdom|england|wales|scotland|northern ireland|great britain|uk\b/.test(l);
+   });
+   if(prefer.length&&prefer.length<cats.length)cats=prefer.concat(cats.slice(0,50));
+   else cats=cats.slice(0,200);
+  }
+  // TIME: si n'hi ha molts, prioritzar els més recents (Nomis sol ordenar antic→nou)
+  if(dimId.toUpperCase()==="TIME"&&cats.length>120){
+   cats=cats.slice(-120);
+  }
   var labels={},index=[];
   cats.forEach(function(x){labels[x.code]=x.label;index.push(x.code)});
-  out.id.push(dimId);out.size.push(cats.length);
-  out.dimension[dimId]={label:dimId,category:{index:index,label:labels}};
+  out.id.push(dimId);
+  out.size.push(index.length);
+  var dimObj={label:dimId,category:{index:index,label:labels}};
+  if(dimId.toUpperCase()==="TIME"){dimObj.role="time";dimObj.extension={role:"time"}}
+  if(dimId.toUpperCase()==="GEOGRAPHY"){dimObj.role="geo";dimObj.extension={role:"geo"}}
+  if(dimId.toUpperCase()==="MEASURES"){dimObj.role="metric";dimObj.extension={role:"metric"}}
+  out.dimension[dimId]=dimObj;
  }
- if(!out.id.length)throw new Error("ONS: no s'han pogut recuperar les dimensions del conjunt de dades.");
+ if(!out.id.length)throw new Error("ONS: no s'han pogut recuperar les dimensions del conjunt "+id+". (Algunes codelists Nomis retornen 404.)");
  state.selected.table=id;state.selected.node=id;state.metadata=out;
  renderMetadata(out);
  $("tableInfo").hidden=false;
- var title=String(kf&&kf.name&&kf.name.value||kf&&kf.name||id);
- $("tableInfo").innerHTML="<strong>Conjunt de dades:</strong> "+esc(title)+"<span class=\"path\">"+esc(defUrl)+"</span>";
+ $("tableInfo").innerHTML="<strong>Dataset:</strong> "+esc(title)+" <code>"+esc(id)+"</code><span class=\"path\">"+esc(defUrl)+"</span><p>Data from Nomis (ONS). Contains public sector information licensed under the Open Government Licence v3.0.</p>";
  $("query").disabled=false;
+ status("");
 }
 async function nomisQuery(filters){
  var base=provider().base.replace(/\/+$/,""),id=state.selected.table;
  if(!id)throw new Error("ONS: no s'ha seleccionat cap conjunt de dades.");
  var p=new URLSearchParams();
+ // Nomis espera noms de dimensió en minúscules
  dims(state.metadata).forEach(function(d){
-  var vals=Array.from(filters[d.id]||[]);
-  if(vals.length)p.set(d.id.toLowerCase(),vals.join(","));
+  var vals=[];
+  if(filters&&filters[d.id])vals=Array.from(filters[d.id]||[]);
+  else if(state.filters&&state.filters.has(d.id))vals=Array.from(state.filters.get(d.id)||[]);
+  // selectedFilters omet dimensions amb "tots" seleccionats; per Nomis cal enviar-ne alguns
+  if(!vals.length&&state.filters&&state.filters.has(d.id)){
+   vals=Array.from(state.filters.get(d.id)||[]);
+  }
+  if(vals.length){
+   // limita geografia/temps per no petar
+   if(d.id.toUpperCase()==="GEOGRAPHY"&&vals.length>30)vals=vals.slice(0,30);
+   if(d.id.toUpperCase()==="TIME"&&vals.length>40)vals=vals.slice(0,40);
+   p.set(d.id.toLowerCase(),vals.join(","));
+  }
  });
+ // Si falta TIME, demana latest
+ if(!p.has("time"))p.set("time","latest");
  var url=base+"/dataset/"+encodeURIComponent(id)+".jsonstat.json?"+p.toString();
- return{data:await fetchJson(url),url:url};
+ var data=await fetchJson(url);
+ // Nomis jsonstat sol ser 2.0-compatible; normalitza role
+ if(data&&data.dimension&&!data.version)data.version="2.0";
+ return{data:data,url:url};
 }
 
 async function onStatChange(){
@@ -4767,4 +4840,4 @@ function bind(){
  $("node").onchange=async function(){clearQueryView();if(state.provider==="ine")return;if(state.provider==="eurostat")await eurostatSelectLevel("node");else await onNodeChange()};$("table").onchange=onTableChange;$("geo").onchange=onGeoChange;$("tabData").onclick=function(){$("tabData").classList.add("active");$("tabPivot").classList.remove("active");$("results").hidden=false;$("pivotBuilder").hidden=true};$("tabPivot").onclick=function(){$("tabPivot").classList.add("active");$("tabData").classList.remove("active");$("results").hidden=true;$("pivotBuilder").hidden=false;renderPivotBuilder()};$("results").addEventListener("click",function(e){var b=e.target.closest("button[data-page]");if(b&&!b.disabled)setResultPage(Number(b.dataset.page))});$("results").addEventListener("change",function(e){if(e.target.matches("select[data-page-select]"))setResultPage(Number(e.target.value));if(e.target.matches("select[data-page-size]"))setResultPageSize(Number(e.target.value))});$("temporalOrder").onchange=function(){setTemporalOrder(this.value)};$("query").onclick=runQuery;$("exportCsv").onclick=exportCSV;$("exportXlsx").onclick=exportXLSX;$("addToCart").onclick=addCart;$("cartExport").onclick=exportCart;$("cartClear").onclick=function(){state.cart=[];renderCart()};$("cartToggle").onclick=function(){var p=$("cartPanel");p.hidden=false;$("cartToggle").setAttribute("aria-expanded","true");p.scrollIntoView({behavior:"smooth",block:"start"})};$("clear").onclick=function(){if(state.metadata)renderMetadata(state.metadata)}
 }
 function updateUrl(){var q=new URLSearchParams();q.set("provider",state.provider);if(state.provider==="pxweb")q.set("px",state.pxPreset);if(state.selected.stat)q.set("stat",state.selected.stat);history.replaceState(null,"","?"+q.toString())}
-(async function(){bind();renderCart();var q=new URLSearchParams(location.search);state.provider=q.get("provider")||"idescat";state.pxPreset=q.get("px")||"finland";$("provider").value=(state.provider==="pxweb"||state.provider==="istac"||state.provider==="icane"||state.provider==="ige"||state.provider==="nomis")?"other":state.provider;$("otherProvider").value=state.provider==="istac"?"istac":state.provider==="icane"?"icane":state.provider==="ige"?"ige":state.provider==="nomis"?"nomis":(state.provider==="pxweb"&&state.pxPreset?"pxweb:"+state.pxPreset:"");setProviderUI();try{await loadStats()}catch(e){status(e.message,"error")}})();
+(async function(){bind();renderCart();var q=new URLSearchParams(location.search);state.provider=q.get("provider")||"idescat";state.pxPreset=q.get("px")||"finland";$("provider").value=(state.provider==="pxweb"||state.provider==="istac"||state.provider==="icane"||state.provider==="ige"||state.provider==="nomis")?"other":state.provider;$("otherProvider").value=state.provider==="istac"?"istac":state.provider==="icane"?"icane":state.provider==="ige"?"ige":state.provider==="nomis"?"nomis":state.provider==="nomis"?"nomis":(state.provider==="pxweb"&&state.pxPreset?"pxweb:"+state.pxPreset:"");setProviderUI();try{await loadStats()}catch(e){status(e.message,"error")}})();
