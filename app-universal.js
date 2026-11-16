@@ -1239,8 +1239,15 @@ async function igeSelectDynamic(index,val){
  if(item.type==="ige-series-group"){
   status("Carregant subgrups de sèries…");
   var subs=await igeLoadSeriesSubgroups(item.code);
-  if(subs.length){igeAddLevel(subs,index+1,"Subgrup");status("");return}
-  // alguns grups enllacen sèries directament
+  if(subs.length){
+   // Pot barrejar subcarpetes (ige-series-group) i subgrups fulla
+   var onlyFolders=subs.every(function(x){return x.type==="ige-series-group"});
+   var onlyLeaves=subs.every(function(x){return x.type==="ige-series-subgroup"});
+   var caption=onlyFolders?"Subtema":(onlyLeaves?"Subgrup":"Apartat");
+   igeAddLevel(subs,index+1,caption);
+   status("");
+   return;
+  }
   var series=await igeLoadSeriesList(item.code,null);
   if(series.length){igeAddLevel(series,index+1,"Sèrie");status("");return}
   throw new Error("no s'han trobat sèries en aquest grup.");
@@ -1588,53 +1595,72 @@ async function igeLoadSeriesGroups(){
  if(!out.length)throw new Error("no s'han trobat grups de sèries.");
  return out;
 }
+function igeExtractDivInner(html, id){
+ html=String(html||"");
+ var re=new RegExp('id=["\']'+id.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+'["\'][^>]*>','i');
+ var m=re.exec(html);
+ if(!m)return"";
+ var i=m.index+m[0].length;
+ var depth=1,j=i;
+ while(j<html.length&&depth>0){
+  var nextOpen=html.toLowerCase().indexOf("<div",j);
+  var nextClose=html.toLowerCase().indexOf("</div",j);
+  if(nextClose<0)break;
+  if(nextOpen>=0&&nextOpen<nextClose){
+   depth++;
+   j=nextOpen+4;
+  }else{
+   depth--;
+   if(depth===0)return html.slice(i,nextClose);
+   j=nextClose+5;
+  }
+ }
+ return html.slice(i,i+50000);
+}
 async function igeLoadSeriesSubgroups(groupCode){
  var url="https://www.ige.gal/igebdt/igeapi/series.jsp?idioma=es&grupo="+encodeURIComponent(groupCode);
  var html=await fetchText(url,{cache:"no-store"});
+ // Només el contingut del div d'aquest grup (la pàgina porta tot l'arbre)
+ var inner=igeExtractDivInner(html,groupCode);
+ if(!inner)inner=html;
  var out=[],seen=new Set();
- function add(code,label){
-  code=String(code||"").trim();
-  label=igeCleanLabel(label);
-  if(!code||seen.has(code))return;
+ function add(item){
+  if(!item||!item.code||seen.has(item.code))return;
+  seen.add(item.code);
+  out.push(item);
+ }
+ // 1) Subcarpetes (procGrupo fills)
+ var reFolder=/procGrupo\('([^']+)'\)[^>]*>([^<]+)</g,m;
+ while((m=reFolder.exec(inner))){
+  var code=m[1],label=igeCleanLabel(m[2]);
+  if(!code||code===groupCode)continue;
   if(!label||igeIsNoiseLabel(label))label=code;
-  seen.add(code);
-  out.push({id:"ige-sersg-"+groupCode+"-"+code,label:label,type:"ige-series-subgroup",code:code,groupCode:groupCode,url:"https://www.ige.gal/igebdt/igeapi/series.jsp?idioma=es&grupo="+encodeURIComponent(groupCode)+"&subgrupo="+encodeURIComponent(code)});
+  add({id:"ige-serg-"+code,label:label,type:"ige-series-group",code:code,url:"https://www.ige.gal/igebdt/igeapi/series.jsp?idioma=es&grupo="+encodeURIComponent(code)});
  }
- try{
-  var doc=new DOMParser().parseFromString(html,"text/html");
-  Array.from(doc.querySelectorAll('a[href*="subgrupo="]')).forEach(function(a){
-   var href=(a.getAttribute("href")||"").replace(/&amp;/g,"&");
-   var m=href.match(/subgrupo=([^&]+)/i);
-   var g=href.match(/grupo=([^&]+)/i);
-   if(!m)return;
-   if(g&&decodeURIComponent(g[1])!==groupCode&&g[1]!==groupCode)return;
-   try{add(decodeURIComponent(m[1]),a.textContent||"")}catch(e){add(m[1],a.textContent||"")}
-  });
- }catch(e){}
- var re=new RegExp("grupo="+groupCode.replace(/[.*+?^${}()|[\\]\\\\]/g,"\\\\$&")+"[^\"']*subgrupo=([^&\"']+)","gi");
- var reLab=new RegExp("subgrupo=([^&\"']+)[^\"']*[\"'][^>]*>([^<]+)","gi");
- var labels={},m;
- while((m=reLab.exec(String(html||"")))){
-  try{labels[decodeURIComponent(m[1])]=m[2]}catch(e){labels[m[1]]=m[2]}
+ // 2) Subgrups amb sèries: enllaços ?grupo=THIS&subgrupo=X
+ var reA=/href=["']([^"']*)["'][^>]*>([^<]*)</gi;
+ while((m=reA.exec(inner))){
+  var href=(m[1]||"").replace(/&amp;/g,"&");
+  var label=igeCleanLabel(m[2]||"");
+  var gm=href.match(/[?&]grupo=([^&]+)/i);
+  var sm=href.match(/[?&]subgrupo=([^&]+)/i);
+  if(!gm||!sm)continue;
+  var g,sub;
+  try{g=decodeURIComponent(gm[1]);sub=decodeURIComponent(sm[1])}catch(e){g=gm[1];sub=sm[1]}
+  if(g!==groupCode)continue;
+  if(!label||igeIsNoiseLabel(label))label=sub;
+  add({id:"ige-sersg-"+groupCode+"-"+sub,label:label,type:"ige-series-subgroup",code:sub,groupCode:groupCode,url:"https://www.ige.gal/igebdt/igeapi/series.jsp?idioma=es&grupo="+encodeURIComponent(groupCode)+"&subgrupo="+encodeURIComponent(sub)});
  }
- while((m=re.exec(String(html||"")))){
-  var c;try{c=decodeURIComponent(m[1])}catch(e){c=m[1]}
-  add(c,labels[c]||c);
- }
- // Fallback genèric subgrupo=
- if(!out.length){
-  var re2=/subgrupo=([^&"'<>]+)/gi;
-  while((m=re2.exec(String(html||"")))){
-   try{add(decodeURIComponent(m[1]),labels[decodeURIComponent(m[1])]||"")}catch(e){add(m[1],"")}
-  }
- }
- out.sort(function(a,b){return a.label.localeCompare(b.label,"gl",{numeric:true})});
+ out.sort(function(a,b){return a.label.localeCompare(b.label,"gl",{numeric:true,sensitivity:"base"})});
  return out;
 }
 async function igeLoadSeriesList(groupCode,subCode){
  var url="https://www.ige.gal/igebdt/igeapi/series.jsp?idioma=es&grupo="+encodeURIComponent(groupCode);
  if(subCode)url+="&subgrupo="+encodeURIComponent(subCode);
  var html=await fetchText(url,{cache:"no-store"});
+ // Prefereix el div del subgrup o del grup per no arrossegar tota la pàgina
+ var scope=subCode?igeExtractDivInner(html,subCode):"";
+ if(!scope)scope=igeExtractDivInner(html,groupCode)||html;
  var out=[],seen=new Set();
  function add(code,label){
   code=String(code||"").trim();
@@ -1644,34 +1670,35 @@ async function igeLoadSeriesList(groupCode,subCode){
   seen.add(code);
   out.push({id:"ige-ser-"+code,label:label,type:"ige-series",code:code,url:"https://www.ige.gal/igebdt/igeapi/json/datosserc/"+encodeURIComponent(code)});
  }
- try{
-  var doc=new DOMParser().parseFromString(html,"text/html");
-  Array.from(doc.querySelectorAll('a[href*="serie="]')).forEach(function(a){
-   var href=(a.getAttribute("href")||"").replace(/&amp;/g,"&");
-   var m=href.match(/serie=([^&]+)/i);
-   if(!m)return;
-   try{add(decodeURIComponent(m[1]),a.textContent||"")}catch(e){add(m[1],a.textContent||"")}
-  });
- }catch(e){}
- var re=/serie=([^&"'<>]+)/gi,m;
- var labels={};
- var reLab=/serie=([^&"'<>]+)[^"']*["'][^>]*>([^<]+)/gi;
- while((m=reLab.exec(String(html||"")))){
-  try{labels[decodeURIComponent(m[1])]=m[2]}catch(e){labels[m[1]]=m[2]}
+ var reA=/href=["']([^"']*)["'][^>]*>([^<]*)</gi,m;
+ while((m=reA.exec(scope))){
+  var href=(m[1]||"").replace(/&amp;/g,"&");
+  var label=m[2]||"";
+  var sm=href.match(/[?&]serie=([^&]+)/i);
+  if(sm){
+   try{add(decodeURIComponent(sm[1]),label)}catch(e){add(sm[1],label)}
+   continue;
+  }
+  // En molts casos el "subgrupo" és ja el codi de sèrie a datosserc
+  var gm=href.match(/[?&]grupo=([^&]+)/i);
+  var sub=href.match(/[?&]subgrupo=([^&]+)/i);
+  if(gm&&sub){
+   var g,s;
+   try{g=decodeURIComponent(gm[1]);s=decodeURIComponent(sub[1])}catch(e){g=gm[1];s=sub[1]}
+   if(subCode&&s!==subCode)continue;
+   if(!subCode&&g!==groupCode)continue;
+   // Només afegeix com a sèrie si estem al nivell fulla (amb subCode)
+   if(subCode)add(s,label);
+  }
  }
- var md=/\[([^\]]+)\]\(([^)]*serie=([^&)]+)[^)]*)\)/g;
- while((m=md.exec(String(html||"")))){
-  try{labels[decodeURIComponent(m[3])]=m[1]}catch(e){labels[m[3]]=m[1]}
+ // Regex serie=
+ var re=/[?&]serie=([^&"'<>]+)/gi;
+ while((m=re.exec(scope))){
+  try{add(decodeURIComponent(m[1]),"")}catch(e){add(m[1],"")}
  }
- while((m=re.exec(String(html||"")))){
-  var c;try{c=decodeURIComponent(m[1])}catch(e){c=m[1]}
-  add(c,labels[c]||c);
- }
- // Si només hi ha un subgrup=serie (cas DEF), el codi de sèrie és el subgrup
- if(!out.length&&subCode){
-  add(subCode,subCode);
- }
- out.sort(function(a,b){return a.label.localeCompare(b.label,"gl",{numeric:true})});
+ // Si tenim subCode i no hi ha llista, el propi subCode és la sèrie
+ if(!out.length&&subCode)add(subCode,subCode);
+ out.sort(function(a,b){return a.label.localeCompare(b.label,"gl",{numeric:true,sensitivity:"base"})});
  if(!out.length)throw new Error("no s'han trobat sèries en aquest apartat.");
  return out;
 }
