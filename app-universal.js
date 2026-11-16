@@ -1566,46 +1566,77 @@ function iecaFlattenHierarchy(hd,hierMeta){
  var out=[],seen=new Set();
  var root=hd&&hd.data;
  var isTemporal=hierMeta&&(/TEMPOR/i.test(String(hierMeta.alias||""))||/TEMPOR|TRIMESTR|ANUAL|MENSUAL/i.test(String(hierMeta.des||"")));
- var maxYear=(new Date()).getFullYear()+1;
- function yearFromMember(n){
-  var s=String(n.des||n.label||n.cod||"");
-  var m=s.match(/\b(19|20)\d{2}\b/);
-  if(m)return Number(m[0]);
-  var c=String(n.cod||"");
-  if(/^\d{4,5}$/.test(c)){
-   var y=Number(c.slice(0,4));
-   if(y>=1900&&y<=2100)return y;
-  }
+ function periodFromText(s){
+  s=String(s||"");
+  var q=null,y=null,m;
+  m=s.match(/\\b([1-4])(?:er|º|\\.er|\\.º)?\\s*(?:trimestre|trim\\.)\\s*(?:de\\s*)?(19|20)\\d{2}\\b/i);
+  if(m){q=Number(m[1]);y=Number((m[2]||"")+s.match(/\\b(19|20)\\d{2}\\b/)[0].slice(2));return y*4+q;}
+  m=s.match(/\\b(19|20)\\d{2}\\b/);
+  if(m)y=Number(m[0]);
+  if(y!=null)return y*4+4;
   return null;
  }
- function accept(n){
-  if(!isTemporal)return true;
-  var y=yearFromMember(n);
-  if(y==null)return true;
-  return y>=1990&&y<=maxYear;
+ function rangeFromText(s){
+  s=String(s||"").replace(/\\s+/g," ").trim();
+  if(!s)return null;
+  var ms=s.match(/desde(?:\\s+el)?\\s+([1-4])(?:er|º|\\.er|\\.º)?\\s*(?:trimestre|trim\\.)?\\s*(?:de\\s*)?(19|20)\\d{2}\\s+(?:al|hasta|a)\\s+([1-4])(?:er|º|\\.er|\\.º)?\\s*(?:trimestre|trim\\.)?\\s*(?:de\\s*)?(19|20)\\d{2}/i);
+  if(ms){
+   var ys=Number((ms[2]||"")+ms[0].match(/(?:19|20)\\d{2}/)[0].slice(2));
+   var ye=Number((ms[4]||"")+ms[0].match(/(?:19|20)\\d{2}/g)[1].slice(2));
+   return{min:ys*4+Number(ms[1]),max:ye*4+Number(ms[3])};
+  }
+  var ys2=s.match(/(?:desde|a partir de)\\s+(?:el\\s+)?(?:1er\\s+trimestre\\s+de\\s+)?((?:19|20)\\d{2})/i);
+  var ye2=s.match(/(?:al|hasta)\\s+(?:el\\s+)?(?:[1-4](?:er|º)?\\s+trimestre\\s+de\\s+)?((?:19|20)\\d{2})/i);
+  if(ys2&&ye2)return{min:Number(ys2[1])*4+1,max:Number(ye2[1])*4+4};
+  return null;
  }
- function pushMember(n){
-  var id=n.id!=null?String(n.id):"";
-  if(!id||id==="null"||seen.has(id)||!accept(n))return;
+ function nodeLabel(n){
+  return String(n&& (n.des!=null?n.des:(n.label!=null?n.label:n.cod)) || "").replace(/\\s+/g," ").trim();
+ }
+ function yearFromMember(n){
+  var p=periodFromText(nodeLabel(n));
+  return p!=null?Math.floor((p-1)/4):null;
+ }
+ function accept(n,path){
+  if(!isTemporal)return true;
+  var p=periodFromText(nodeLabel(n));
+  if(p==null){
+   var c=String(n&&n.cod||"");
+   if(/^\\d{4,5}$/.test(c)){
+    var y=Number(c.slice(0,4));
+    if(y>=1900&&y<=2100)p=y*4+4;
+   }
+  }
+  var range=null;
+  for(var i=path.length-1;i>=0&&!range;i--)range=rangeFromText(path[i]);
+  if(range&&p!=null)return p>=range.min&&p<=range.max;
+  return true;
+ }
+ function pushMember(n,path){
+  var id=n&&n.id!=null?String(n.id):"";
+  if(!id||id==="null"||seen.has(id)||!accept(n,path))return;
   if(n.level==null||n.level<0)return;
   seen.add(id);
-  var lab=String(n.des||n.label||n.cod||id).replace(/^\([^)]*\)\s*/,"").trim();
+  var lab=nodeLabel(n).replace(/^\\([^)]*\\)\\s*/,"").trim();
   out.push({id:id,code:String(n.cod||id),label:lab||id,level:n.level,year:yearFromMember(n)});
  }
- function walk(n){
+ function walk(n,path){
   if(!n||typeof n!=="object")return;
+  var label=nodeLabel(n);
+  var nextPath=label?[].concat(path||[],[label]):(path||[]);
   var kids=n.children||[];
   var isLeaf=!kids.length||n.isLastLevel===true;
-  if(isLeaf||!kids.length)pushMember(n);
-  kids.forEach(walk);
+  if(isLeaf||!kids.length)pushMember(n,nextPath);
+  kids.forEach(function(k){walk(k,nextPath)});
  }
- walk(root);
+ walk(root,[]);
  if(!out.length){
-  (function walk2(n){
+  (function walk2(n,path){
    if(!n)return;
-   pushMember(n);
-   (n.children||[]).forEach(walk2);
-  })(root);
+   var label=nodeLabel(n),nextPath=label?[].concat(path||[],[label]):(path||[]);
+   pushMember(n,nextPath);
+   (n.children||[]).forEach(function(k){walk2(k,nextPath)});
+  })(root,[]);
  }
  out.sort(function(a,b){return String(a.code).localeCompare(String(b.code),"es",{numeric:true})});
  return out;
