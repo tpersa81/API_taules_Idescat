@@ -201,7 +201,7 @@
     "name": "Censo Anual de Población",
     "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176992&menu=ultiDatos&idp=1254735572981",
     "group": "Demografía y población",
-    "topic": "2026-07-01"
+    "topic": "2026-10-01"
   },
   {
     "name": "Nomenclátor: Población por unidad poblacional",
@@ -411,7 +411,7 @@
     "name": "Índice de cifra de negocios empresarial",
     "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176958&menu=ultiDatos&idp=1254735576550",
     "group": "Economía",
-    "topic": "Agosto 2026"
+    "topic": "Septiembre 2026"
   },
   {
     "name": "Encuesta coyuntural sobre stocks y existencias",
@@ -501,7 +501,7 @@
     "name": "Estadística de transmisiones de derechos de la propiedad",
     "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736171438&menu=ultiDatos&idp=1254735576606",
     "group": "Economía",
-    "topic": "Agosto 2026"
+    "topic": "Septiembre 2026"
   },
   {
     "name": "Estadística sobre ejecuciones hipotecarias",
@@ -579,7 +579,7 @@
     "name": "Índices de precios de materiales, nacional de la mano de obra y de componentes de transporte de viajeros por carretera",
     "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736154972&menu=resultados&idp=1254735576757",
     "group": "Industria, energía y construcción",
-    "topic": "Agosto 2026"
+    "topic": "Septiembre 2026"
   },
   {
     "name": "Índice de precios de vivienda",
@@ -885,19 +885,19 @@
     "name": "Encuestas sobre actividad de las empresas de transporte de viajeros",
     "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176971&menu=resultados&idp=1254735576820",
     "group": "Servicios",
-    "topic": "Agosto 2026"
+    "topic": "Septiembre 2026"
   },
   {
     "name": "Encuesta de turismos de servicio público",
     "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176972&menu=resultados&idp=1254735576820",
     "group": "Servicios",
-    "topic": "Agosto 2026"
+    "topic": "Septiembre 2026"
   },
   {
     "name": "Estadística del taxi",
     "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176959&menu=resultados&idp=1254735576820",
     "group": "Servicios",
-    "topic": "Agosto 2026"
+    "topic": "Septiembre 2026"
   },
   {
     "name": "Índice de precios de consumo (IPC)",
@@ -909,7 +909,7 @@
     "name": "Índice de precios de consumo armonizado (IPCA)",
     "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176803&menu=ultiDatos&idp=1254735976607",
     "group": "Nivel y condiciones de vida (IPC)",
-    "topic": "Avance. Octubre 2026"
+    "topic": "Octubre 2026"
   },
   {
     "name": "Índice de garantía de competitividad",
