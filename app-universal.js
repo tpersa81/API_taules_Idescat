@@ -2682,8 +2682,14 @@ async function nomisSelectDataset(id){
  for(var i=0;i<dimsDef.length;i++){
   var dd=dimsDef[i],dimId=String(dd&&dd.conceptref||"").trim();
   if(!dimId)continue;
-  var dimUrl=base+"/dataset/"+encodeURIComponent(id)+"/"+encodeURIComponent(dimId)+".def.sdmx.json";
-  var raw=await fetchJson(dimUrl),cats=nomisExtractCodes(raw);
+  // NOMIS exposa els endpoints de dimensió amb el nom del concept en minúscules
+  // (p. ex. /geography.def.sdmx.json), mentre que conceptref arriba en majúscules.
+  var dimUrl=base+"/dataset/"+encodeURIComponent(id)+"/"+encodeURIComponent(dimId.toLowerCase())+".def.sdmx.json";
+  var raw=null,cats=[];
+  try{
+   raw=await fetchJson(dimUrl);
+   cats=nomisExtractCodes(raw);
+  }catch(e){}
   if(!cats.length&&dd.codelist){
    try{cats=nomisExtractCodes(await fetchJson(base+"/codelist/"+encodeURIComponent(dd.codelist)+".def.sdmx.json"))}catch(e){}
   }
