@@ -1040,7 +1040,6 @@ function recursiveProxyStart(kind){
 }
 
 function setProviderUI(){setLabels();var isEuro=state.provider==="eurostat",isIne=state.provider==="ine",isIstac=state.provider==="istac",isIcane=state.provider==="icane",isIge=state.provider==="ige",isNomis=state.provider==="nomis",isSweden=state.provider==="pxweb"&&state.pxPreset==="sweden",isFinland=state.provider==="pxweb"&&state.pxPreset==="finland",isIceland=state.provider==="pxweb"&&state.pxPreset==="iceland",isNorway=state.provider==="pxweb"&&state.pxPreset==="norway",isEustat=state.provider==="pxweb"&&state.pxPreset==="eustat",isFlatPx=state.provider==="pxweb"&&isEustat,sl=null;
- if(!isNomis)nomisHideSearchUI();
  otherBox=$("otherProviderWrap");if(otherBox)otherBox.hidden=!$("provider")||$("provider").value!=="other";var fixedGrid=document.querySelector("#step2>.grid"),euroBox=$("eurostatLevels");if(fixedGrid){fixedGrid.hidden=false;fixedGrid.style.display="";if(isSweden||isFinland||isIceland){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}}if(euroBox)euroBox.hidden=!(isEuro||isIstac||isIcane||isIge||isNomis||isSweden||isFinland||isIceland||isNorway||isIne||state.provider==="idescat"||isEustat);if((isEuro||isIne||isIstac||isIcane||isIge)&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isNomis&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"});if(fixedGrid.querySelector("label"))fixedGrid.querySelector("label").firstChild.textContent="Dataset "}else if(isEustat&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i<3?"":"none"});if(fixedGrid.querySelector("label:nth-child(2)"))fixedGrid.querySelector("label:nth-child(2)").firstChild.textContent="Operació ";if(fixedGrid.querySelector("label:nth-child(3)"))fixedGrid.querySelector("label:nth-child(3)").firstChild.textContent="Taula "}else if(isNorway&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isFlatPx&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}else if(fixedGrid&&!isSweden&&!isFinland&&!isIceland){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display=""})}if(fixedGrid&&(state.provider==="idescat"||isIstac||isIcane||isIge||isEustat||state.pxPreset==="unece")){fixedGrid.hidden=true;fixedGrid.style.display="none"} if(isNomis&&fixedGrid){fixedGrid.hidden=false;fixedGrid.style.display="";Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}var tl=$("table")&&$("table").parentElement,gl=$("geo")&&$("geo").parentElement;if(tl)tl.style.display=(isEuro||isIne||isIstac||isIcane||isIge||isFlatPx||isNorway||isSweden||isFinland||isIceland)?"none":"";if(gl)gl.style.display=(isEuro||isIne||isIstac||isIcane||isIge||isFlatPx||isNorway||isSweden||isFinland||isIceland)?"none":""; var sel=(state.provider==="pxweb"||state.provider==="istac"||state.provider==="icane"||state.provider==="ige"||state.provider==="nomis")?"other":state.provider;if($("provider")&&[].slice.call($("provider").options).some(function(o){return o.value===sel}))$("provider").value=sel;if($("otherProvider"))$("otherProvider").value=state.provider==="istac"?"istac":state.provider==="icane"?"icane":state.provider==="ige"?"ige":state.provider==="nomis"?"nomis":state.provider==="nomis"?"nomis":(state.provider==="pxweb"&&state.pxPreset?"pxweb:"+state.pxPreset:"")}
 function icelandEnglishRootLabel(label){
  var s=String(label||"").trim(),n=s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
@@ -1207,7 +1206,7 @@ function igeAddLevel(items,index,labelText){
  state.igeItems.set("igeLevel"+index,list);
  sel.onchange=async function(){
   clearQueryView();if(!sel.value)return;
-  try{await igeSelectDynamic(index,sel.value)}catch(e){status((/^IGE:/i.test(String(e&&e.message||e))?"":"IGE: ")+(e&&e.message?String(e.message):String(e)),"error")}
+  try{await igeSelectDynamic(index,sel.value)}catch(e){var msg=String(e&&e.message||e);var pre=state.provider==="nomis"?"ONS/Nomis: ":"IGE: ";if(/^(IGE|ONS\/Nomis):/i.test(msg))pre="";status(pre+msg,"error")}
  };
  if(list.length===1){sel.value=list[0].id;sel.onchange()}
 }
@@ -1224,7 +1223,7 @@ async function igeSelectRoot(){
 }
 async function igeSelectDynamic(index,val){
  var items=state.igeItems.get("igeLevel"+index)||[],item=items.find(function(x){return String(x.id)===String(val)});
- if(!item)throw new Error("No s'ha trobat l'element seleccionat de l'IGE.");
+ if(!item)throw new Error(state.provider==="nomis"?"ONS/Nomis: element no trobat.":"No s'ha trobat l'element seleccionat de l'IGE.");
  var box=$("eurostatLevels");
  if(box)Array.from(box.querySelectorAll("[data-ige-level]")).forEach(function(l){if(Number(l.dataset.igeLevel)>index)l.remove()});
  state.igePath=state.igePath.slice(0,index+1);state.igePath[index]=item.id;
@@ -2528,7 +2527,7 @@ async function loadStats(){
  else if(state.provider==="istac"){await istacLoadOperations();out=[]}
  else if(state.provider==="icane"){await icaneLoadCatalog();out=[]}
  else if(state.provider==="ige"){await igeLoadRoot();out=[]}
- else if(state.provider==="nomis"){await nomisSelectRoot();out=[]}
+ else if(state.provider==="nomis"){out=[]}
  else if(state.pxPreset==="sweden"){await loadSwedenV2Tables();var swRoot=await swedenV2Children([],null);out=swRoot.map(function(x){return{value:x.id,label:x.label}})}
  else if(state.pxPreset==="eustat"){
  var euCatalog=await fetchJson(c.base);
@@ -2564,6 +2563,7 @@ else out=a(await fetchJson(c.base)).map(function(x){var id=String(f(x,"id","dbid
  else if(state.provider==="istac"){hideStatSelector(true);istacDraw(0,"");status("")}
  else if(state.provider==="icane"){hideStatSelector(true);icaneDraw();status("")}
  else if(state.provider==="ige"){hideStatSelector(true);await igeSelectRoot();status("")}
+ else if(state.provider==="nomis"){hideStatSelector(true);await nomisSelectRoot();status("")}
  else if(state.provider==="idescat"){hideStatSelector(true);recursiveProxyStart("idescat")}
  else if(state.pxPreset==="eustat"){hideStatSelector(true);recursiveProxyStart("eustat")}
  else if(state.pxPreset==="unece"){hideStatSelector(true);addUniversalRootLevel(out,"Grup temàtic",async function(v){state.selected.stat=v;await pxRecursiveSelectRoot(v)})}
@@ -2664,7 +2664,6 @@ function deriveConcept(s){s=String(s||"");var p=s.indexOf(".");return p>=0?s.sli
 function deriveCross(s){s=String(s||"").trim();var p=s.indexOf(". ");if(p<0)return"";var r=s.slice(p+2),q=r.indexOf(". A");return(q>=0?r.slice(0,q):r).trim()}
 
 async function nomisLoadDatasets(search){
- // Compat: retorna llista plana {value,label} (p.ex. cerca)
  var catalog=await nomisLoadCatalog(search);
  return catalog.map(function(x){return{id:x.id,value:x.id,label:x.label}});
 }
@@ -2673,8 +2672,8 @@ function nomisAnnotationMap(item){
  var ann=item&&item.annotations&&item.annotations.annotation;
  if(!Array.isArray(ann))ann=ann?[ann]:[];
  ann.forEach(function(a){
-  var title=String(a&&a.annotationtitle||a&&a.annotationType||"").trim();
-  var text=String(a&&a.annotationtext||a&&a.annotationText||"").trim();
+  var title=String(a&&a.annotationtitle||"").trim();
+  var text=String(a&&a.annotationtext||"").trim();
   if(title)map[title]=text;
  });
  return map;
@@ -2687,9 +2686,9 @@ function nomisAssignThemes(item){
  var desc=String(item&&item.description&&item.description.value||item&&item.description||"").toLowerCase();
  var blob=keywords+" "+source+" "+name+" "+desc;
  var themes=[];
- function add(t){if(themes.indexOf(t)<0)themes.push(t)}
+ function add(th){if(themes.indexOf(th)<0)themes.push(th)}
  if(/census|ks0|qs0|uv0|lc0|dc0/.test(blob))add("Census");
- if(/population|resident|demograph|age band|ethnicity|country of birth/.test(blob))add("Population & demography");
+ if(/population|resident|demograph|age band|ethnicity/.test(blob))add("Population & demography");
  if(/employment|unemployment|labour|labor|workforce|jobseeker|claimant|economically active|occupation|hours worked|self-employed/.test(blob))add("Employment & labour market");
  if(/earning|wage|pay|income|salary|hourly|weekly pay/.test(blob))add("Earnings & income");
  if(/benefit|pension|universal credit|housing benefit|tax credit|dwp|disability living/.test(blob))add("Benefits & welfare");
@@ -2707,7 +2706,7 @@ async function nomisLoadCatalog(search){
  var q=String(search||"").trim();
  var queries=q?[q]:["population","employment","earnings","claimant","labour","business","gdp","industry","housing","benefit","census","income","workforce","health","education"];
  var byId=new Map();
- status(q?"Cercant a Nomis: "+q+"…":"Carregant catàleg Nomis per temes…");
+ status(q?"Cercant a Nomis…":"Carregant catàleg Nomis…");
  for(var qi=0;qi<queries.length;qi++){
   var url=base+"/dataset/def.sdmx.json?search="+encodeURIComponent(queries[qi]);
   try{
@@ -2726,14 +2725,8 @@ async function nomisLoadCatalog(search){
      themes.forEach(function(th){if(prev.themes.indexOf(th)<0)prev.themes.push(th)});
     }else{
      byId.set(id,{
-      id:id,
-      value:id,
-      label:label+" ("+id+")",
-      title:label,
-      themes:themes,
-      keywords:map["Keywords"]||"",
-      source:map["contenttype/sources"]||"",
-      status:map["Status"]||""
+      id:id,value:id,label:label+" ("+id+")",title:label,
+      themes:themes,keywords:map["Keywords"]||"",source:map["contenttype/sources"]||""
      });
     }
    });
@@ -2755,30 +2748,40 @@ function nomisThemesFromCatalog(catalog){
  var themes=[];
  map.forEach(function(list,th){
   list=list.slice().sort(function(a,b){return a.label.localeCompare(b.label,"en",{numeric:true})});
-  themes.push({id:"nomis-th-"+th,label:th+" ("+list.length+")",type:"nomis-theme",theme:th,_children:list});
+  themes.push({
+   id:"nomis-th-"+th.replace(/[^a-z0-9]+/gi,"-").toLowerCase(),
+   label:th+" ("+list.length+")",
+   type:"nomis-theme",
+   theme:th,
+   _children:list
+  });
  });
  themes.sort(function(a,b){return a.label.localeCompare(b.label,"en",{numeric:true})});
  return themes;
 }
 async function nomisSelectRoot(){
- eurostatClearLevels();
- await nomisEnsureSearchUI();
- var catalog=state.nomisCatalog&&state.nomisCatalog.length?state.nomisCatalog:await nomisLoadCatalog("");
+ // Navegació per desplegables (com IGE), sense cerca
+ var box=$("eurostatLevels");
+ if(box){box.innerHTML="";box.hidden=false;box.style.display="grid"}
+ if(typeof igeClearLevels==="function")igeClearLevels();
+ else if(state.igeItems&&state.igeItems.clear)state.igeItems.clear();
+ hideStatSelector(true);
+ var catalog=await nomisLoadCatalog("");
  var themes=nomisThemesFromCatalog(catalog);
  if(!themes.length)throw new Error("ONS/Nomis: no s'han trobat datasets.");
  igeAddLevel(themes,0,"Tema");
- // Amaga el selector pla d'estadística (navegació per nivells)
- hideStatSelector(true);
- status("Nomis: "+catalog.length+" datasets en "+themes.length+" temes.");
+ if(box){box.hidden=false;box.style.display="grid"}
+ status("Nomis: "+catalog.length+" datasets · "+themes.length+" temes.");
 }
 async function nomisSelectFromLevel(index,val){
  var items=state.igeItems.get("igeLevel"+index)||[];
  var item=items.find(function(x){return String(x.id)===String(val)});
- if(!item)throw new Error("Element Nomis no trobat.");
+ if(!item)throw new Error("ONS/Nomis: element no trobat.");
  if(item.type==="nomis-theme"){
   var kids=(item._children||[]).map(function(ds){
    return{id:"nomis-ds-"+ds.id,label:ds.label,type:"nomis-dataset",code:ds.id,datasetId:ds.id};
   });
+  if(!kids.length)throw new Error("ONS/Nomis: aquest tema no té datasets.");
   igeAddLevel(kids,index+1,"Dataset");
   return;
  }
@@ -2786,44 +2789,7 @@ async function nomisSelectFromLevel(index,val){
   await nomisSelectDataset(item.datasetId||item.code);
   return;
  }
-}
-async function nomisEnsureSearchUI(){
- var box=$("eurostatLevels");
- if(!box)return;
- box.hidden=false;
- var existing=$("nomisSearchWrap");
- if(existing){existing.hidden=false;return;}
- var wrap=document.createElement("div");
- wrap.id="nomisSearchWrap";
- wrap.style.display="flex";
- wrap.style.flexWrap="wrap";
- wrap.style.gap="0.5rem";
- wrap.style.alignItems="end";
- wrap.style.marginBottom="0.75rem";
- wrap.innerHTML='<label style="flex:1;min-width:12rem">Cerca datasets (Nomis)<input id="nomisSearch" type="search" placeholder="economy, earnings, claimant, housing…" autocomplete="off"></label><button type="button" id="nomisSearchBtn" class="secondary">Cerca</button>';
- box.insertBefore(wrap, box.firstChild);
- var run=async function(){
-  var term=($("nomisSearch")&&$("nomisSearch").value||"").trim();
-  status("Cercant a Nomis…");
-  try{
-   await nomisLoadCatalog(term||"");
-   eurostatClearLevels();
-   // re-insereix la cerca (eurostatClearLevels pot buidar el box)
-   var b=$("eurostatLevels");if(b){b.hidden=false;b.innerHTML="";}
-   var w=$("nomisSearchWrap");
-   if(w&&w.parentNode)w.parentNode.removeChild(w);
-   // reconstrueix UI de cerca amb el terme
-   await nomisEnsureSearchUI();
-   if($("nomisSearch"))$("nomisSearch").value=term;
-   await nomisSelectRoot();
-  }catch(e){status(e&&e.message?e.message:String(e),"error")}
- };
- $("nomisSearchBtn").onclick=function(){run()};
- $("nomisSearch").onkeydown=function(e){if(e.key==="Enter"){e.preventDefault();run()}};
-}
-function nomisHideSearchUI(){
- var existing=$("nomisSearchWrap");
- if(existing)existing.hidden=true;
+ throw new Error("ONS/Nomis: tipus desconegut ("+(item.type||"?")+").");
 }
 
 async function nomisSelectDataset(id){
