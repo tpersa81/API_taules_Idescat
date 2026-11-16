@@ -2677,38 +2677,41 @@ async function nomisSelectDataset(id){
  var dimsDef=kf&&kf.components&&kf.components.dimension||[];
  if(!Array.isArray(dimsDef))dimsDef=[dimsDef];
  var out={id:[],size:[],dimension:{},value:[]};
- var timedim=kf&&kf.components&&kf.components.timedimension, tdId=String(timedim&&timedim.conceptref||"").trim();
- if(tdId&&!dimsDef.some(function(x){return String(x&&x.conceptref||"").trim()===tdId}))dimsDef=dimsDef.concat([{conceptref:tdId,codelist:timedim.codelist}]);
+ var timedim=kf&&kf.components&&kf.components.timedimension;
+ if(timedim)dimsDef=dimsDef.concat([{conceptref:timedim.conceptref,codelist:timedim.codelist}]);
  for(var i=0;i<dimsDef.length;i++){
-  var dd=dimsDef[i],dimId=String(dd&&dd.conceptref||"").trim();
+  var dd=dimsDef[i],dimId=String(dd&&dd.conceptref||"").trim(),cl=String(dd&&dd.codelist||"").trim();
   if(!dimId)continue;
-  // NOMIS exposa els endpoints de dimensió amb el nom del concept en minúscules
-  // (p. ex. /geography.def.sdmx.json), mentre que conceptref arriba en majúscules.
-  var dimUrl=base+"/dataset/"+encodeURIComponent(id)+"/"+encodeURIComponent(dimId.toLowerCase())+".def.sdmx.json";
-  var raw=null,cats=[];
-  try{
-   raw=await fetchJson(dimUrl);
-   cats=nomisExtractCodes(raw);
-  }catch(e){}
-  if(!cats.length&&dd.codelist){
-   try{cats=nomisExtractCodes(await fetchJson(base+"/codelist/"+encodeURIComponent(dd.codelist)+".def.sdmx.json"))}catch(e){}
-  }
-  if(!cats.length){
-   // Fallback: JSON-stat with the default selection, useful for dimensions
-   // whose codelist is not exposed in the simplified SDMX document.
+  var cats=[];
+  // Geography is hierarchical in NOMIS, so its top level must come from
+  // the dataset-specific dimension endpoint. Other dimensions have a
+  // documented complete codelist endpoint.
+  if(dimId.toUpperCase()==="GEOGRAPHY"){
    try{
-    var fallback=await fetchJson(base+"/dataset/"+encodeURIComponent(id)+"/jsonstat.json?setallwherenotspecified=false&time=latest");
-    var fd=fallback&&fallback.dimension&&fallback.dimension[dimId],fc=fd&&fd.category;
-    if(fc){
-     var idx=Array.isArray(fc.index)?fc.index:Object.keys(fc.index||{});
-     cats=idx.map(function(code){return{code:String(code),label:String(fc.label&&fc.label[code]||code)}});
-    }
+    var gr=await fetchJson(base+"/dataset/"+encodeURIComponent(id)+"/geography.def.sdmx.json");
+    cats=nomisExtractCodes(gr);
+   }catch(e){}
+  }
+  if(!cats.length&&cl){
+   try{
+    var cr=await fetchJson(base+"/codelist/"+encodeURIComponent(cl)+".def.sdmx.json");
+    cats=nomisExtractCodes(cr);
+   }catch(e){}
+  }
+  // Last fallback: ask NOMIS for the dimension in dataset context.
+  if(!cats.length){
+   try{
+    var u=base+"/dataset/"+encodeURIComponent(id)+"/"+encodeURIComponent(dimId.toLowerCase())+".def.sdmx.json";
+    var raw=await fetchJson(u),q=new URLSearchParams();
+    if(dimId.toUpperCase()!=="GEOGRAPHY")q.set("geography","2092957697");
+    var rr=Object.keys(Object.fromEntries(q)).length?await fetchJson(u+"?"+q.toString()):raw;
+    cats=nomisExtractCodes(rr);
    }catch(e){}
   }
   if(!cats.length)continue;
-  out.id.push(dimId);out.size.push(cats.length);
   var labels={},index=[];
   cats.forEach(function(x){labels[x.code]=x.label;index.push(x.code)});
+  out.id.push(dimId);out.size.push(cats.length);
   out.dimension[dimId]={label:dimId,category:{index:index,label:labels}};
  }
  if(!out.id.length)throw new Error("ONS: no s'han pogut recuperar les dimensions del conjunt de dades.");
