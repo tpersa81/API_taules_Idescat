@@ -2674,7 +2674,8 @@ async function nomisLoadDatasets(search){
   var id=String(x&&x.id||"").trim();
   var name=x&&x.name;
   var label=String(name&&name.value||name||id).trim();
-  return{id:id,label:label||id};
+  // fill() espera {value,label}; el value ha de ser l'id Nomis (NM_xxx), no el títol
+  return{id:id,value:id,label:(label||id)+" ("+id+")"};
  }).filter(function(x){return x.id});
  // Ordena i treu duplicats
  var seen=new Set();
@@ -2745,6 +2746,8 @@ async function nomisFetchDimCodes(base,datasetId,dimId,codelist){
  return cats;
 }
 async function nomisSelectDataset(id){
+ id=String(id||"").trim();
+ if(!id||!/^NM_/i.test(id))throw new Error("ONS/Nomis: identificador de dataset no vàlid ("+id+"). Cal un codi tipus NM_509_1, no el títol de la taula.");
  status("Carregant dimensions ONS/Nomis…");
  var base=provider().base.replace(/\/+$/,"");
  var defUrl=base+"/dataset/"+encodeURIComponent(id)+"/def.sdmx.json";
