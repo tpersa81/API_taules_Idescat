@@ -1658,7 +1658,7 @@ async function igeLoadSeriesList(groupCode,subCode){
  var url="https://www.ige.gal/igebdt/igeapi/series.jsp?idioma=es&grupo="+encodeURIComponent(groupCode);
  if(subCode)url+="&subgrupo="+encodeURIComponent(subCode);
  var html=await fetchText(url,{cache:"no-store"});
- // Prefereix el div del subgrup o del grup per no arrossegar tota la pàgina
+ // Abast: div del subgrup si existeix
  var scope=subCode?igeExtractDivInner(html,subCode):"";
  if(!scope)scope=igeExtractDivInner(html,groupCode)||html;
  var out=[],seen=new Set();
@@ -1670,46 +1670,63 @@ async function igeLoadSeriesList(groupCode,subCode){
   seen.add(code);
   out.push({id:"ige-ser-"+code,label:label,type:"ige-series",code:code,url:"https://www.ige.gal/igebdt/igeapi/json/datosserc/"+encodeURIComponent(code)});
  }
+ // NOMÉS codis amb paràmetre serie= (no confondre amb subgrupo)
  var reA=/href=["']([^"']*)["'][^>]*>([^<]*)</gi,m;
  while((m=reA.exec(scope))){
   var href=(m[1]||"").replace(/&amp;/g,"&");
   var label=m[2]||"";
   var sm=href.match(/[?&]serie=([^&]+)/i);
-  if(sm){
-   try{add(decodeURIComponent(sm[1]),label)}catch(e){add(sm[1],label)}
-   continue;
-  }
-  // En molts casos el "subgrupo" és ja el codi de sèrie a datosserc
-  var gm=href.match(/[?&]grupo=([^&]+)/i);
-  var sub=href.match(/[?&]subgrupo=([^&]+)/i);
-  if(gm&&sub){
-   var g,s;
-   try{g=decodeURIComponent(gm[1]);s=decodeURIComponent(sub[1])}catch(e){g=gm[1];s=sub[1]}
-   if(subCode&&s!==subCode)continue;
-   if(!subCode&&g!==groupCode)continue;
-   // Només afegeix com a sèrie si estem al nivell fulla (amb subCode)
-   if(subCode)add(s,label);
-  }
+  if(!sm)continue;
+  try{add(decodeURIComponent(sm[1]),label)}catch(e){add(sm[1],label)}
  }
- // Regex serie=
+ // Regex global sobre l'abast
  var re=/[?&]serie=([^&"'<>]+)/gi;
  while((m=re.exec(scope))){
   try{add(decodeURIComponent(m[1]),"")}catch(e){add(m[1],"")}
  }
- // Si tenim subCode i no hi ha llista, el propi subCode és la sèrie
- if(!out.length&&subCode)add(subCode,subCode);
+ // verDirec('CODE'...) com a pista addicional
+ var reV=/verDirec\(\s*['"]([^'"]+)['"]/g;
+ while((m=reV.exec(scope)))add(m[1],m[1]);
+ // Markdown
+ var md=/\[([^\]]+)\]\(([^)]*[?&]serie=([^&)]+)[^)]*)\)/g;
+ while((m=md.exec(String(html||"")))){
+  try{add(decodeURIComponent(m[3]),m[1])}catch(e){add(m[3],m[1])}
+ }
  out.sort(function(a,b){return a.label.localeCompare(b.label,"gl",{numeric:true,sensitivity:"base"})});
+ // Si no hi ha serie= però el subgrup és en realitat una sèrie (cas DEF)
+ if(!out.length&&subCode){
+  // Prova el codi del subgrup; igeSelectIndiOrSeries ja gestiona datos buits
+  add(subCode,subCode);
+ }
  if(!out.length)throw new Error("no s'han trobat sèries en aquest apartat.");
  return out;
 }
 async function igeSelectIndiOrSeries(rec){
  status("Carregant dades de l'IGE…");
  var kind=rec.type==="ige-series"?"series":"indicator";
- var raw=await fetchJson(rec.url);
+ var urls=[rec.url];
+ if(kind==="series"){
+  var code=String(rec.code||"").trim();
+  urls=["https://www.ige.gal/igebdt/igeapi/json/datosserc/"+encodeURIComponent(code)];
+  // alguns codis antics només responen a datosindi
+  urls.push("https://www.ige.gal/igebdt/igeapi/json/datosindi/"+encodeURIComponent(code));
+ }
+ var raw=null,usedUrl=rec.url;
+ for(var ui=0;ui<urls.length;ui++){
+  try{
+   var cand=await fetchJson(urls[ui]);
+   var rows0=Array.isArray(cand&&cand.datos)?cand.datos:[];
+   if(rows0.length){raw=cand;usedUrl=urls[ui];break}
+   if(!raw)raw=cand;
+  }catch(eFetch){/* prova següent */}
+ }
+ if(!raw)throw new Error("no s'ha pogut obtenir la resposta de l'API.");
  var vars=Array.isArray(raw&&raw.variables)?raw.variables:[];
  var rows=Array.isArray(raw&&raw.datos)?raw.datos:[];
  if(!vars.length)throw new Error("resposta sense variables.");
- if(!rows.length)throw new Error("l'API de l'IGE no retorna dades per a aquest indicador/sèrie (datos buit). Prova'n un altre.");
+ if(!rows.length)throw new Error("l'API de l'IGE no retorna dades per al codi "+JSON.stringify(String(rec.code||""))+". Cal triar una sèrie amb paràmetre serie=.");
+ rec.url=usedUrl;
+
  // Construeix dimensions a partir de les columnes
  var dims=[];
  function addDim(id,label,codeIdx,labelIdx,role){
