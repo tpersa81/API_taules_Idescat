@@ -204,6 +204,10 @@ function temporal(d){
      label=String(d&&d.label||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase(),
      r=String(d&&d.role||"").toUpperCase(),
      cats=d&&Array.isArray(d.categories)?d.categories:[];
+ // IECA: només dimensions explícitament temporals (els codis BADEA són ids numèrics i confonen la detecció)
+ if(state.provider==="ieca"){
+  return r.indexOf("TIME")>=0||/TEMPORAL/i.test(id)||/\b(TRIMESTRAL|ANUAL|MENSUAL|TEMPORAL)\b/.test(label);
+ }
  var explicit=["YEAR","MONTH","QUARTER","SEMESTER","BIMONTH","WEEK","DAY","DATE","TIME","TIME_PERIOD","PERIOD","PERIODO","PERIODO_TEMPORAL"].indexOf(id)>=0;
  var named=id.indexOf("TIME")===0||id.indexOf("PER")===0||label==="PERIODO"||label.indexOf("PERIODO ")===0||label==="PERIOD"||label.indexOf("PERIOD ")===0||label.indexOf("TEMPORAL")>=0||label==="TEMPO"||label.indexOf("TEMPO ")===0||label==="TIEMPO"||label.indexOf("TIEMPO ")===0||label==="TIME"||label.indexOf("TIME ")===0||label.indexOf("YEAR")>=0||label.indexOf("MONTH")>=0||label.indexOf("QUARTER")>=0||label.indexOf("SEMESTER")>=0||label.indexOf("TRIMESTRE")>=0||label.indexOf("MES")===0||label.indexOf("AÑO")>=0||label.indexOf("ANO")>=0||label.indexOf("YEAR")>=0||r.indexOf("TIME")>=0||r.indexOf("TEMPOR")>=0;
  var temporalCodes=cats.length>0&&cats.every(function(c){
@@ -1341,20 +1345,23 @@ async function iecaLoadBadeaNodes(operation){
    if(!m)return;
    var kind=/datosaldia/i.test(href)?"datosaldia":"anual";
    var linkText=String(a.textContent||"").replace(/\s+/g," ").trim();
-   var ctx="";
-   var li=a.closest("li");
-   if(li){
-    // Clona i treu subllistes per quedar-nos amb el text de la línia
+   var parts=[],li=a.closest("li"),guard=0;
+   while(li&&guard++<6){
     var clone=li.cloneNode(true);
     Array.from(clone.querySelectorAll("ul")).forEach(function(u){u.remove()});
-    ctx=String(clone.textContent||"").replace(/\s+/g," ").trim();
+    var tline=String(clone.textContent||"").replace(/\s+/g," ").trim();
+    if(tline&&parts.indexOf(tline)<0)parts.unshift(tline);
+    li=li.parentElement?li.parentElement.closest("li"):null;
    }
-   var label=ctx&&ctx.length>linkText.length?ctx:linkText;
-   // Neteja etiquetes massa curtes tipus només "3"
-   if(label.length<4&&ctx)label=ctx;
+   var label=parts.length?parts.join(" · "):linkText;
+   if(label.length>140){
+    label=(parts.length>1?parts[0]+" · ":"")+(linkText||parts[parts.length-1]||m[1]);
+   }
+   if(label.length<4)label=linkText||m[1];
    addNode(m[1],label,kind,href);
   });
  }catch(eDom){}
+
  // Fallback regex
  if(!nodes.length){
   var re=/href=["']([^"']*idNode=(\d+)[^"']*)["'][^>]*>([^<]*)/gi,m;
@@ -1533,65 +1540,73 @@ async function iecaSelectConsulta(rec){
  $("tableInfo").hidden=false;
  $("tableInfo").innerHTML="<strong>Consulta:</strong> "+esc((raw.metainfo&&raw.metainfo.title)||rec.label)+"<span class=\"path\">"+esc(state.iecaConsultaBaseUrl)+"</span><p>Este producto emplea la API de BADEA del Instituto de Estadística y Cartografía de Andalucía (IECA), pero no está certificado o aprobado por el IECA.</p><p class=\"filter-help\">Per defecte l'API només retorna l'últim període. Selecciona els períodes (i la resta de dimensions) i prem Consultar; es construirà l'URL filtrada de BADEA.</p>";
  $("query").disabled=false;
- // Preselecciona l'últim període temporal si n'hi ha
+ // Preselecciona només l'últim període temporal (sortedCats el posa primer)
  try{
-  var timeDim=(ds.id||[]).find(function(id){
+  var timeDimId=(ds.id||[]).find(function(id){
    var dim=ds.dimension&&ds.dimension[id];
-   return dim&&(dim.role==="time"||/TEMPOR/i.test(id)||/TEMPOR|AÑO|TRIMESTRE|MES/i.test(String(dim.label||"")));
+   return dim&&(dim.role==="time"||/TEMPOR/i.test(id));
   });
-  if(timeDim&&state.filters&&state.filters.has(timeDim)){
-   var cats=((ds.dimension[timeDim]||{}).category||{}).index||[];
-   if(cats.length){
-    var last=String(cats[cats.length-1]);
-    state.filters.set(timeDim,new Set([last]));
-    if(typeof updateCells==="function")updateCells();
-    // actualitza UI de filtres si existeix
-    document.querySelectorAll('.filter[data-dim="'+timeDim+'"] input[type="checkbox"]').forEach(function(cb){
-     cb.checked=cb.value===last;
-    });
-    document.querySelectorAll('.filter[data-dim="'+timeDim+'"] .selected-count').forEach(function(el){
-     el.textContent="1 seleccionades";
-    });
-  }
+  if(timeDimId){
+   var sec=document.querySelector('.filter[data-dim="'+timeDimId+'"]');
+   var list=sec&&sec.querySelector('.options');
+   var metaDims=typeof dims==="function"?dims(ds):[];
+   var dimObj=metaDims.find(function(d){return d.id===timeDimId});
+   if(dimObj&&list){
+    var sc=sortedCats(dimObj.categories||[],dimObj);
+    if(sc.length){
+     setFilterSelection(dimObj,sc,[String(sc[0].code)],list);
+    }
+   }
   }
  }catch(ePre){}
  status("");
 }
+
 function iecaFlattenHierarchy(hd,hierMeta){
  var out=[],seen=new Set();
  var root=hd&&hd.data;
+ var isTemporal=hierMeta&&(/TEMPOR/i.test(String(hierMeta.alias||""))||/TEMPOR|TRIMESTR|ANUAL|MENSUAL/i.test(String(hierMeta.des||"")));
+ var maxYear=(new Date()).getFullYear()+1;
+ function yearFromMember(n){
+  var s=String(n.des||n.label||n.cod||"");
+  var m=s.match(/\b(19|20)\d{2}\b/);
+  if(m)return Number(m[0]);
+  var c=String(n.cod||"");
+  if(/^\d{4,5}$/.test(c)){
+   var y=Number(c.slice(0,4));
+   if(y>=1900&&y<=2100)return y;
+  }
+  return null;
+ }
+ function accept(n){
+  if(!isTemporal)return true;
+  var y=yearFromMember(n);
+  if(y==null)return true;
+  return y>=1990&&y<=maxYear;
+ }
+ function pushMember(n){
+  var id=n.id!=null?String(n.id):"";
+  if(!id||id==="null"||seen.has(id)||!accept(n))return;
+  if(n.level==null||n.level<0)return;
+  seen.add(id);
+  var lab=String(n.des||n.label||n.cod||id).replace(/^\([^)]*\)\s*/,"").trim();
+  out.push({id:id,code:String(n.cod||id),label:lab||id,level:n.level,year:yearFromMember(n)});
+ }
  function walk(n){
   if(!n||typeof n!=="object")return;
-  var id=n.id!=null?String(n.id):"";
   var kids=n.children||[];
   var isLeaf=!kids.length||n.isLastLevel===true;
-  // Inclou nodes de nivell visible (fulles o penúltim amb dades)
-  if(id&&id!=="null"&&n.level!=null&&n.level>=0){
-   // Preferix fulles; si no n'hi ha, nodes amb codi útil
-   if(isLeaf||!kids.length){
-    if(!seen.has(id)){
-     seen.add(id);
-     var lab=String(n.des||n.label||n.cod||id).replace(/^\([^)]*\)\s*/,"").trim();
-     out.push({id:id,code:String(n.cod||id),label:lab||id,level:n.level});
-    }
-   }
-  }
+  if(isLeaf||!kids.length)pushMember(n);
   kids.forEach(walk);
  }
  walk(root);
- // Si no hi ha fulles, agafa tots els nodes amb level>=0
  if(!out.length){
   (function walk2(n){
    if(!n)return;
-   var id=n.id!=null?String(n.id):"";
-   if(id&&n.level!=null&&n.level>=0&&!seen.has(id)){
-    seen.add(id);
-    out.push({id:id,code:String(n.cod||id),label:String(n.des||n.label||n.cod||id).replace(/^\([^)]*\)\s*/,"").trim(),level:n.level});
-   }
+   pushMember(n);
    (n.children||[]).forEach(walk2);
   })(root);
  }
- // Ordena per codi/label
  out.sort(function(a,b){return String(a.code).localeCompare(String(b.code),"es",{numeric:true})});
  return out;
 }
