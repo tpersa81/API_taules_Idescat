@@ -2649,26 +2649,26 @@ async function nomisLoadDatasets(){
 }
 function nomisExtractCodes(raw){
  var found=[];
- function walk(v,key){
-  if(!v||typeof v!=="object")return;
-  if(Array.isArray(v)){
-   if(/codes?|codelist/i.test(String(key||""))){
-    v.forEach(function(x){
-     if(x&&typeof x==="object"){
-      var id=String(x.id||x.value||"").trim(),nm=x.name||x.label||x.description;
-      var label=typeof nm==="object"?String(nm.value||nm.text||nm["#text"]||"").trim():String(nm||"").trim();
-      if(id&&label)found.push({code:id,label:label});
-     }
-    });
-   }
-   v.forEach(function(x){walk(x,key)});
-   return;
-  }
-  Object.keys(v).forEach(function(k){walk(v[k],k)});
+ var lists=raw&&raw.structure&&raw.structure.codelists&&raw.structure.codelists.codelist;
+ if(!Array.isArray(lists))lists=lists?[lists]:[];
+ lists.forEach(function(cl){
+  var codes=Array.isArray(cl&&cl.code)?cl.code:[];
+  codes.forEach(function(x){
+   var id=String(x&&x.value!=null?x.value:"").trim();
+   var d=x&&x.description,lab=typeof d==="object"?String(d.value||d.text||d["#text"]||"").trim():String(d||"").trim();
+   if(id)found.push({code:id,label:lab||id});
+  });
+ });
+ if(!found.length){
+  var v=raw&&raw.data&&raw.data.codes;
+  if(Array.isArray(v))v.forEach(function(x){
+   var id=String(x&&x.id!=null?x.id:x&&x.value!=null?x.value:"").trim();
+   var lab=String(x&&x.label||x&&x.name||id).trim();
+   if(id)found.push({code:id,label:lab});
+  });
  }
- walk(raw,"");
  var seen=new Set();
- return found.filter(function(x){var k=x.code; if(seen.has(k))return false;seen.add(k);return true});
+ return found.filter(function(x){if(seen.has(x.code))return false;seen.add(x.code);return true});
 }
 async function nomisSelectDataset(id){
  var base=provider().base.replace(/\/+$/,""),defUrl=base+"/dataset/"+encodeURIComponent(id)+"/def.sdmx.json";
@@ -2677,11 +2677,16 @@ async function nomisSelectDataset(id){
  var dimsDef=kf&&kf.components&&kf.components.dimension||[];
  if(!Array.isArray(dimsDef))dimsDef=[dimsDef];
  var out={id:[],size:[],dimension:{},value:[]};
+ var timedim=kf&&kf.components&&kf.components.timedimension, tdId=String(timedim&&timedim.conceptref||"").trim();
+ if(tdId&&!dimsDef.some(function(x){return String(x&&x.conceptref||"").trim()===tdId}))dimsDef=dimsDef.concat([{conceptref:tdId,codelist:timedim.codelist}]);
  for(var i=0;i<dimsDef.length;i++){
   var dd=dimsDef[i],dimId=String(dd&&dd.conceptref||"").trim();
   if(!dimId)continue;
   var dimUrl=base+"/dataset/"+encodeURIComponent(id)+"/"+encodeURIComponent(dimId)+".def.sdmx.json";
   var raw=await fetchJson(dimUrl),cats=nomisExtractCodes(raw);
+  if(!cats.length&&dd.codelist){
+   try{cats=nomisExtractCodes(await fetchJson(base+"/codelist/"+encodeURIComponent(dd.codelist)+".def.sdmx.json"))}catch(e){}
+  }
   if(!cats.length){
    // Fallback: JSON-stat with the default selection, useful for dimensions
    // whose codelist is not exposed in the simplified SDMX document.
