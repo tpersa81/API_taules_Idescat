@@ -1565,6 +1565,29 @@ async function igeLoadIndicators(groupCode){
  if(!out.length)throw new Error("no s'han trobat indicadors en aquest grup.");
  return out;
 }
+function igeExtractDivInner(html, id){
+ html=String(html||"");
+ var re=new RegExp('id=["\']'+String(id).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+'["\'][^>]*>','i');
+ var m=re.exec(html);
+ if(!m)return"";
+ var i=m.index+m[0].length;
+ var depth=1,j=i;
+ var low=html.toLowerCase();
+ while(j<html.length&&depth>0){
+  var nextOpen=low.indexOf("<div",j);
+  var nextClose=low.indexOf("</div",j);
+  if(nextClose<0)break;
+  if(nextOpen>=0&&nextOpen<nextClose){
+   depth++;
+   j=nextOpen+4;
+  }else{
+   depth--;
+   if(depth===0)return html.slice(i,nextClose);
+   j=nextClose+5;
+  }
+ }
+ return html.slice(i,i+50000);
+}
 function igeSeriesParentMap(html){
  html=String(html||"");
  var labels={}, positions=[];
