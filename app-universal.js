@@ -1081,12 +1081,15 @@ async function igePageItems(url,isRoot){
   }
   // Taules del banc de dades (selector i principals/hipertables)
   if((path.indexOf("/selector.jsp")>=0||path.indexOf("/principais.jsp")>=0||path.indexOf("/principales.jsp")>=0||path.indexOf("/verTabla.jsp")>=0||path.indexOf("/vertabla.jsp")>=0)&&cod){
-   add("table",abs,label,String(cod));
+   // URL canònica del selector (sense R/C/F predefinits)
+   var canon="https://www.ige.gal/igebdt/selector.jsp?idioma=es&COD="+encodeURIComponent(String(cod));
+   add("table",canon,label,String(cod));
    return;
   }
   // Enllaços amb COD= en rutes del banc de dades
   if(path.indexOf("/igebdt/")>=0&&cod&&!path.match(/actividade|seccion|mostrar_/i)){
-   add("table",abs,label,String(cod));
+   var canon2="https://www.ige.gal/igebdt/selector.jsp?idioma=es&COD="+encodeURIComponent(String(cod));
+   add("table",canon2,label,String(cod));
    return;
   }
  }
@@ -1187,6 +1190,22 @@ async function igeSelectDynamic(index,val){
  status("Consultant l'IGE…");
  var children=await igePageItems(item.url,false);
  var parentCode=String(item.code||"").trim();
+ // El catàleg complet de taules d'una activitat és a bancodatos/?codigo=...
+ // La pàgina d'activitat només en mostra unes quantes de destacades (principais).
+ if(item.type==="activity"&&parentCode){
+  try{
+   var bancoUrl="https://www.ige.gal/igebdt/bancodatos/?idioma=es&API=true&codigo="+encodeURIComponent(parentCode);
+   var bancoItems=await igePageItems(bancoUrl,false);
+   var seenT=new Set(children.filter(function(x){return x.type==="table"}).map(function(x){return String(x.code||x.id)}));
+   bancoItems.forEach(function(x){
+    if(x.type!=="table")return;
+    var k=String(x.code||x.id);
+    if(seenT.has(k))return;
+    seenT.add(k);
+    children.push(x);
+   });
+  }catch(eBanco){/* si falla el banc, ens quedem amb les destacades */}
+ }
  var pathIds=new Set(state.igePath.slice(0,index+1).map(function(x){return String(x)}));
  var pathCodes=new Set();
  for(var pi=0;pi<=index;pi++){
