@@ -1523,7 +1523,7 @@ async function igeLoadIndicatorGroups(){
  if(!out.length){
   [["G0001","Población"],["G0002","Sanidad"],["G0003","Educación"],["G0004","Trabajo"],["G0005","Bienestar y condiciones de vida"],["G0006","Cultura y ocio"],["G0007","Agricultura y pesca"],["G0008","Energía e industria"],["G0009","Construcción y vivienda"],["G0010","Servicios"],["G0011","Administración Pública"],["G0014","Sector exterior"],["G0015","Precios"],["G0016","Actividad empresarial"],["G0017","Sistema de cuentas"],["G0018","Sociedad de la información"],["G0019","Ciencia y tecnología"],["G0020","Territorio"]].forEach(function(p){add(p[0],p[1])});
  }
- out.sort(function(a,b){return a.code.localeCompare(b.code)});
+ out.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true,sensitivity:"base"})});
  return out;
 }
 async function igeLoadIndicators(groupCode){
@@ -1561,34 +1561,30 @@ async function igeLoadIndicators(groupCode){
 async function igeLoadSeriesGroups(){
  var html=await fetchText("https://www.ige.gal/igebdt/igeapi/series.jsp?idioma=es",{cache:"no-store"});
  var labels={};
- // Etiquetes: procGrupo('MNP')...>Movemento natural...
+ // Etiquetes humanes: procGrupo('MNP')...>Movemento natural da poboación
  var reLab=/procGrupo\('([^']+)'\)[^>]*>([^<]+)</g,m;
  while((m=reLab.exec(String(html||"")))){
   labels[m[1]]=igeCleanLabel(m[2]);
  }
- // També spans / text abans de div id=CODE
- var reLab2=/id=['"]g_([^'"]+)['"][^>]*>[\s\S]{0,80}?>([^<]{3,80})</g;
- while((m=reLab2.exec(String(html||"")))){
-  if(!labels[m[1]])labels[m[1]]=igeCleanLabel(m[2]);
- }
  var out=[],seen=new Set();
- function add(code,label){
+ function add(code){
   code=String(code||"").trim();
   if(!code||seen.has(code))return;
-  seen.add(code);
-  var lab=labels[code]||label||code;
+  // Només grups amb etiqueta coneguda (evita codis de sèrie/subgrup)
+  var lab=labels[code];
+  if(!lab)return;
   lab=igeCleanLabel(lab);
-  if(!lab||igeIsNoiseLabel(lab))lab=code;
+  if(!lab||igeIsNoiseLabel(lab))return;
+  seen.add(code);
   out.push({id:"ige-serg-"+code,label:lab,type:"ige-series-group",code:code,url:"https://www.ige.gal/igebdt/igeapi/series.jsp?idioma=es&grupo="+encodeURIComponent(code)});
  }
- // Els enllaços porten sempre grupo+subgrupo; agafem grupo únics
- var reG=/series\.jsp\?[^"'<>]*grupo=([^&"'<>]+)/gi;
+ // IMPORTANT: no fer match de "grupo=" dins "subgrupo="
+ var reG=/[?&]grupo=([^&"'<>]+)/gi;
  while((m=reG.exec(String(html||"")))){
-  try{add(decodeURIComponent(m[1]),"")}catch(e){add(m[1],"")}
+  try{add(decodeURIComponent(m[1]))}catch(e2){add(m[1])}
  }
- // També des de procGrupo
- Object.keys(labels).forEach(function(code){add(code,labels[code])});
- out.sort(function(a,b){return a.label.localeCompare(b.label,"gl",{numeric:true})});
+ Object.keys(labels).forEach(function(code){add(code)});
+ out.sort(function(a,b){return a.label.localeCompare(b.label,"gl",{numeric:true,sensitivity:"base"})});
  if(!out.length)throw new Error("no s'han trobat grups de sèries.");
  return out;
 }
