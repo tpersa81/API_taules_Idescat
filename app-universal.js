@@ -205,10 +205,14 @@ function temporal(d){
      r=String(d&&d.role||"").toUpperCase(),
      cats=d&&Array.isArray(d.categories)?d.categories:[];
  var explicit=["YEAR","MONTH","QUARTER","SEMESTER","BIMONTH","WEEK","DAY","DATE","TIME","TIME_PERIOD","PERIOD","PERIODO","PERIODO_TEMPORAL"].indexOf(id)>=0;
- var named=id.indexOf("TIME")===0||id.indexOf("PER")===0||label==="PERIODO"||label.indexOf("PERIODO ")===0||label==="PERIOD"||label.indexOf("PERIOD ")===0||label.indexOf("TEMPORAL")>=0||label.indexOf("YEAR")>=0||label.indexOf("MONTH")>=0||label.indexOf("QUARTER")>=0||label.indexOf("SEMESTER")>=0||label.indexOf("TRIMESTRE")>=0||label.indexOf("MES")===0||label.indexOf("AÑO")>=0||label.indexOf("ANO")>=0||label.indexOf("YEAR")>=0||r.indexOf("TIME")>=0||r.indexOf("TEMPOR")>=0;
+ var named=id.indexOf("TIME")===0||id.indexOf("PER")===0||label==="PERIODO"||label.indexOf("PERIODO ")===0||label==="PERIOD"||label.indexOf("PERIOD ")===0||label.indexOf("TEMPORAL")>=0||label==="TEMPO"||label.indexOf("TEMPO ")===0||label==="TIEMPO"||label.indexOf("TIEMPO ")===0||label==="TIME"||label.indexOf("TIME ")===0||label.indexOf("YEAR")>=0||label.indexOf("MONTH")>=0||label.indexOf("QUARTER")>=0||label.indexOf("SEMESTER")>=0||label.indexOf("TRIMESTRE")>=0||label.indexOf("MES")===0||label.indexOf("AÑO")>=0||label.indexOf("ANO")>=0||label.indexOf("YEAR")>=0||r.indexOf("TIME")>=0||r.indexOf("TEMPOR")>=0;
  var temporalCodes=cats.length>0&&cats.every(function(c){
    var code=String(c&&c.code||"").trim(),lab=String(c&&c.label||"").trim();
    return /^\d{4}$/.test(code)||/^\d{4}M\d{1,2}$/i.test(code)||/^\d{4}(?:Q|T)\d$/i.test(code)||/^\d{4}S\d$/i.test(code)||/^\d{4}B\d{1,2}$/i.test(code)||/^\d{4}W\d{1,2}$/i.test(code)||/^\d{4}D\d{1,3}$/i.test(code)||/^\d{4}-(?:M|Q|S|B|W|D)\d{1,3}$/i.test(code)||/^\d{4}-\d{2}(?:-\d{2})?$/.test(code)||
+          // IGE: 202615 = 2026/III, 202514 = 2025/II, etc.
+          /^\d{6}$/.test(code)||
+          /^\d{4}\s*[/.-]\s*(?:I{1,3}|IV|1[3-6]|[1-4])$/i.test(lab)||
+          /^\d{4}\s*[/.-]\s*(?:I{1,3}|IV)$/i.test(code)||
           /^(?:Q|T|S|M|B|W|D)\s*\d{1,3}\s*[-/]?\s*\d{4}$/i.test(lab)||
           /^\d{4}\s*[-/]?\s*(?:Q|T|S|M|B|W|D)\s*\d{1,3}$/i.test(lab)||
           /^\d{4}\s*[-/]?\s*\d{1,2}[-/]\d{1,2}$/.test(lab);
@@ -226,6 +230,11 @@ function temporalCodeRank(code){
  m=v.match(/^(\d{4})W(\d{1,2})$/);if(m)return Number(m[1])*100000000+Number(m[2])*1000000;
  m=v.match(/^(\d{4})D(\d{1,3})$/);if(m)return Number(m[1])*100000000+Number(m[2])*1000000;
  m=v.match(/^(\d{4})-(\d{2})(?:-(\d{2}))?$/);if(m)return Number(m[1])*100000000+Number(m[2])*1000000+Number(m[3]||0);
+ // IGE trimestral: 202615 → 2026 T3; 202516 → 2025 T4 (sufix 13-16)
+ m=v.match(/^(\d{4})(1[3-6])$/);if(m)return Number(m[1])*100000000+(Number(m[2])-12)*10000000;
+ // IGE etiqueta 2026/III, 2025/I, 2024/IV
+ m=v.match(/^(\d{4})\s*[/.-]\s*(I{1,3}|IV)$/i);
+ if(m){var q={I:1,II:2,III:3,IV:4}[m[2].toUpperCase()]||0;return Number(m[1])*100000000+q*10000000}
  return null;
 }
 function sortedCats(c,d){
@@ -1409,6 +1418,8 @@ async function igeSelectTable(rec){
   var idx={},lab={};
   d.categories.forEach(function(c,i){idx[c.code]=i;lab[c.code]=c.label});
   ds.dimension[d.id]={label:d.label,category:{index:d.categories.map(function(c){return c.code}),label:lab}};
+  if(d.role)ds.dimension[d.id].role=d.role;
+  if(d.role)ds.dimension[d.id].extension={role:d.role};
  });
  state.metadata=ds;
  renderMetadata(ds);
@@ -1463,7 +1474,10 @@ function igeParseMetadatosSelector(raw,tableCode,pageUrl){
   // dedup codes
   var seenC=new Set(),out=[];
   cats.forEach(function(c){if(seenC.has(c.code))return;seenC.add(c.code);out.push(c)});
-  return{id:id,label:label,categories:out,defaultSpec:id};
+  var labU=label.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase();
+  var role="";
+  if(labU==="TEMPO"||labU.indexOf("TEMPO ")===0||labU==="TIEMPO"||labU.indexOf("TIEMPO ")===0||labU==="TIME"||labU.indexOf("TIME ")===0||labU.indexOf("TEMPORAL")>=0||labU==="PERIODO"||labU==="PERIOD")role="time";
+  return{id:id,label:label,role:role,categories:out,defaultSpec:id};
  }).filter(function(d){return d.categories.length});
  return{
   title:title,
@@ -3450,6 +3464,8 @@ function temporalPeriodicity(categories){
  for(var i=0;i<arr.length;i++){var code=arr[i].code,label=arr[i].label;
   if(/^\d{4}$/.test(code)||/^\d{4}$/.test(label))return"year";
   if(/^\d{4}M\d{1,2}$/i.test(code)||/^\d{4}-M\d{1,2}$/i.test(code)||/^\d{4}-\d{2}$/.test(code)||/^\d{4}\s*[-/]?\s*M\d{1,2}$/i.test(label))return"month";
+  // IGE: 202615 / etiqueta 2026/III
+  if(/^\d{4}1[3-6]$/.test(code)||/^\d{4}\s*[/.-]\s*(?:I{1,3}|IV)$/i.test(label)||/^\d{4}\s*[/.-]\s*(?:I{1,3}|IV)$/i.test(code))return"quarter";
   if(/^\d{4}(?:Q|T)\d$/i.test(code)||/^\d{4}-Q\d$/i.test(code)||/^\d{4}\s*[-/]?\s*(?:Q|T)\d$/i.test(label))return"quarter";
   if(/^\d{4}S\d$/i.test(code)||/^\d{4}-S\d$/i.test(code)||/^\d{4}\s*[-/]?\s*S\d$/i.test(label))return"semester";
   if(/^\d{4}B\d{1,2}$/i.test(code)||/^\d{4}-B\d{1,2}$/i.test(code)||/^\d{4}\s*[-/]?\s*B\d{1,2}$/i.test(label))return"bimonth";
