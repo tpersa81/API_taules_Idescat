@@ -1228,6 +1228,7 @@ async function igeSelectDynamic(index,val){
  var box=$("eurostatLevels");
  if(box)Array.from(box.querySelectorAll("[data-ige-level]")).forEach(function(l){if(Number(l.dataset.igeLevel)>index)l.remove()});
  state.igePath=state.igePath.slice(0,index+1);state.igePath[index]=item.id;
+ if(/^nomis-/.test(String(item.type||""))){await nomisSelectFromLevel(index,val);return}
  if(item.type==="table"){await igeSelectTable(item);return}
  if(item.type==="ige-indicator"||item.type==="ige-series"){await igeSelectIndiOrSeries(item);return}
  if(item.type==="ige-mode"){
@@ -2527,7 +2528,7 @@ async function loadStats(){
  else if(state.provider==="istac"){await istacLoadOperations();out=[]}
  else if(state.provider==="icane"){await icaneLoadCatalog();out=[]}
  else if(state.provider==="ige"){await igeLoadRoot();out=[]}
- else if(state.provider==="nomis"){await nomisEnsureSearchUI();out=await nomisLoadDatasets()}
+ else if(state.provider==="nomis"){await nomisSelectRoot();out=[]}
  else if(state.pxPreset==="sweden"){await loadSwedenV2Tables();var swRoot=await swedenV2Children([],null);out=swRoot.map(function(x){return{value:x.id,label:x.label}})}
  else if(state.pxPreset==="eustat"){
  var euCatalog=await fetchJson(c.base);
@@ -2663,11 +2664,50 @@ function deriveConcept(s){s=String(s||"");var p=s.indexOf(".");return p>=0?s.sli
 function deriveCross(s){s=String(s||"").trim();var p=s.indexOf(". ");if(p<0)return"";var r=s.slice(p+2),q=r.indexOf(". A");return(q>=0?r.slice(0,q):r).trim()}
 
 async function nomisLoadDatasets(search){
+ // Compat: retorna llista plana {value,label} (p.ex. cerca)
+ var catalog=await nomisLoadCatalog(search);
+ return catalog.map(function(x){return{id:x.id,value:x.id,label:x.label}});
+}
+function nomisAnnotationMap(item){
+ var map={};
+ var ann=item&&item.annotations&&item.annotations.annotation;
+ if(!Array.isArray(ann))ann=ann?[ann]:[];
+ ann.forEach(function(a){
+  var title=String(a&&a.annotationtitle||a&&a.annotationType||"").trim();
+  var text=String(a&&a.annotationtext||a&&a.annotationText||"").trim();
+  if(title)map[title]=text;
+ });
+ return map;
+}
+function nomisAssignThemes(item){
+ var map=nomisAnnotationMap(item);
+ var keywords=String(map["Keywords"]||"").toLowerCase();
+ var source=String(map["contenttype/sources"]||map["Mnemonic"]||"").toLowerCase();
+ var name=String(item&&item.name&&item.name.value||item&&item.name||"").toLowerCase();
+ var desc=String(item&&item.description&&item.description.value||item&&item.description||"").toLowerCase();
+ var blob=keywords+" "+source+" "+name+" "+desc;
+ var themes=[];
+ function add(t){if(themes.indexOf(t)<0)themes.push(t)}
+ if(/census|ks0|qs0|uv0|lc0|dc0/.test(blob))add("Census");
+ if(/population|resident|demograph|age band|ethnicity|country of birth/.test(blob))add("Population & demography");
+ if(/employment|unemployment|labour|labor|workforce|jobseeker|claimant|economically active|occupation|hours worked|self-employed/.test(blob))add("Employment & labour market");
+ if(/earning|wage|pay|income|salary|hourly|weekly pay/.test(blob))add("Earnings & income");
+ if(/benefit|pension|universal credit|housing benefit|tax credit|dwp|disability living/.test(blob))add("Benefits & welfare");
+ if(/business|enterprise|vat|paye|industry|manufactur|turnover|company/.test(blob))add("Business & industry");
+ if(/housing|dwelling|household|tenur|landlord|rent/.test(blob))add("Housing & households");
+ if(/gdp|gva|output|productivity|export|import|trade|retail/.test(blob))add("Economy & output");
+ if(/health|disability|life expectancy|birth|death|mortality/.test(blob))add("Health & vital statistics");
+ if(/education|qualification|pupil|school|student|skill/.test(blob))add("Education & skills");
+ if(/migrat|nationality|passport|country of birth/.test(blob))add("Migration & identity");
+ if(!themes.length)add("Other");
+ return themes;
+}
+async function nomisLoadCatalog(search){
  var base=provider().base.replace(/\/+$/,"");
  var q=String(search||"").trim();
- // Sense cerca: combina diversos temes (el catàleg sencer fa ~5MB i és poc usable)
- var queries=q?[q]:["population","employment","earnings","claimant","labour","business","gdp","industry","housing","benefit","census","income","workforce"];
+ var queries=q?[q]:["population","employment","earnings","claimant","labour","business","gdp","industry","housing","benefit","census","income","workforce","health","education"];
  var byId=new Map();
+ status(q?"Cercant a Nomis: "+q+"…":"Carregant catàleg Nomis per temes…");
  for(var qi=0;qi<queries.length;qi++){
   var url=base+"/dataset/def.sdmx.json?search="+encodeURIComponent(queries[qi]);
   try{
@@ -2676,19 +2716,76 @@ async function nomisLoadDatasets(search){
    if(!Array.isArray(kf))kf=kf?[kf]:[];
    kf.forEach(function(x){
     var id=String(x&&x.id||"").trim();
-    if(!id||!/^NM_/i.test(id)||byId.has(id))return;
+    if(!id||!/^NM_/i.test(id))return;
     var name=x&&x.name;
-    var label=String(name&&name.value||name||id).trim();
-    byId.set(id,{id:id,value:id,label:(label||id)+" ("+id+")"});
+    var label=String(name&&name.value||name||id).trim()||id;
+    var themes=nomisAssignThemes(x);
+    var map=nomisAnnotationMap(x);
+    if(byId.has(id)){
+     var prev=byId.get(id);
+     themes.forEach(function(th){if(prev.themes.indexOf(th)<0)prev.themes.push(th)});
+    }else{
+     byId.set(id,{
+      id:id,
+      value:id,
+      label:label+" ("+id+")",
+      title:label,
+      themes:themes,
+      keywords:map["Keywords"]||"",
+      source:map["contenttype/sources"]||"",
+      status:map["Status"]||""
+     });
+    }
    });
-  }catch(eQ){
-   // Continua amb la resta de cerques
-   console.warn("Nomis search failed:",queries[qi],eQ);
-  }
+  }catch(eQ){console.warn("Nomis search failed:",queries[qi],eQ)}
  }
  var out=Array.from(byId.values());
  out.sort(function(a,b){return a.label.localeCompare(b.label,"en",{numeric:true,sensitivity:"base"})});
+ state.nomisCatalog=out;
  return out;
+}
+function nomisThemesFromCatalog(catalog){
+ var map=new Map();
+ (catalog||[]).forEach(function(ds){
+  (ds.themes||["Other"]).forEach(function(th){
+   if(!map.has(th))map.set(th,[]);
+   map.get(th).push(ds);
+  });
+ });
+ var themes=[];
+ map.forEach(function(list,th){
+  list=list.slice().sort(function(a,b){return a.label.localeCompare(b.label,"en",{numeric:true})});
+  themes.push({id:"nomis-th-"+th,label:th+" ("+list.length+")",type:"nomis-theme",theme:th,_children:list});
+ });
+ themes.sort(function(a,b){return a.label.localeCompare(b.label,"en",{numeric:true})});
+ return themes;
+}
+async function nomisSelectRoot(){
+ eurostatClearLevels();
+ await nomisEnsureSearchUI();
+ var catalog=state.nomisCatalog&&state.nomisCatalog.length?state.nomisCatalog:await nomisLoadCatalog("");
+ var themes=nomisThemesFromCatalog(catalog);
+ if(!themes.length)throw new Error("ONS/Nomis: no s'han trobat datasets.");
+ igeAddLevel(themes,0,"Tema");
+ // Amaga el selector pla d'estadística (navegació per nivells)
+ hideStatSelector(true);
+ status("Nomis: "+catalog.length+" datasets en "+themes.length+" temes.");
+}
+async function nomisSelectFromLevel(index,val){
+ var items=state.igeItems.get("igeLevel"+index)||[];
+ var item=items.find(function(x){return String(x.id)===String(val)});
+ if(!item)throw new Error("Element Nomis no trobat.");
+ if(item.type==="nomis-theme"){
+  var kids=(item._children||[]).map(function(ds){
+   return{id:"nomis-ds-"+ds.id,label:ds.label,type:"nomis-dataset",code:ds.id,datasetId:ds.id};
+  });
+  igeAddLevel(kids,index+1,"Dataset");
+  return;
+ }
+ if(item.type==="nomis-dataset"){
+  await nomisSelectDataset(item.datasetId||item.code);
+  return;
+ }
 }
 async function nomisEnsureSearchUI(){
  var box=$("eurostatLevels");
@@ -2709,10 +2806,16 @@ async function nomisEnsureSearchUI(){
   var term=($("nomisSearch")&&$("nomisSearch").value||"").trim();
   status("Cercant a Nomis…");
   try{
-   var out=await nomisLoadDatasets(term||"");
-   fill($("stat"),out);
-   $("stat").disabled=!out.length;
-   status(out.length?"Nomis: "+out.length+" datasets.":"Nomis: cap resultat per a aquesta cerca.");
+   await nomisLoadCatalog(term||"");
+   eurostatClearLevels();
+   // re-insereix la cerca (eurostatClearLevels pot buidar el box)
+   var b=$("eurostatLevels");if(b){b.hidden=false;b.innerHTML="";}
+   var w=$("nomisSearchWrap");
+   if(w&&w.parentNode)w.parentNode.removeChild(w);
+   // reconstrueix UI de cerca amb el terme
+   await nomisEnsureSearchUI();
+   if($("nomisSearch"))$("nomisSearch").value=term;
+   await nomisSelectRoot();
   }catch(e){status(e&&e.message?e.message:String(e),"error")}
  };
  $("nomisSearchBtn").onclick=function(){run()};
@@ -2723,68 +2826,6 @@ function nomisHideSearchUI(){
  if(existing)existing.hidden=true;
 }
 
-function nomisExtractCodes(raw){
- var found=[];
- var lists=raw&&raw.structure&&raw.structure.codelists&&raw.structure.codelists.codelist;
- if(!Array.isArray(lists))lists=lists?[lists]:[];
- lists.forEach(function(cl){
-  var codes=Array.isArray(cl&&cl.code)?cl.code:(cl&&cl.code?[cl.code]:[]);
-  codes.forEach(function(x){
-   var id=String(x&&x.value!=null?x.value:(x&&x.id!=null?x.id:"")).trim();
-   var d=x&&x.description;
-   var lab="";
-   if(typeof d==="object"&&d)lab=String(d.value||d.text||d["#text"]||"").trim();
-   else lab=String(d||x&&x.label||"").trim();
-   if(id)found.push({code:id,label:lab||id});
-  });
- });
- if(!found.length){
-  var v=raw&&raw.data&&raw.data.codes;
-  if(Array.isArray(v))v.forEach(function(x){
-   var id=String(x&&x.id!=null?x.id:x&&x.value!=null?x.value:"").trim();
-   var lab=String(x&&x.label||x&&x.name||id).trim();
-   if(id)found.push({code:id,label:lab});
-  });
- }
- var seen=new Set();
- return found.filter(function(x){if(seen.has(x.code))return false;seen.add(x.code);return true});
-}
-async function nomisFetchDimCodes(base,datasetId,dimId,codelist){
- var cats=[];
- dimId=String(dimId||"").trim();
- var dimLower=dimId.toLowerCase();
- // 1) Endpoint específic del dataset (funciona per GEOGRAPHY i sovint d'altres)
- var candidates=[
-  base+"/dataset/"+encodeURIComponent(datasetId)+"/"+encodeURIComponent(dimLower)+".def.sdmx.json",
-  base+"/dataset/"+encodeURIComponent(datasetId)+"/"+encodeURIComponent(dimId)+".def.sdmx.json"
- ];
- // 2) Codelist global (alguns dimensions 404, d'altres no)
- if(codelist){
-  candidates.push(base+"/codelist/"+encodeURIComponent(codelist)+".def.sdmx.json");
- }
- var lastErr=null;
- for(var i=0;i<candidates.length;i++){
-  try{
-   var raw=await fetchJson(candidates[i]);
-   cats=nomisExtractCodes(raw);
-   if(cats.length)return cats;
-  }catch(e){lastErr=e}
- }
- // 3) Geography amb context UK
- if(dimLower==="geography"){
-  try{
-   var u=base+"/dataset/"+encodeURIComponent(datasetId)+"/geography.def.sdmx.json";
-   var raw2=await fetchJson(u);
-   cats=nomisExtractCodes(raw2);
-   if(cats.length)return cats;
-  }catch(e2){lastErr=e2}
- }
- if(lastErr&&!cats.length){
-  // No llencem: dimensió opcional
-  console.warn("ONS/Nomis: sense categories per a "+dimId,lastErr);
- }
- return cats;
-}
 async function nomisSelectDataset(id){
  id=String(id||"").trim();
  if(!id||!/^NM_/i.test(id))throw new Error("ONS/Nomis: identificador de dataset no vàlid ("+id+"). Cal un codi tipus NM_509_1, no el títol de la taula.");
