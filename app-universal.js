@@ -49,7 +49,10 @@ async function fetchJson(url,opt){
  if(state.provider==="ige"||/ige\.gal\/igebdt\/igeapi\//i.test(String(url))){
   opt.headers=Object.assign({"Accept":"application/json"},opt.headers||{});
  }
- var r;try{r=await fetch(url,opt)}catch(e){
+  if(state.provider==="nomis"||/nomisweb\.co\.uk\//i.test(String(url))){
+  opt.headers=Object.assign({"Accept":"application/json, text/json, */*"},opt.headers||{});
+ }
+var r;try{r=await fetch(url,opt)}catch(e){
   if(state.provider==="pxweb"&&((state.pxPreset==="iceland"&&/^https:\/\/px\.hagstofa\.is\//i.test(url))||(state.pxPreset==="finland"&&/^https:\/\/pxdata\.stat\.fi\//i.test(url)))){
    try{r=await fetch("https://cors.tools/proxy?url="+encodeURIComponent(url),opt)}
    catch(e2){throw new Error("No s'ha pogut connectar amb l'API. "+(e2&&e2.message||"Failed to fetch")+" · "+url)}
@@ -175,6 +178,26 @@ try{
    text=await r.text();
   }
 }catch(e){throw new Error("No s'ha pogut llegir la resposta de l'API (HTTP "+r.status+").")}
+// Nomis: de vegades arriba HTML amb HTTP 200
+if((state.provider==="nomis"||/nomisweb\.co\.uk\//i.test(String(url)))&&String(text||"").replace(/^\uFEFF/,"").trim().charAt(0)==="<"){
+  var nomisProxies=[
+    "https://cors.tools/proxy?url="+encodeURIComponent(url),
+    "https://api.allorigins.win/raw?url="+encodeURIComponent(url),
+    "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(url)
+  ];
+  var got=false,lastN=null;
+  for(var ni=0;ni<nomisProxies.length&&!got;ni++){
+    try{
+      var nr=await fetch(nomisProxies[ni],{cache:"no-store"});
+      if(!nr.ok){lastN=new Error("HTTP "+nr.status);continue}
+      var nt=await nr.text();
+      var ns=String(nt||"").replace(/^\uFEFF/,"").trim();
+      if(ns&&ns.charAt(0)!=="<"){text=ns;r=nr;got=true}
+      else lastN=new Error("Proxy HTML");
+    }catch(ne){lastN=ne}
+  }
+  if(!got)throw new Error("ONS/Nomis: s'ha rebut una pàgina HTML en lloc de JSON. "+(lastN&&lastN.message||"")+" · "+url);
+}
 var d=null;try{var cleanText=String(text).replace(/^\uFEFF/,"").trim();d=cleanText?JSON.parse(cleanText):null;if(d&&typeof d.contents==="string"){try{d=JSON.parse(String(d.contents).replace(/^\uFEFF/,"").trim())}catch(_){}}}catch(e){if(state.provider==="istac"&&r.ok){try{var m0=String(text).match(/\{[\s\S]*\}/);if(m0)d=JSON.parse(m0[0])}catch(_){}}if(!d){if(!r.ok)throw new Error("Error HTTP "+r.status+": "+text.slice(0,300));throw new Error("Resposta no vàlida de l'API (HTTP "+r.status+"). "+String(text||"").replace(/\s+/g," ").slice(0,180))}}
 if(!r.ok||d&&(d.class==="error"||d.error||d.errors)){
  var detail=d&&(d.detail||d.label||d.message||d.error||d.errors||d.title);
