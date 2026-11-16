@@ -1531,6 +1531,42 @@ async function iecaSelectConsulta(rec){
    hierMembers[alias]=[];
   }
  }
+ // BADEA pot exposar a /jerarquia/ valors que formen part de la jerarquia però
+ // que no s'utilitzen realment en la consulta. Per exemple, una jerarquia
+ // temporal pot contenir anys futurs. Demanem explícitament tots els membres
+ // temporals i ens quedem només amb els que BADEA retorna amb observacions.
+ try{
+  for(var hti=0;hti<hierList.length;hti++){
+   var th=hierList[hti], talias=String(th.alias||"");
+   if(!/TEMPOR/i.test(talias+" "+String(th.des||"")))continue;
+   var tm=hierMembers[talias]||[];
+   if(!tm.length)continue;
+   var allIds=tm.map(function(m){return String(m.id)}).filter(Boolean);
+   if(!allIds.length)continue;
+   var qurl=IECA_BASE+"/consulta/"+encodeURIComponent(state.iecaConsultaId)+
+     "?"+encodeURIComponent(talias)+"="+allIds.map(encodeURIComponent).join(",")+
+     "&posord="+encodeURIComponent("f["+talias+"],c[Measures]");
+   var qraw=await iecaFetch(qurl);
+   var usedCodes=new Set(), usedLabels=new Set();
+   (qraw&&qraw.data||[]).forEach(function(row){
+    var cell=row&&row[hti];
+    if(!cell)return;
+    (Array.isArray(cell.cod)?cell.cod:[cell.cod]).forEach(function(v){
+     if(v!=null&&String(v)!=="")usedCodes.add(String(v));
+    });
+    if(cell.des!=null)usedLabels.add(String(cell.des).trim());
+   });
+   if(usedCodes.size||usedLabels.size){
+    var filtered=tm.filter(function(m){
+     return usedCodes.has(String(m.code))||usedCodes.has(String(m.id))||
+            usedLabels.has(String(m.label||"").trim());
+    });
+    if(filtered.length)hierMembers[talias]=filtered;
+   }
+  }
+ }catch(eTemporalRefine){
+  // Si aquesta consulta auxiliar falla, conservem la jerarquia original.
+ }
  state.iecaHierMembers=hierMembers;
  // Construeix dataset amb categories de jerarquia (no només l'últim període de la resposta per defecte)
  var ds=iecaToJsonStat(raw,hierMembers);
