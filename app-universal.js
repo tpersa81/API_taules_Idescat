@@ -1079,8 +1079,13 @@ async function igePageItems(url,isRoot){
    add("activity",abs,label,String(sec));
    return;
   }
-  // Taules del banc de dades
-  if(path.indexOf("/selector.jsp")>=0&&cod){
+  // Taules del banc de dades (selector i principals/hipertables)
+  if((path.indexOf("/selector.jsp")>=0||path.indexOf("/principais.jsp")>=0||path.indexOf("/principales.jsp")>=0||path.indexOf("/verTabla.jsp")>=0||path.indexOf("/vertabla.jsp")>=0)&&cod){
+   add("table",abs,label,String(cod));
+   return;
+  }
+  // Enllaços amb COD= en rutes del banc de dades
+  if(path.indexOf("/igebdt/")>=0&&cod&&!path.match(/actividade|seccion|mostrar_/i)){
    add("table",abs,label,String(cod));
    return;
   }
@@ -1251,11 +1256,16 @@ async function igeSelectDynamic(index,val){
   activities=pickActivities(false);
   sections=pickSections(false);
  }
- // Últim recurs: qualsevol activity no sorollosa no visitada
- if(!activities.length&&!sections.length){
+ // Últim recurs: només si el node actual NO és una activitat estadística.
+ // En una activitat, les seccions del menú lateral (Benestar, Cultura...) no són filles.
+ if(!activities.length&&!sections.length&&item.type!=="activity"){
   activities=children.filter(function(x){
    return x.type==="activity"&&!igeIsNoiseLabel(x.label)&&!pathIds.has(String(x.id||""))&&!pathCodes.has(String(x.code||"").trim());
   });
+ }
+ // Si el pare és activitat i no hi ha taules, no mostrem seccions del menú
+ if(item.type==="activity"){
+  sections=[];
  }
 
  var next=sections.concat(activities);
