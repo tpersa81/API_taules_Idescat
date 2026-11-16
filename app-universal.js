@@ -1565,7 +1565,8 @@ async function iecaSelectConsulta(rec){
 function iecaFlattenHierarchy(hd,hierMeta){
  var out=[],seen=new Set();
  var root=hd&&hd.data;
- var isTemporal=hierMeta&&(/TEMPOR/i.test(String(hierMeta.alias||""))||/TEMPOR|TRIMESTR|ANUAL|MENSUAL/i.test(String(hierMeta.des||"")));
+ var metaText=hierMeta&&[hierMeta.des,hierMeta.label,hierMeta.title,hierMeta.name].filter(Boolean).join(" · ");
+ var isTemporal=hierMeta&&(/TEMPOR/i.test(String(hierMeta.alias||""))||/TEMPOR|TRIMESTR|ANUAL|MENSUAL/i.test(String(metaText)));
  function periodFromText(s){
   s=String(s||"");
   var q=null,y=null,m;
@@ -1607,7 +1608,7 @@ function iecaFlattenHierarchy(hd,hierMeta){
     if(y>=1900&&y<=2100)p=y*4+4;
    }
   }
-  var range=null;
+  var range=rangeFromText(metaText);
   for(var i=path.length-1;i>=0&&!range;i--)range=rangeFromText(path[i]);
   if(range&&p!=null)return p>=range.min&&p<=range.max;
   return true;
