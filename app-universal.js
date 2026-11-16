@@ -3502,20 +3502,30 @@ async function onGeoChange(){
 }
 function temporalPeriodicity(categories){
  var arr=(categories||[]).map(function(c){return{code:temporalCategoryCode(c),label:String(c&&c.label||"").trim()}}).filter(function(x){return x.code||x.label});
- // Anys (2024, 2023...) abans que la heurística de dígits genèrics
+ function isMonth(code,label){
+  return /^\d{4}M\d{1,2}$/i.test(code)||/^\d{4}-M\d{1,2}$/i.test(code)||/^\d{4}-\d{2}$/.test(code)||/^\d{4}\s*[-/]?\s*M\d{1,2}$/i.test(label);
+ }
+ function isQuarter(code,label){
+  // IGE: 202514 = 2025/II (sufix 13-16)
+  return /^\d{4}1[3-6]$/.test(code)||
+   /^\d{4}\s*[/.-]\s*(?:I{1,3}|IV)$/i.test(label)||/^\d{4}\s*[/.-]\s*(?:I{1,3}|IV)$/i.test(code)||
+   /^\d{4}(?:Q|T)\d$/i.test(code)||/^\d{4}-Q\d$/i.test(code)||/^\d{4}\s*[-/]?\s*(?:Q|T)\d$/i.test(label);
+ }
+ function isSemester(code,label){
+  return /^\d{4}S\d$/i.test(code)||/^\d{4}-S\d$/i.test(code)||/^\d{4}\s*[-/]?\s*S\d$/i.test(label);
+ }
+ // Prioritza freqüència infraanual si n'hi ha (les jerarquies IGE barregen any + trimestre)
+ if(arr.some(function(x){return isMonth(x.code,x.label)}))return"month";
+ if(arr.some(function(x){return isQuarter(x.code,x.label)}))return"quarter";
+ if(arr.some(function(x){return isSemester(x.code,x.label)}))return"semester";
  if(arr.some(function(x){return /^\d{4}$/.test(x.code)||/^\d{4}$/.test(x.label)}))return"year";
  // Codis numèrics curts (1-4) poden ser trimestres en alguns sistemes
- if(arr.some(function(x){return /^\d{1,2}$/.test(x.code)&&Number(x.code)>=1&&Number(x.code)<=16})){
-  // només si no semblen anys
-  if(!arr.some(function(x){return /^\d{4}$/.test(x.code)}))return"quarter";
- }
+ if(arr.some(function(x){return /^\d{1,2}$/.test(x.code)&&Number(x.code)>=1&&Number(x.code)<=16}))return"quarter";
 
  for(var i=0;i<arr.length;i++){var code=arr[i].code,label=arr[i].label;
   if(/^\d{4}$/.test(code)||/^\d{4}$/.test(label))return"year";
-  if(/^\d{4}M\d{1,2}$/i.test(code)||/^\d{4}-M\d{1,2}$/i.test(code)||/^\d{4}-\d{2}$/.test(code)||/^\d{4}\s*[-/]?\s*M\d{1,2}$/i.test(label))return"month";
-  // IGE: 202615 / etiqueta 2026/III
-  if(/^\d{4}1[3-6]$/.test(code)||/^\d{4}\s*[/.-]\s*(?:I{1,3}|IV)$/i.test(label)||/^\d{4}\s*[/.-]\s*(?:I{1,3}|IV)$/i.test(code))return"quarter";
-  if(/^\d{4}(?:Q|T)\d$/i.test(code)||/^\d{4}-Q\d$/i.test(code)||/^\d{4}\s*[-/]?\s*(?:Q|T)\d$/i.test(label))return"quarter";
+  if(isMonth(code,label))return"month";
+  if(isQuarter(code,label))return"quarter";
   if(/^\d{4}S\d$/i.test(code)||/^\d{4}-S\d$/i.test(code)||/^\d{4}\s*[-/]?\s*S\d$/i.test(label))return"semester";
   if(/^\d{4}B\d{1,2}$/i.test(code)||/^\d{4}-B\d{1,2}$/i.test(code)||/^\d{4}\s*[-/]?\s*B\d{1,2}$/i.test(label))return"bimonth";
   if(/^\d{4}W\d{1,2}$/i.test(code)||/^\d{4}-W\d{1,2}$/i.test(code)||/^\d{4}\s*[-/]?\s*W\d{1,2}$/i.test(label))return"week";
@@ -3531,7 +3541,12 @@ function previousYearPeriodCode(code){
  var v=String(code||"").trim();
  // Anys de 4 dígits
  if(/^\d{4}$/.test(v))return String(Math.max(0,Number(v)-1));
- // Codis numèrics curts (trimestres 1-4, mesos 1-12...): resta 4 com a heurística de "mateix de l'any anterior" en sèries trimestrals
+ // IGE trimestral: 202514 → 202414 (mateix trimestre any anterior)
+ if(/^\d{4}1[3-6]$/.test(v))return String(Number(v.slice(0,4))-1)+v.slice(4);
+ // IGE etiqueta 2025/II → 2024/II
+ var mIge=v.match(/^(\d{4})(\s*[/.-]\s*)(I{1,3}|IV)$/i);
+ if(mIge)return String(Number(mIge[1])-1)+mIge[2]+mIge[3];
+ // Codis numèrics curts (trimestres 1-4, mesos 1-12...): resta 4
  if(/^\d{1,2}$/.test(v))return String(Math.max(0,Number(v)-4));
  if(/^\d{4}[MQSBDW]\d{1,3}$/i.test(v)||/^\d{4}-(?:M|Q|S|B|W|D)\d{1,3}$/i.test(v)||/^\d{4}-\d{2}(?:-\d{2})?$/.test(v))return v.replace(/^(\d{4})/,function(_,y){return String(Number(y)-1)});
  var m=v.match(/^(.*?)(\d{4})(.*)$/);
@@ -3556,7 +3571,22 @@ function addTemporalQuickControls(toolbar,dim,categories,list){
  // (mes, trimestre...). En sèries anuals, "període anterior" i "mateix de l'any
  // anterior" són el mateix.
  if(categories.length>1&&periodicity&&periodicity!=="year"){
-  var latest=temporalCategoryCode(categories[0]),prev=temporalCategoryCode(categories[1]),target=previousYearPeriodCode(latest);
+  // En jerarquies IGE (any + trimestre), usa només períodes infraanuals per al botó relatiu
+  var pool=categories;
+  if(periodicity==="quarter"){
+   var sub=categories.filter(function(c){
+    var code=temporalCategoryCode(c),lab=String(c&&c.label||"").trim();
+    return /^\d{4}1[3-6]$/.test(code)||/^\d{4}\s*[/.-]\s*(?:I{1,3}|IV)$/i.test(lab)||/^\d{4}(?:Q|T)\d$/i.test(code)||/^\d{4}-Q\d$/i.test(code);
+   });
+   if(sub.length>=2)pool=sub;
+  }else if(periodicity==="month"){
+   var subM=categories.filter(function(c){
+    var code=temporalCategoryCode(c),lab=String(c&&c.label||"").trim();
+    return /^\d{4}M\d{1,2}$/i.test(code)||/^\d{4}-M\d{1,2}$/i.test(code)||/^\d{4}-\d{2}$/.test(code)||(/^\d{6}$/.test(code)&&!/^\d{4}1[3-6]$/.test(code));
+   });
+   if(subM.length>=2)pool=subM;
+  }
+  var latest=temporalCategoryCode(pool[0]),prev=temporalCategoryCode(pool[1]),target=previousYearPeriodCode(latest);
   var found=target&&target!==latest&&target!==prev&&categories.some(function(c){return temporalCategoryCode(c)===target||String(c&&c.label||"").trim()===target});
   if(found){
    var rr=document.createElement("div");rr.className="temporal-row";
