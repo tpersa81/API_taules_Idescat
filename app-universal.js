@@ -1217,80 +1217,222 @@ async function iecaFetch(url){
  throw new Error("No s'ha pogut connectar amb l'API de l'IECA. "+(last&&last.message||""));
 }
 async function iecaLoadCatalog(){
- status("Carregant catàleg de l'IECA (BADEA)…");
- // Catàleg via portal de dades obertes (CKAN) + extracció d'URLs consulta/
- var packages=[],start=0,rows=100,total=1;
- while(start<total&&start<500){
-  var u="https://www.juntadeandalucia.es/datosabiertos/portal/api/3/action/package_search?fq=organization:ieca&rows="+rows+"&start="+start;
-  var data=await iecaFetch(u);
-  var res=data&&data.result||{};
-  total=Number(res.count||0);
-  (res.results||[]).forEach(function(p){packages.push(p)});
-  start+=rows;
-  if(!(res.results||[]).length)break;
- }
- var consultas=[],seen=new Set();
- function addConsulta(id,title,activity){
-  id=String(id||"").trim();
-  if(!id||seen.has(id))return;
-  seen.add(id);
-  consultas.push({id:id,label:title||("Consulta "+id),activity:activity||"",url:IECA_BASE+"/consulta/"+encodeURIComponent(id)});
- }
- packages.forEach(function(p){
-  var title=p.title||p.name||"";
-  var activity=(p.notes||"").slice(0,80);
-  (p.resources||[]).forEach(function(r){
-   var url=String(r.url||"");
-   var m=url.match(/\/consulta\/(\d+)/i);
-   if(m)addConsulta(m[1],title,p.organization&&p.organization.title||activity);
+ // Catàleg jeràrquic: DEGA datos-por-temas → operacions → arbre BADEA
+ status("Carregant temes de l'IECA (DEGA)…");
+ var html=await fetchText("https://www.juntadeandalucia.es/institutodeestadisticaycartografia/dega/datos-por-temas",{cache:"no-store"});
+ var themes=[],seen=new Set();
+ function addTheme(slug,label){
+  slug=String(slug||"").replace(/^\//,"").trim();
+  label=String(label||"").replace(/\s+/g," ").trim();
+  if(!slug||!/^tema-/i.test(slug)||seen.has(slug))return;
+  if(!label||label.length<3)return;
+  seen.add(slug);
+  themes.push({
+   id:"ieca-th-"+slug,
+   label:label,
+   type:"ieca-theme",
+   slug:slug,
+   url:"https://www.juntadeandalucia.es/institutodeestadisticaycartografia/dega/"+slug
   });
-  // extras / urls en notes
-  var blob=JSON.stringify(p);
-  var re=/\/consulta\/(\d+)/g,m;
-  while((m=re.exec(blob)))addConsulta(m[1],title,activity);
- });
- // Si el CKAN no porta URLs REST, afegeix consultes de referència documentades
- if(!consultas.length){
-  [["103956","Serie de población por municipio (Almería)"],["103964","Padrón municipal de Andalucía"]].forEach(function(x){addConsulta(x[0],x[1],"Padrón")});
  }
- consultas.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true,sensitivity:"base"})});
- state.iecaCatalog=consultas;
- return consultas;
+ try{
+  var doc=new DOMParser().parseFromString(html,"text/html");
+  Array.from(doc.querySelectorAll('a[href*="tema-"]')).forEach(function(a){
+   var href=a.getAttribute("href")||"";
+   var m=href.match(/(tema-[a-z0-9-]+)/i);
+   if(m)addTheme(m[1],a.textContent||m[1]);
+  });
+ }catch(e){}
+ var re=/href=["']([^"']*tema-[a-z0-9-]+[^"']*)["'][^>]*>([^<]+)/gi,m;
+ while((m=re.exec(String(html||"")))){
+  var mm=m[1].match(/(tema-[a-z0-9-]+)/i);
+  if(mm)addTheme(mm[1],m[2]);
+ }
+ themes.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true,sensitivity:"base"})});
+ if(!themes.length)throw new Error("no s'han trobat temes a DEGA (datos-por-temas).");
+ state.iecaCatalog=themes;
+ return themes;
 }
 async function iecaSelectRoot(){
  eurostatClearLevels();
  var list=state.iecaCatalog&&state.iecaCatalog.length?state.iecaCatalog:await iecaLoadCatalog();
- // Agrupa per activity si n'hi ha
- var byAct=new Map();
- list.forEach(function(c){
-  var a=c.activity||"Altres";
-  if(!byAct.has(a))byAct.set(a,[]);
-  byAct.get(a).push(c);
- });
- var groups=[];
- byAct.forEach(function(arr,act){
-  groups.push({id:"ieca-act-"+groups.length,label:act+" ("+arr.length+")",type:"ieca-activity",_children:arr});
- });
- groups.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
- if(groups.length>1){
-  igeAddLevel(groups.map(function(g){return{id:g.id,label:g.label,type:"ieca-activity",_children:g._children}}),0,"Activitat");
- }else{
-  igeAddLevel(list.map(function(c){return{id:"ieca-c-"+c.id,label:c.label,type:"ieca-consulta",code:c.id,url:c.url}}),0,"Consulta");
- }
- state.iecaItems=state.igeItems; // reutilitza contenidor de nivells
+ igeAddLevel(list,0,"Tema");
 }
-// Reutilitza igeSelectDynamic? Millor handler propi enganxat
+async function iecaLoadOperations(theme){
+ status("Carregant operacions del tema…");
+ var html=await fetchText(theme.url,{cache:"no-store"});
+ var ops=[],seen=new Set();
+ function addOp(url,label){
+  url=String(url||"").trim();
+  label=String(label||"").replace(/\s+/g," ").trim();
+  if(!url||!label||label.length<3)return;
+  // només pàgines d'operació DEGA (no temes, no externs genèrics)
+  if(/tema-[a-z0-9-]+/i.test(url)&&url.indexOf(theme.slug)>=0)return;
+  if(/datos-por-temas|\/dega\/?$/i.test(url))return;
+  if(seen.has(url))return;
+  // accepta rutes /dega/slug o absolut IECA
+  var abs=url;
+  if(url.indexOf("http")!==0){
+   if(url.charAt(0)==="/")abs="https://www.juntadeandalucia.es"+url;
+   else abs="https://www.juntadeandalucia.es/institutodeestadisticaycartografia/dega/"+url.replace(/^\.\//,"");
+  }
+  if(abs.indexOf("/dega/")<0&&abs.indexOf("estadistica-cartografia")<0)return;
+  if(/twitter|facebook|linkedin|mailto|javascript/i.test(abs))return;
+  seen.add(url);
+  ops.push({id:"ieca-op-"+ops.length,label:label,type:"ieca-operation",url:abs});
+ }
+ try{
+  var doc=new DOMParser().parseFromString(html,"text/html");
+  Array.from(doc.querySelectorAll("a[href]")).forEach(function(a){
+   addOp(a.getAttribute("href")||"",a.textContent||"");
+  });
+ }catch(e){}
+ var re=/href=["']([^"']+)["'][^>]*>([^<]+)/gi,m;
+ while((m=re.exec(String(html||""))))addOp(m[1],m[2]);
+ // filtra enllaços de navegació genèrics
+ ops=ops.filter(function(o){
+  var l=o.label.toLowerCase();
+  if(/^(inicio|home|contacto|aviso|accesibilidad|mapa web)$/i.test(o.label))return false;
+  if(l.indexOf("datos por temas")>=0)return false;
+  return true;
+ });
+ ops.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true,sensitivity:"base"})});
+ if(!ops.length)throw new Error("no s'han trobat operacions en aquest tema.");
+ return ops;
+}
+async function iecaLoadBadeaNodes(operation){
+ status("Carregant nodes BADEA…");
+ var html=await fetchText(operation.url,{cache:"no-store"});
+ var nodes=[],seen=new Set();
+ function addNode(idNode,label,href){
+  idNode=String(idNode||"").trim();
+  if(!idNode||seen.has(idNode))return;
+  seen.add(idNode);
+  label=String(label||("Node "+idNode)).replace(/\s+/g," ").trim();
+  nodes.push({
+   id:"ieca-node-"+idNode,
+   label:label,
+   type:"ieca-badea-node",
+   nodeId:idNode,
+   url:"https://www.juntadeandalucia.es/institutodeestadisticaycartografia/badea/informe/anual/json?node="+encodeURIComponent(idNode)
+  });
+ }
+ // Enllaços badea/informe/anual?...idNode=
+ var re=/href=["']([^"']*badea\/informe\/anual[^"']*idNode=(\d+)[^"']*)["'][^>]*>([^<]*)/gi,m;
+ while((m=re.exec(String(html||"")))){
+  addNode(m[2],m[3]||m[2],m[1]);
+ }
+ // Regex genèric idNode=
+ var re2=/idNode=(\d+)/gi;
+ var labels={};
+ re.lastIndex=0;
+ while((m=re.exec(String(html||""))))labels[m[2]]=String(m[3]||"").replace(/\s+/g," ").trim();
+ while((m=re2.exec(String(html||""))))addNode(m[1],labels[m[1]]||("Informe "+m[1]));
+ if(!nodes.length)throw new Error("aquesta operació no té enllaços a consultes BADEA (idNode).");
+ // Si només n'hi ha un, el caller pot saltar al nivell intern
+ return nodes;
+}
+function iecaTreeChildren(nodos){
+ // Converteix l'arbre BADEA en items de desplegable
+ var out=[];
+ function labelOf(n){
+  return String(n.consultaTitulo||n.label||n.descripcionCorta||("Node "+n.id)||"").replace(/\s+/g," ").trim();
+ }
+ function walkList(list){
+  (list||[]).forEach(function(n){
+   if(!n)return;
+   var kids=n.children||[];
+   var cons=n.consulta!=null&&n.consulta!==""?String(n.consulta):"";
+   if(kids.length){
+    out.push({
+     id:"ieca-branch-"+(n.id!=null?n.id:out.length),
+     label:labelOf(n)+(cons?" · consulta "+cons:""),
+     type:"ieca-badea-branch",
+     nodeId:n.id!=null?String(n.id):"",
+     consulta:cons||null,
+     _rawChildren:kids
+    });
+   }else if(cons){
+    out.push({
+     id:"ieca-c-"+cons,
+     label:labelOf(n),
+     type:"ieca-consulta",
+     code:cons,
+     url:IECA_BASE+"/consulta/"+encodeURIComponent(cons)
+    });
+   }
+  });
+ }
+ if(Array.isArray(nodos))walkList(nodos);
+ else if(nodos&&nodos.children)walkList(nodos.children);
+ else if(nodos)walkList([nodos]);
+ out.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true,sensitivity:"base"})});
+ return out;
+}
+async function iecaLoadTree(nodeId){
+ var url="https://www.juntadeandalucia.es/institutodeestadisticaycartografia/badea/informe/anual/json?node="+encodeURIComponent(nodeId);
+ var data=await iecaFetch(url);
+ var kids=iecaTreeChildren(data&&data.nodos);
+ if(!kids.length&&data&&data.nodos&&data.nodos.consulta){
+  var cons=String(data.nodos.consulta);
+  kids=[{id:"ieca-c-"+cons,label:data.actividad||("Consulta "+cons),type:"ieca-consulta",code:cons,url:IECA_BASE+"/consulta/"+encodeURIComponent(cons)}];
+ }
+ if(!kids.length)throw new Error("aquest node BADEA no conté consultes.");
+ return{actividad:data&&data.actividad||"",items:kids};
+}
 async function iecaSelectFromLevel(index,val){
  var items=state.igeItems.get("igeLevel"+index)||[];
  var item=items.find(function(x){return String(x.id)===String(val)});
  if(!item)throw new Error("Element IECA no trobat.");
- if(item.type==="ieca-activity"&&item._children){
-  igeAddLevel(item._children.map(function(c){return{id:"ieca-c-"+c.id,label:c.label,type:"ieca-consulta",code:c.id,url:c.url}}),index+1,"Consulta");
+
+ if(item.type==="ieca-theme"){
+  var ops=await iecaLoadOperations(item);
+  igeAddLevel(ops,index+1,"Operació estadística");
+  return;
+ }
+ if(item.type==="ieca-operation"){
+  var nodes=await iecaLoadBadeaNodes(item);
+  if(nodes.length===1){
+   // Salta directament a l'arbre del node
+   var tree=await iecaLoadTree(nodes[0].nodeId);
+   igeAddLevel(tree.items,index+1,tree.actividad?"Consultes · "+tree.actividad:"Consultes / carpetes");
+  }else{
+   igeAddLevel(nodes,index+1,"Informe BADEA");
+  }
+  return;
+ }
+ if(item.type==="ieca-badea-node"){
+  var tree2=await iecaLoadTree(item.nodeId);
+  igeAddLevel(tree2.items,index+1,tree2.actividad?"Consultes · "+tree2.actividad:"Consultes / carpetes");
+  return;
+ }
+ if(item.type==="ieca-badea-branch"){
+  // Expandeix fills ja descarregats o torna a demanar el node
+  var kids=[];
+  if(item._rawChildren&&item._rawChildren.length){
+   kids=iecaTreeChildren({children:item._rawChildren});
+  }else if(item.nodeId){
+   var t3=await iecaLoadTree(item.nodeId);
+   kids=t3.items;
+  }
+  // Si la branca té consulta pròpia i no fills útils, obre la consulta
+  if((!kids||!kids.length)&&item.consulta){
+   await iecaSelectConsulta({code:item.consulta,label:item.label,url:IECA_BASE+"/consulta/"+encodeURIComponent(item.consulta)});
+   return;
+  }
+  igeAddLevel(kids,index+1,"Subcarpeta / consulta");
   return;
  }
  if(item.type==="ieca-consulta"){
   await iecaSelectConsulta(item);
   return;
+ }
+ // compatibilitat
+ if(item.type==="ieca-activity"||item.type==="ieca-package"){
+  var ch=(item._children||[]).map(function(c){
+   return c.type?c:{id:"ieca-c-"+c.id,label:c.label,type:"ieca-consulta",code:c.id,url:c.url};
+  });
+  igeAddLevel(ch,index+1,"Consulta");
  }
 }
 async function iecaSelectConsulta(rec){
@@ -1420,7 +1562,7 @@ async function igeSelectDynamic(index,val){
  var box=$("eurostatLevels");
  if(box)Array.from(box.querySelectorAll("[data-ige-level]")).forEach(function(l){if(Number(l.dataset.igeLevel)>index)l.remove()});
  state.igePath=state.igePath.slice(0,index+1);state.igePath[index]=item.id;
- if(item.type==="ieca-activity"||item.type==="ieca-consulta"){await iecaSelectFromLevel(index,val);return}
+ if(/^ieca-/.test(String(item.type||""))){await iecaSelectFromLevel(index,val);return}
  if(item.type==="table"){await igeSelectTable(item);return}
  if(item.type==="ige-indicator"||item.type==="ige-series"){await igeSelectIndiOrSeries(item);return}
  if(item.type==="ige-mode"){
