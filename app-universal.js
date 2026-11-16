@@ -1496,120 +1496,186 @@ function igeParseSelectorMeta(html,url,tableCode){
 }
 async function igeLoadIndicatorGroups(){
  var html=await fetchText("https://www.ige.gal/igebdt/igeapi/indicadores.jsp?idioma=es",{cache:"no-store"});
- var doc=new DOMParser().parseFromString(html,"text/html");
  var out=[],seen=new Set();
- Array.from(doc.querySelectorAll('a[href*="grupo="]')).forEach(function(a){
-  var href=a.getAttribute("href")||"";
-  var m=href.match(/grupo=(G\d+)/i);
-  if(!m)return;
-  var code=m[1].toUpperCase();
-  if(seen.has(code))return;
-  var label=igeCleanLabel(a.textContent||"");
-  if(!label||igeIsNoiseLabel(label))return;
+ function add(code,label){
+  code=String(code||"").toUpperCase();
+  label=igeCleanLabel(label);
+  if(!code||!/^G\d+$/i.test(code)||seen.has(code))return;
+  if(!label||igeIsNoiseLabel(label))label=code;
   seen.add(code);
   out.push({id:"ige-indig-"+code,label:label,type:"ige-indicator-group",code:code,url:"https://www.ige.gal/igebdt/igeapi/indicadores.jsp?idioma=es&grupo="+encodeURIComponent(code)});
- });
- out.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
- if(!out.length)throw new Error("no s'han trobat grups d'indicadors.");
+ }
+ try{
+  var doc=new DOMParser().parseFromString(html,"text/html");
+  Array.from(doc.querySelectorAll('a[href*="grupo="]')).forEach(function(a){
+   var href=a.getAttribute("href")||"";
+   var m=href.match(/grupo=(G\d+)/i);
+   if(m)add(m[1],a.textContent||"");
+  });
+ }catch(e){}
+ // Regex fallback (proxies markdown / HTML parcial)
+ var re=/grupo=(G\d+)/gi,m;
+ var labels={};
+ var reLab=/indicadores\.jsp\?grupo=(G\d+)[^"']*["'][^>]*>([^<]+)/gi;
+ while((m=reLab.exec(String(html||""))))labels[m[1].toUpperCase()]=m[2];
+ while((m=re.exec(String(html||""))))add(m[1],labels[m[1].toUpperCase()]||m[1]);
+ // Grups coneguts si la pàgina falla del tot
+ if(!out.length){
+  [["G0001","Población"],["G0002","Sanidad"],["G0003","Educación"],["G0004","Trabajo"],["G0005","Bienestar y condiciones de vida"],["G0006","Cultura y ocio"],["G0007","Agricultura y pesca"],["G0008","Energía e industria"],["G0009","Construcción y vivienda"],["G0010","Servicios"],["G0011","Administración Pública"],["G0014","Sector exterior"],["G0015","Precios"],["G0016","Actividad empresarial"],["G0017","Sistema de cuentas"],["G0018","Sociedad de la información"],["G0019","Ciencia y tecnología"],["G0020","Territorio"]].forEach(function(p){add(p[0],p[1])});
+ }
+ out.sort(function(a,b){return a.code.localeCompare(b.code)});
  return out;
 }
 async function igeLoadIndicators(groupCode){
  var url="https://www.ige.gal/igebdt/igeapi/indicadores.jsp?idioma=es&grupo="+encodeURIComponent(groupCode);
  var html=await fetchText(url,{cache:"no-store"});
- var doc=new DOMParser().parseFromString(html,"text/html");
  var out=[],seen=new Set();
- Array.from(doc.querySelectorAll('a[href*="indicador="]')).forEach(function(a){
-  var href=a.getAttribute("href")||"";
-  var m=href.match(/indicador=([A-Za-z0-9_]+)/);
-  if(!m)return;
-  var code=m[1];
-  if(seen.has(code))return;
-  var label=igeCleanLabel(a.textContent||"");
-  if(!label||igeIsNoiseLabel(label))return;
+ function add(code,label){
+  code=String(code||"").trim();
+  label=igeCleanLabel(label);
+  if(!code||seen.has(code))return;
+  if(!label||igeIsNoiseLabel(label))label=code;
   seen.add(code);
   out.push({id:"ige-indi-"+code,label:label,type:"ige-indicator",code:code,url:"https://www.ige.gal/igebdt/igeapi/json/datosindi/"+encodeURIComponent(code)});
- });
- // Markdown fallback
- var md=/\[([^\]]+)\]\(([^)]*indicador=([A-Za-z0-9_]+)[^)]*)\)/g,mm;
- while((mm=md.exec(String(html||"")))){
-  var code2=mm[3];
-  if(seen.has(code2))continue;
-  var lab2=igeCleanLabel(mm[1]);
-  if(!lab2)continue;
-  seen.add(code2);
-  out.push({id:"ige-indi-"+code2,label:lab2,type:"ige-indicator",code:code2,url:"https://www.ige.gal/igebdt/igeapi/json/datosindi/"+encodeURIComponent(code2)});
  }
+ try{
+  var doc=new DOMParser().parseFromString(html,"text/html");
+  Array.from(doc.querySelectorAll('a[href*="indicador="]')).forEach(function(a){
+   var href=a.getAttribute("href")||"";
+   var m=href.match(/indicador=([A-Za-z0-9_]+)/);
+   if(m)add(m[1],a.textContent||"");
+  });
+ }catch(e){}
+ var re=/indicador=([A-Za-z0-9_]+)/g,m;
+ var reLab=/indicador=([A-Za-z0-9_]+)[^"']*["'][^>]*>([^<]+)/gi;
+ var labels={};
+ while((m=reLab.exec(String(html||""))))labels[m[1]]=m[2];
+ // markdown
+ var md=/\[([^\]]+)\]\(([^)]*indicador=([A-Za-z0-9_]+)[^)]*)\)/g;
+ while((m=md.exec(String(html||""))))labels[m[3]]=m[1];
+ while((m=re.exec(String(html||""))))add(m[1],labels[m[1]]||m[1]);
  out.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
  if(!out.length)throw new Error("no s'han trobat indicadors en aquest grup.");
  return out;
 }
 async function igeLoadSeriesGroups(){
  var html=await fetchText("https://www.ige.gal/igebdt/igeapi/series.jsp?idioma=es",{cache:"no-store"});
- var doc=new DOMParser().parseFromString(html,"text/html");
+ var labels={};
+ // Etiquetes: procGrupo('MNP')...>Movemento natural...
+ var reLab=/procGrupo\('([^']+)'\)[^>]*>([^<]+)</g,m;
+ while((m=reLab.exec(String(html||"")))){
+  labels[m[1]]=igeCleanLabel(m[2]);
+ }
+ // També spans / text abans de div id=CODE
+ var reLab2=/id=['"]g_([^'"]+)['"][^>]*>[\s\S]{0,80}?>([^<]{3,80})</g;
+ while((m=reLab2.exec(String(html||"")))){
+  if(!labels[m[1]])labels[m[1]]=igeCleanLabel(m[2]);
+ }
  var out=[],seen=new Set();
- Array.from(doc.querySelectorAll('a[href*="series.jsp"]')).forEach(function(a){
-  var href=(a.getAttribute("href")||"").replace(/&amp;/g,"&");
-  if(/subgrupo=/i.test(href)||/serie=/i.test(href))return;
-  var m=href.match(/grupo=([^&]+)/i);
-  if(!m)return;
-  var code=decodeURIComponent(m[1]);
-  if(seen.has(code))return;
-  var label=igeCleanLabel(a.textContent||"");
-  if(!label||igeIsNoiseLabel(label))return;
+ function add(code,label){
+  code=String(code||"").trim();
+  if(!code||seen.has(code))return;
   seen.add(code);
-  out.push({id:"ige-serg-"+code,label:label,type:"ige-series-group",code:code,url:"https://www.ige.gal/igebdt/igeapi/series.jsp?idioma=es&grupo="+encodeURIComponent(code)});
- });
- out.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
+  var lab=labels[code]||label||code;
+  lab=igeCleanLabel(lab);
+  if(!lab||igeIsNoiseLabel(lab))lab=code;
+  out.push({id:"ige-serg-"+code,label:lab,type:"ige-series-group",code:code,url:"https://www.ige.gal/igebdt/igeapi/series.jsp?idioma=es&grupo="+encodeURIComponent(code)});
+ }
+ // Els enllaços porten sempre grupo+subgrupo; agafem grupo únics
+ var reG=/series\.jsp\?[^"'<>]*grupo=([^&"'<>]+)/gi;
+ while((m=reG.exec(String(html||"")))){
+  try{add(decodeURIComponent(m[1]),"")}catch(e){add(m[1],"")}
+ }
+ // També des de procGrupo
+ Object.keys(labels).forEach(function(code){add(code,labels[code])});
+ out.sort(function(a,b){return a.label.localeCompare(b.label,"gl",{numeric:true})});
  if(!out.length)throw new Error("no s'han trobat grups de sèries.");
  return out;
 }
 async function igeLoadSeriesSubgroups(groupCode){
  var url="https://www.ige.gal/igebdt/igeapi/series.jsp?idioma=es&grupo="+encodeURIComponent(groupCode);
  var html=await fetchText(url,{cache:"no-store"});
- var doc=new DOMParser().parseFromString(html,"text/html");
  var out=[],seen=new Set();
- Array.from(doc.querySelectorAll('a[href*="subgrupo="]')).forEach(function(a){
-  var href=(a.getAttribute("href")||"").replace(/&amp;/g,"&");
-  var m=href.match(/subgrupo=([^&]+)/i);
-  if(!m)return;
-  var code=decodeURIComponent(m[1]);
-  if(seen.has(code))return;
-  var label=igeCleanLabel(a.textContent||"");
-  if(!label||igeIsNoiseLabel(label))return;
+ function add(code,label){
+  code=String(code||"").trim();
+  label=igeCleanLabel(label);
+  if(!code||seen.has(code))return;
+  if(!label||igeIsNoiseLabel(label))label=code;
   seen.add(code);
   out.push({id:"ige-sersg-"+groupCode+"-"+code,label:label,type:"ige-series-subgroup",code:code,groupCode:groupCode,url:"https://www.ige.gal/igebdt/igeapi/series.jsp?idioma=es&grupo="+encodeURIComponent(groupCode)+"&subgrupo="+encodeURIComponent(code)});
- });
- out.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
+ }
+ try{
+  var doc=new DOMParser().parseFromString(html,"text/html");
+  Array.from(doc.querySelectorAll('a[href*="subgrupo="]')).forEach(function(a){
+   var href=(a.getAttribute("href")||"").replace(/&amp;/g,"&");
+   var m=href.match(/subgrupo=([^&]+)/i);
+   var g=href.match(/grupo=([^&]+)/i);
+   if(!m)return;
+   if(g&&decodeURIComponent(g[1])!==groupCode&&g[1]!==groupCode)return;
+   try{add(decodeURIComponent(m[1]),a.textContent||"")}catch(e){add(m[1],a.textContent||"")}
+  });
+ }catch(e){}
+ var re=new RegExp("grupo="+groupCode.replace(/[.*+?^${}()|[\\]\\\\]/g,"\\\\$&")+"[^\"']*subgrupo=([^&\"']+)","gi");
+ var reLab=new RegExp("subgrupo=([^&\"']+)[^\"']*[\"'][^>]*>([^<]+)","gi");
+ var labels={},m;
+ while((m=reLab.exec(String(html||"")))){
+  try{labels[decodeURIComponent(m[1])]=m[2]}catch(e){labels[m[1]]=m[2]}
+ }
+ while((m=re.exec(String(html||"")))){
+  var c;try{c=decodeURIComponent(m[1])}catch(e){c=m[1]}
+  add(c,labels[c]||c);
+ }
+ // Fallback genèric subgrupo=
+ if(!out.length){
+  var re2=/subgrupo=([^&"'<>]+)/gi;
+  while((m=re2.exec(String(html||"")))){
+   try{add(decodeURIComponent(m[1]),labels[decodeURIComponent(m[1])]||"")}catch(e){add(m[1],"")}
+  }
+ }
+ out.sort(function(a,b){return a.label.localeCompare(b.label,"gl",{numeric:true})});
  return out;
 }
 async function igeLoadSeriesList(groupCode,subCode){
  var url="https://www.ige.gal/igebdt/igeapi/series.jsp?idioma=es&grupo="+encodeURIComponent(groupCode);
  if(subCode)url+="&subgrupo="+encodeURIComponent(subCode);
  var html=await fetchText(url,{cache:"no-store"});
- var doc=new DOMParser().parseFromString(html,"text/html");
  var out=[],seen=new Set();
- Array.from(doc.querySelectorAll('a[href*="serie="]')).forEach(function(a){
-  var href=(a.getAttribute("href")||"").replace(/&amp;/g,"&");
-  var m=href.match(/serie=([^&]+)/i);
-  if(!m)return;
-  var code=decodeURIComponent(m[1]);
-  if(seen.has(code))return;
-  var label=igeCleanLabel(a.textContent||"");
-  if(!label||igeIsNoiseLabel(label))return;
+ function add(code,label){
+  code=String(code||"").trim();
+  label=igeCleanLabel(label);
+  if(!code||seen.has(code))return;
+  if(!label||igeIsNoiseLabel(label))label=code;
   seen.add(code);
   out.push({id:"ige-ser-"+code,label:label,type:"ige-series",code:code,url:"https://www.ige.gal/igebdt/igeapi/json/datosserc/"+encodeURIComponent(code)});
- });
- // Fallback: markdown
- var md=/\[([^\]]+)\]\(([^)]*serie=([^&)]+)[^)]*)\)/g,mm;
- while((mm=md.exec(String(html||"")))){
-  var code2=decodeURIComponent(mm[3]);
-  if(seen.has(code2))continue;
-  var lab2=igeCleanLabel(mm[1]);
-  if(!lab2)continue;
-  seen.add(code2);
-  out.push({id:"ige-ser-"+code2,label:lab2,type:"ige-series",code:code2,url:"https://www.ige.gal/igebdt/igeapi/json/datosserc/"+encodeURIComponent(code2)});
  }
- out.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true})});
+ try{
+  var doc=new DOMParser().parseFromString(html,"text/html");
+  Array.from(doc.querySelectorAll('a[href*="serie="]')).forEach(function(a){
+   var href=(a.getAttribute("href")||"").replace(/&amp;/g,"&");
+   var m=href.match(/serie=([^&]+)/i);
+   if(!m)return;
+   try{add(decodeURIComponent(m[1]),a.textContent||"")}catch(e){add(m[1],a.textContent||"")}
+  });
+ }catch(e){}
+ var re=/serie=([^&"'<>]+)/gi,m;
+ var labels={};
+ var reLab=/serie=([^&"'<>]+)[^"']*["'][^>]*>([^<]+)/gi;
+ while((m=reLab.exec(String(html||"")))){
+  try{labels[decodeURIComponent(m[1])]=m[2]}catch(e){labels[m[1]]=m[2]}
+ }
+ var md=/\[([^\]]+)\]\(([^)]*serie=([^&)]+)[^)]*)\)/g;
+ while((m=md.exec(String(html||"")))){
+  try{labels[decodeURIComponent(m[3])]=m[1]}catch(e){labels[m[3]]=m[1]}
+ }
+ while((m=re.exec(String(html||"")))){
+  var c;try{c=decodeURIComponent(m[1])}catch(e){c=m[1]}
+  add(c,labels[c]||c);
+ }
+ // Si només hi ha un subgrup=serie (cas DEF), el codi de sèrie és el subgrup
+ if(!out.length&&subCode){
+  add(subCode,subCode);
+ }
+ out.sort(function(a,b){return a.label.localeCompare(b.label,"gl",{numeric:true})});
  if(!out.length)throw new Error("no s'han trobat sèries en aquest apartat.");
  return out;
 }
@@ -1619,7 +1685,8 @@ async function igeSelectIndiOrSeries(rec){
  var raw=await fetchJson(rec.url);
  var vars=Array.isArray(raw&&raw.variables)?raw.variables:[];
  var rows=Array.isArray(raw&&raw.datos)?raw.datos:[];
- if(!vars.length||!rows.length)throw new Error("aquest indicador/sèrie no té dades disponibles.");
+ if(!vars.length)throw new Error("resposta sense variables.");
+ if(!rows.length)throw new Error("l'API de l'IGE no retorna dades per a aquest indicador/sèrie (datos buit). Prova'n un altre.");
  // Construeix dimensions a partir de les columnes
  var dims=[];
  function addDim(id,label,codeIdx,labelIdx,role){
