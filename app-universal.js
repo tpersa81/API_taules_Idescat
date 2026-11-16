@@ -1317,48 +1317,83 @@ async function iecaLoadBadeaNodes(operation){
   throw new Error("no s'ha pogut obrir la fitxa de l'operació ("+(e&&e.message||"fetch")+")");
  }
  var nodes=[],seen=new Set();
- function addNode(idNode,label){
+ function addNode(idNode,label,kind,href){
   idNode=String(idNode||"").trim();
   if(!idNode||seen.has(idNode))return;
   seen.add(idNode);
   label=String(label||("Node "+idNode)).replace(/\s+/g," ").trim();
+  kind=kind==="datosaldia"?"datosaldia":"anual";
   nodes.push({
    id:"ieca-node-"+idNode,
    label:label,
    type:"ieca-badea-node",
    nodeId:idNode,
-   url:"https://www.juntadeandalucia.es/institutodeestadisticaycartografia/badea/informe/anual/json?node="+encodeURIComponent(idNode)
+   kind:kind,
+   url:"https://www.juntadeandalucia.es/institutodeestadisticaycartografia/badea/informe/"+kind+"/json?node="+encodeURIComponent(idNode)
   });
  }
- var re=/href=["']([^"']*badea\/informe\/[^"']*idNode=(\d+)[^"']*)["'][^>]*>([^<]*)/gi,m;
- while((m=re.exec(String(html||""))))addNode(m[2],m[3]||m[2]);
- // Qualsevol idNode= a la pàgina
- var labels={};
- re.lastIndex=0;
- while((m=re.exec(String(html||""))))labels[m[2]]=String(m[3]||"").replace(/\s+/g," ").trim();
- var re2=/idNode=(\d+)/gi;
- while((m=re2.exec(String(html||""))))addNode(m[1],labels[m[1]]||("Informe "+m[1]));
- // CodOper sense idNode no dóna arbre de consultes directament
+ // Etiqueta amb context del <li> pare (ex.: "Media de los cuatro trimestres… → 2025")
+ try{
+  var doc=new DOMParser().parseFromString(html,"text/html");
+  Array.from(doc.querySelectorAll('a[href*="idNode="]')).forEach(function(a){
+   var href=(a.getAttribute("href")||"").replace(/&amp;/g,"&");
+   var m=href.match(/idNode=(\d+)/i);
+   if(!m)return;
+   var kind=/datosaldia/i.test(href)?"datosaldia":"anual";
+   var linkText=String(a.textContent||"").replace(/\s+/g," ").trim();
+   var ctx="";
+   var li=a.closest("li");
+   if(li){
+    // Clona i treu subllistes per quedar-nos amb el text de la línia
+    var clone=li.cloneNode(true);
+    Array.from(clone.querySelectorAll("ul")).forEach(function(u){u.remove()});
+    ctx=String(clone.textContent||"").replace(/\s+/g," ").trim();
+   }
+   var label=ctx&&ctx.length>linkText.length?ctx:linkText;
+   // Neteja etiquetes massa curtes tipus només "3"
+   if(label.length<4&&ctx)label=ctx;
+   addNode(m[1],label,kind,href);
+  });
+ }catch(eDom){}
+ // Fallback regex
+ if(!nodes.length){
+  var re=/href=["']([^"']*idNode=(\d+)[^"']*)["'][^>]*>([^<]*)/gi,m;
+  while((m=re.exec(String(html||"")))){
+   var href=m[1].replace(/&amp;/g,"&");
+   var kind=/datosaldia/i.test(href)?"datosaldia":"anual";
+   addNode(m[2],m[3]||m[2],kind,href);
+  }
+ }
  if(!nodes.length){
   throw new Error("aquesta operació no té enllaços a consultes BADEA (idNode). Moltes fitxes externes només enllacen publicacions, no l'API.");
  }
  return nodes;
 }
-function iecaTreeChildren(nodos){
- // Converteix l'arbre BADEA en items de desplegable
- var out=[];
- function labelOf(n){
-  return String(n.consultaTitulo||n.label||n.descripcionCorta||("Node "+n.id)||"").replace(/\s+/g," ").trim();
+function iecaNodeLabel(n){
+ // A BADEA, label sol ser el títol específic de la taula;
+ // consultaTitulo sovint és el nom de la carpeta (repetit).
+ var a=String(n&&n.label||"").replace(/\s+/g," ").trim();
+ var b=String(n&&n.consultaTitulo||"").replace(/\s+/g," ").trim();
+ if(a&&b){
+  if(a.length>=b.length&&a!==b)return a;
+  if(b.length>a.length&&a===b.slice(0,a.length))return b;
+  // Preferix el més llarg
+  return a.length>=b.length?a:b;
  }
+ return a||b||(n&&n.consulta!=null?("Consulta "+n.consulta):("Node "+(n&&n.id||"")));
+}
+function iecaTreeChildren(nodos){
+ var out=[];
  function walkList(list){
   (list||[]).forEach(function(n){
    if(!n)return;
    var kids=n.children||[];
    var cons=n.consulta!=null&&n.consulta!==""?String(n.consulta):"";
+   var lab=iecaNodeLabel(n);
    if(kids.length){
     out.push({
      id:"ieca-branch-"+(n.id!=null?n.id:out.length),
-     label:labelOf(n)+(cons?" · consulta "+cons:""),
+     label:lab,
      type:"ieca-badea-branch",
      nodeId:n.id!=null?String(n.id):"",
      consulta:cons||null,
@@ -1366,8 +1401,8 @@ function iecaTreeChildren(nodos){
     });
    }else if(cons){
     out.push({
-     id:"ieca-c-"+cons,
-     label:labelOf(n),
+     id:"ieca-c-"+cons+"-"+(n.id!=null?n.id:out.length),
+     label:lab,
      type:"ieca-consulta",
      code:cons,
      url:IECA_BASE+"/consulta/"+encodeURIComponent(cons)
@@ -1378,19 +1413,38 @@ function iecaTreeChildren(nodos){
  if(Array.isArray(nodos))walkList(nodos);
  else if(nodos&&nodos.children)walkList(nodos.children);
  else if(nodos)walkList([nodos]);
+ // Si totes les etiquetes són iguals, afegeix el codi de consulta per distingir-les
+ var labels=out.map(function(x){return x.label});
+ var allSame=out.length>1&&labels.every(function(l){return l===labels[0]});
+ if(allSame){
+  out.forEach(function(x){
+   if(x.code)x.label=x.label+" · "+x.code;
+   else if(x.consulta)x.label=x.label+" · "+x.consulta;
+  });
+ }
  out.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true,sensitivity:"base"})});
  return out;
 }
-async function iecaLoadTree(nodeId){
- var url="https://www.juntadeandalucia.es/institutodeestadisticaycartografia/badea/informe/anual/json?node="+encodeURIComponent(nodeId);
- var data=await iecaFetch(url);
+async function iecaLoadTree(nodeId,kind){
+ kind=kind==="datosaldia"?"datosaldia":"anual";
+ var url="https://www.juntadeandalucia.es/institutodeestadisticaycartografia/badea/informe/"+kind+"/json?node="+encodeURIComponent(nodeId);
+ var data;
+ try{
+  data=await iecaFetch(url);
+ }catch(e){
+  // Prova l'altre tipus d'informe
+  var alt=kind==="datosaldia"?"anual":"datosaldia";
+  url="https://www.juntadeandalucia.es/institutodeestadisticaycartografia/badea/informe/"+alt+"/json?node="+encodeURIComponent(nodeId);
+  data=await iecaFetch(url);
+  kind=alt;
+ }
  var kids=iecaTreeChildren(data&&data.nodos);
  if(!kids.length&&data&&data.nodos&&data.nodos.consulta){
   var cons=String(data.nodos.consulta);
-  kids=[{id:"ieca-c-"+cons,label:data.actividad||("Consulta "+cons),type:"ieca-consulta",code:cons,url:IECA_BASE+"/consulta/"+encodeURIComponent(cons)}];
+  kids=[{id:"ieca-c-"+cons,label:iecaNodeLabel(data.nodos)||data.actividad||("Consulta "+cons),type:"ieca-consulta",code:cons,url:IECA_BASE+"/consulta/"+encodeURIComponent(cons)}];
  }
  if(!kids.length)throw new Error("aquest node BADEA no conté consultes.");
- return{actividad:data&&data.actividad||"",items:kids};
+ return{actividad:data&&data.actividad||"",items:kids,kind:kind};
 }
 async function iecaSelectFromLevel(index,val){
  var items=state.igeItems.get("igeLevel"+index)||[];
@@ -1406,7 +1460,7 @@ async function iecaSelectFromLevel(index,val){
   var nodes=await iecaLoadBadeaNodes(item);
   if(nodes.length===1){
    // Salta directament a l'arbre del node
-   var tree=await iecaLoadTree(nodes[0].nodeId);
+   var tree=await iecaLoadTree(nodes[0].nodeId,nodes[0].kind);
    igeAddLevel(tree.items,index+1,tree.actividad?"Consultes · "+tree.actividad:"Consultes / carpetes");
   }else{
    igeAddLevel(nodes,index+1,"Informe BADEA");
@@ -1414,7 +1468,7 @@ async function iecaSelectFromLevel(index,val){
   return;
  }
  if(item.type==="ieca-badea-node"){
-  var tree2=await iecaLoadTree(item.nodeId);
+  var tree2=await iecaLoadTree(item.nodeId,item.kind);
   igeAddLevel(tree2.items,index+1,tree2.actividad?"Consultes · "+tree2.actividad:"Consultes / carpetes");
   return;
  }
@@ -1424,7 +1478,7 @@ async function iecaSelectFromLevel(index,val){
   if(item._rawChildren&&item._rawChildren.length){
    kids=iecaTreeChildren({children:item._rawChildren});
   }else if(item.nodeId){
-   var t3=await iecaLoadTree(item.nodeId);
+   var t3=await iecaLoadTree(item.nodeId,item.kind);
    kids=t3.items;
   }
   // Si la branca té consulta pròpia i no fills útils, obre la consulta
@@ -1449,79 +1503,189 @@ async function iecaSelectFromLevel(index,val){
 }
 async function iecaSelectConsulta(rec){
  status("Carregant consulta IECA…");
- var raw=await iecaFetch(rec.url||(IECA_BASE+"/consulta/"+encodeURIComponent(rec.code)));
- var ds=iecaToJsonStat(raw);
- if(!ds)throw new Error("no s'ha pogut interpretar la consulta de l'IECA.");
+ var baseUrl=rec.url||(IECA_BASE+"/consulta/"+encodeURIComponent(rec.code));
+ var raw=await iecaFetch(baseUrl);
+ if(!raw||!raw.hierarchies)throw new Error("no s'ha pogut interpretar la consulta de l'IECA.");
  state.iecaConsulta=raw;
  state.iecaConsultaId=String(rec.code||raw.metainfo&&raw.metainfo.id||"");
+ state.iecaConsultaBaseUrl=IECA_BASE+"/consulta/"+encodeURIComponent(state.iecaConsultaId);
+ // Carrega jerarquies completes (períodes, territori, etc.)
+ status("Carregant jerarquies BADEA…");
+ var hierMembers={};
+ var hierList=raw.hierarchies||[];
+ for(var hi=0;hi<hierList.length;hi++){
+  var h=hierList[hi];
+  var alias=String(h.alias||"");
+  try{
+   var hurl=h.url||(IECA_BASE+"/jerarquia/?consultaId="+encodeURIComponent(state.iecaConsultaId)+"&alias="+encodeURIComponent(alias));
+   var hd=await iecaFetch(hurl);
+   hierMembers[alias]=iecaFlattenHierarchy(hd,h);
+  }catch(eH){
+   hierMembers[alias]=[];
+  }
+ }
+ state.iecaHierMembers=hierMembers;
+ // Construeix dataset amb categories de jerarquia (no només l'últim període de la resposta per defecte)
+ var ds=iecaToJsonStat(raw,hierMembers);
+ if(!ds)throw new Error("no s'ha pogut interpretar la consulta de l'IECA.");
  state.metadata=ds;
  renderMetadata(ds);
  $("tableInfo").hidden=false;
- $("tableInfo").innerHTML="<strong>Consulta:</strong> "+esc((raw.metainfo&&raw.metainfo.title)||rec.label)+"<span class=\"path\">"+esc(rec.url||"")+"</span><p>Este producto emplea la API de BADEA del Instituto de Estadística y Cartografía de Andalucía (IECA), pero no está certificado o aprobado por el IECA.</p>";
+ $("tableInfo").innerHTML="<strong>Consulta:</strong> "+esc((raw.metainfo&&raw.metainfo.title)||rec.label)+"<span class=\"path\">"+esc(state.iecaConsultaBaseUrl)+"</span><p>Este producto emplea la API de BADEA del Instituto de Estadística y Cartografía de Andalucía (IECA), pero no está certificado o aprobado por el IECA.</p><p class=\"filter-help\">Per defecte l'API només retorna l'últim període. Selecciona els períodes (i la resta de dimensions) i prem Consultar; es construirà l'URL filtrada de BADEA.</p>";
  $("query").disabled=false;
+ // Preselecciona l'últim període temporal si n'hi ha
+ try{
+  var timeDim=(ds.id||[]).find(function(id){
+   var dim=ds.dimension&&ds.dimension[id];
+   return dim&&(dim.role==="time"||/TEMPOR/i.test(id)||/TEMPOR|AÑO|TRIMESTRE|MES/i.test(String(dim.label||"")));
+  });
+  if(timeDim&&state.filters&&state.filters.has(timeDim)){
+   var cats=((ds.dimension[timeDim]||{}).category||{}).index||[];
+   if(cats.length){
+    var last=String(cats[cats.length-1]);
+    state.filters.set(timeDim,new Set([last]));
+    if(typeof updateCells==="function")updateCells();
+    // actualitza UI de filtres si existeix
+    document.querySelectorAll('.filter[data-dim="'+timeDim+'"] input[type="checkbox"]').forEach(function(cb){
+     cb.checked=cb.value===last;
+    });
+    document.querySelectorAll('.filter[data-dim="'+timeDim+'"] .selected-count').forEach(function(el){
+     el.textContent="1 seleccionades";
+    });
+  }
+  }
+ }catch(ePre){}
  status("");
 }
-function iecaToJsonStat(raw){
- if(!raw||!raw.hierarchies||!raw.data)return null;
- var dims=[];
- (raw.hierarchies||[]).forEach(function(h){
-  var id=String(h.alias||h.des||"dim");
-  var cats=[],seen=new Set();
-  (raw.data||[]).forEach(function(row){
-   // row: array of cells matching hierarchies + measure
-   var idx=raw.hierarchies.indexOf(h);
-   // better match by position in row: first N cells are hierarchies
-  });
-  dims.push({id:id,label:String(h.des||id),alias:h.alias,position:h.position,categories:cats});
- });
- // Reconstrueix categories i valors a partir de data
- var hier=raw.hierarchies||[];
- var dimCats=hier.map(function(){return{codes:[],index:new Map(),label:{}}});
- var values=[];
- var keyToVal=new Map();
- (raw.data||[]).forEach(function(row){
-  if(!Array.isArray(row))return;
-  var coords=[];
-  for(var i=0;i<hier.length;i++){
-   var cell=row[i]||{};
-   var code=(Array.isArray(cell.cod)?cell.cod.join(">"):String(cell.cod||cell.des||"")).trim();
-   if(!code)code=String(cell.des||i);
-   var lab=String(cell.des||code);
-   var dc=dimCats[i];
-   if(!dc.index.has(code)){
-    dc.index.set(code,dc.codes.length);
-    dc.codes.push(code);
-    dc.label[code]=lab;
+function iecaFlattenHierarchy(hd,hierMeta){
+ var out=[],seen=new Set();
+ var root=hd&&hd.data;
+ function walk(n){
+  if(!n||typeof n!=="object")return;
+  var id=n.id!=null?String(n.id):"";
+  var kids=n.children||[];
+  var isLeaf=!kids.length||n.isLastLevel===true;
+  // Inclou nodes de nivell visible (fulles o penúltim amb dades)
+  if(id&&id!=="null"&&n.level!=null&&n.level>=0){
+   // Preferix fulles; si no n'hi ha, nodes amb codi útil
+   if(isLeaf||!kids.length){
+    if(!seen.has(id)){
+     seen.add(id);
+     var lab=String(n.des||n.label||n.cod||id).replace(/^\([^)]*\)\s*/,"").trim();
+     out.push({id:id,code:String(n.cod||id),label:lab||id,level:n.level});
+    }
    }
-   coords.push(dc.index.get(code));
   }
-  var measure=row[hier.length]||{};
-  var num=measure.val!=null?Number(String(measure.val).replace(",",".")):null;
-  keyToVal.set(coords.join(","),Number.isFinite(num)?num:null);
- });
- var size=dimCats.map(function(d){return d.codes.length});
+  kids.forEach(walk);
+ }
+ walk(root);
+ // Si no hi ha fulles, agafa tots els nodes amb level>=0
+ if(!out.length){
+  (function walk2(n){
+   if(!n)return;
+   var id=n.id!=null?String(n.id):"";
+   if(id&&n.level!=null&&n.level>=0&&!seen.has(id)){
+    seen.add(id);
+    out.push({id:id,code:String(n.cod||id),label:String(n.des||n.label||n.cod||id).replace(/^\([^)]*\)\s*/,"").trim(),level:n.level});
+   }
+   (n.children||[]).forEach(walk2);
+  })(root);
+ }
+ // Ordena per codi/label
+ out.sort(function(a,b){return String(a.code).localeCompare(String(b.code),"es",{numeric:true})});
+ return out;
+}
+function iecaToJsonStat(raw,hierMembers){
+ if(!raw||!raw.hierarchies)return null;
+ hierMembers=hierMembers||{};
+ var hier=raw.hierarchies||[];
  var id=hier.map(function(h,i){return String(h.alias||("D"+i))});
+ var size=[];
  var dimension={};
- dimCats.forEach(function(dc,i){
+ hier.forEach(function(h,i){
   var hid=id[i];
-  dimension[hid]={label:String(hier[i].des||hid),category:{index:dc.codes,label:dc.label}};
-  var labU=String(hier[i].des||"").toUpperCase();
-  if(/TEMPOR|AÑO|ANO|YEAR|ANUAL|MENSUAL|TRIMESTR/i.test(labU)||/TEMPORAL/i.test(hid)){
+  var members=hierMembers[hid]||[];
+  var codes=[],labelMap={};
+  if(members.length){
+   members.forEach(function(m){
+    var c=String(m.id); // id intern BADEA (el que va a l'URL)
+    codes.push(c);
+    labelMap[c]=m.label||m.code||c;
+   });
+  }else{
+   // fallback: categories presents a data
+   var seen=new Set();
+   (raw.data||[]).forEach(function(row){
+    if(!Array.isArray(row)||!row[i])return;
+    var cell=row[i];
+    var code=(Array.isArray(cell.cod)?cell.cod.join(">"):String(cell.cod||cell.des||"")).trim()||String(i);
+    if(seen.has(code))return;
+    seen.add(code);
+    codes.push(code);
+    labelMap[code]=String(cell.des||code);
+   });
+  }
+  size.push(codes.length||1);
+  dimension[hid]={label:String(h.des||hid),category:{index:codes,label:labelMap}};
+  var labU=String(h.des||"").toUpperCase();
+  if(/TEMPOR|AÑO|ANO|YEAR|ANUAL|MENSUAL|TRIMESTR|MES/i.test(labU)||/TEMPORAL/i.test(hid)){
    dimension[hid].role="time";
    dimension[hid].extension={role:"time"};
   }
+  // Desa mapa id→membre per a la query
+  dimension[hid].extension=dimension[hid].extension||{};
+  dimension[hid].extension.iecaAlias=hid;
+  dimension[hid].extension.iecaPosition=h.position;
  });
- var n=size.reduce(function(a,b){return a*b},1);
- var value=new Array(n).fill(null);
- keyToVal.forEach(function(val,key){
-  var coords=key.split(",").map(Number);
-  var flat=0;
-  for(var k=0;k<coords.length;k++){
-   var stride=1;for(var s=k+1;s<size.length;s++)stride*=size[s];
-   flat+=coords[k]*stride;
+ // Valors de la resposta per defecte (parcials); la query completa es fa a iecaQuery
+ var n=size.reduce(function(a,b){return a*(b||1)},1);
+ var value=new Array(Math.min(n,1)).fill(null); // placeholder fins a consultar
+ // Omple el que hi hagi a data per defecte
+ try{
+  var dimCats=id.map(function(hid){
+   var idx=dimension[hid].category.index||[];
+   var map=new Map(idx.map(function(c,i){return [c,i]}));
+   return{map:map,index:idx};
+  });
+  var fullN=size.reduce(function(a,b){return a*b},1);
+  if(fullN>0&&fullN<500000){
+   value=new Array(fullN).fill(null);
+   (raw.data||[]).forEach(function(row){
+    if(!Array.isArray(row))return;
+    var coords=[];
+    for(var i=0;i<hier.length;i++){
+     var cell=row[i]||{};
+     // Prova d'encaixar per id de jerarquia o per codi/des
+     var hid=id[i];
+     var members=hierMembers[hid]||[];
+     var key=null;
+     if(members.length){
+      // cerca membre pel final de cod path o des
+      var des=String(cell.des||"");
+      var cods=Array.isArray(cell.cod)?cell.cod.map(String):[String(cell.cod||"")];
+      for(var mi=0;mi<members.length;mi++){
+       var m=members[mi];
+       if(cods.indexOf(String(m.code))>=0||des===m.label||des.indexOf(m.label)>=0){key=String(m.id);break}
+      }
+     }
+     if(key==null){
+      key=(Array.isArray(cell.cod)?cell.cod.join(">"):String(cell.cod||cell.des||"")).trim();
+     }
+     var ix=dimCats[i].map.has(key)?dimCats[i].map.get(key):-1;
+     if(ix<0)return;
+     coords.push(ix);
+    }
+    var measure=row[hier.length]||{};
+    var num=measure.val!=null?Number(String(measure.val).replace(",",".")):null;
+    var flat=0;
+    for(var k=0;k<coords.length;k++){
+     var stride=1;for(var s=k+1;s<size.length;s++)stride*=size[s];
+     flat+=coords[k]*stride;
+    }
+    if(flat>=0&&flat<value.length)value[flat]=Number.isFinite(num)?num:null;
+   });
   }
-  value[flat]=val;
- });
+ }catch(eFill){}
  return{
   class:"dataset",
   version:"2.0",
@@ -1536,25 +1700,49 @@ function iecaToJsonStat(raw){
 async function iecaQuery(filters){
  var id=state.iecaConsultaId;
  if(!id)throw new Error("no hi ha consulta IECA seleccionada.");
- // Construeix URL filtrada: alias=id1,id2
  var raw0=state.iecaConsulta;
+ var hier=(raw0&&raw0.hierarchies)||[];
  var params=[];
- if(raw0&&Array.isArray(raw0.hierarchies)){
-  raw0.hierarchies.forEach(function(h){
-   var alias=h.alias;
-   var selected=filters&&filters[alias];
-   if(!selected||!selected.length)return;
-   // Els ids de filtre de BADEA són interns; aquí filtrem client-side sobre la resposta
-  });
- }
+ // BADEA espera ids interns de jerarquia: ALIAS=id1,id2
+ // Important: cal enviar TOTS els valors seleccionats (també si són "tots"),
+ // perquè la resposta per defecte només porta l'últim període.
+ hier.forEach(function(h){
+  var alias=String(h.alias||"");
+  var selected=null;
+  if(state.filters&&state.filters.has(alias)){
+   selected=Array.from(state.filters.get(alias)||[]);
+  }else if(filters&&(filters[alias]||filters[h.des])){
+   selected=filters[alias]||filters[h.des];
+  }
+  if(selected&&selected.length){
+   params.push(encodeURIComponent(alias)+"="+selected.map(encodeURIComponent).join(","));
+  }
+ });
+ // posord: dimensions en files/columnes
+ var f=[],c=[];
+ hier.forEach(function(h){
+  var alias=String(h.alias||"");
+  var pos=String(h.position||"f").toLowerCase();
+  if(pos==="c")c.push(alias);
+  else if(pos==="p"){
+   // pàgina → mou a files si hem filtrat diversos valors
+   var sel=state.filters&&state.filters.has(alias)?Array.from(state.filters.get(alias)||[]):[];
+   if(sel.length>1)f.push(alias);
+   else f.push(alias);
+  }else f.push(alias);
+ });
+ var posord="posord="+encodeURIComponent(
+  f.map(function(a){return "f["+a+"]"}).join(",")+
+  (c.length?","+c.map(function(a){return "c["+a+"]"}).join(","):"")+
+  ",c[Measures]"
+ );
  var url=IECA_BASE+"/consulta/"+encodeURIComponent(id);
+ if(params.length)url+="?"+params.join("&")+"&"+posord;
+ else url+="?"+posord;
+ status("Consultant BADEA…");
  var raw=await iecaFetch(url);
- var ds=iecaToJsonStat(raw);
+ var ds=iecaToJsonStat(raw,state.iecaHierMembers||{});
  if(!ds)throw new Error("resposta IECA no vàlida.");
- // Filtre client-side
- if(filters&&ds.dimension){
-  // deixa que el motor de resultats filtri via state.filters ja aplicat a renderMetadata
- }
  return{data:ds,url:url};
 }
 async function igeSelectRoot(){
