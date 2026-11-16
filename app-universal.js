@@ -1,6 +1,6 @@
 
 const MAX_CELLS=20000;
-const state={provider:"idescat",pxPreset:"finland",stats:[],istacDatasets:[],istacPath:[],icanePackages:[],icaneRawData:null,igeRoot:[],igePath:[],igeItems:new Map(),igeSelector:null,igeMode:null,igeSeriesTree:null,iecaCatalog:null,iecaConsulta:null,iecaConsultaId:null,metadata:null,lastData:null,lastQueryUrl:"",finlandTableUrl:"",ineVarCache:new Map(),filters:new Map(),page:1,pageSize:100,temporalOrder:"desc",requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],ineNav:null,ineNavLoaded:false,ineOperations:null,inePath:[],ineItems:new Map(),swedenV2Tables:null,swedenV2Table:false,swedenPath:[],eustatCatalog:[],eustatGroups:[],eustatOperations:[],eustatTables:[],eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[],norwayPath:[],norwayCatalog:[],norwayRootItems:[]};
+const state={provider:"idescat",pxPreset:"finland",stats:[],istacDatasets:[],istacPath:[],icanePackages:[],icaneRawData:null,igeRoot:[],igePath:[],igeItems:new Map(),igeSelector:null,igeMode:null,igeSeriesTree:null,metadata:null,lastData:null,lastQueryUrl:"",finlandTableUrl:"",ineVarCache:new Map(),filters:new Map(),page:1,pageSize:100,temporalOrder:"desc",requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],ineNav:null,ineNavLoaded:false,ineOperations:null,inePath:[],ineItems:new Map(),swedenV2Tables:null,swedenV2Table:false,swedenPath:[],eustatCatalog:[],eustatGroups:[],eustatOperations:[],eustatTables:[],eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[],norwayPath:[],norwayCatalog:[],norwayRootItems:[]};
 const $=id=>document.getElementById(id);
 function debugGlobalError(e){
  var msg=e&&e.message?String(e.message):String(e||"Error"),
@@ -204,10 +204,6 @@ function temporal(d){
      label=String(d&&d.label||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase(),
      r=String(d&&d.role||"").toUpperCase(),
      cats=d&&Array.isArray(d.categories)?d.categories:[];
- // IECA: només dimensions explícitament temporals (els codis BADEA són ids numèrics i confonen la detecció)
- if(state.provider==="ieca"){
-  return r.indexOf("TIME")>=0||/TEMPORAL/i.test(id)||/\b(TRIMESTRAL|ANUAL|MENSUAL|TEMPORAL)\b/.test(label);
- }
  var explicit=["YEAR","MONTH","QUARTER","SEMESTER","BIMONTH","WEEK","DAY","DATE","TIME","TIME_PERIOD","PERIOD","PERIODO","PERIODO_TEMPORAL"].indexOf(id)>=0;
  var named=id.indexOf("TIME")===0||id.indexOf("PER")===0||label==="PERIODO"||label.indexOf("PERIODO ")===0||label==="PERIOD"||label.indexOf("PERIOD ")===0||label.indexOf("TEMPORAL")>=0||label==="TEMPO"||label.indexOf("TEMPO ")===0||label==="TIEMPO"||label.indexOf("TIEMPO ")===0||label==="TIME"||label.indexOf("TIME ")===0||label.indexOf("YEAR")>=0||label.indexOf("MONTH")>=0||label.indexOf("QUARTER")>=0||label.indexOf("SEMESTER")>=0||label.indexOf("TRIMESTRE")>=0||label.indexOf("MES")===0||label.indexOf("AÑO")>=0||label.indexOf("ANO")>=0||label.indexOf("YEAR")>=0||r.indexOf("TIME")>=0||r.indexOf("TEMPOR")>=0;
  var temporalCodes=cats.length>0&&cats.every(function(c){
@@ -1020,7 +1016,7 @@ function recursiveProxyStart(kind){
  draw(highest);
 }
 
-function setProviderUI(){setLabels();var isEuro=state.provider==="eurostat",isIne=state.provider==="ine",isIstac=state.provider==="istac",isIcane=state.provider==="icane",isIeca=state.provider==="ieca",isIge=state.provider==="ige",isSweden=state.provider==="pxweb"&&state.pxPreset==="sweden",isFinland=state.provider==="pxweb"&&state.pxPreset==="finland",isIceland=state.provider==="pxweb"&&state.pxPreset==="iceland",isNorway=state.provider==="pxweb"&&state.pxPreset==="norway",isEustat=state.provider==="pxweb"&&state.pxPreset==="eustat",isFlatPx=state.provider==="pxweb"&&isEustat,sl=null,otherBox=$("otherProviderWrap");if(otherBox)otherBox.hidden=!$("provider")||$("provider").value!=="other";var fixedGrid=document.querySelector("#step2>.grid"),euroBox=$("eurostatLevels");if(fixedGrid){fixedGrid.hidden=false;fixedGrid.style.display="";if(isSweden||isFinland||isIceland){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}}if(euroBox)euroBox.hidden=!(isEuro||isIstac||isIcane||isIeca||isIge||isSweden||isFinland||isIceland||isNorway||isIne||state.provider==="idescat"||isEustat);if((isEuro||isIne||isIstac||isIcane||isIeca||isIge)&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isEustat&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i<3?"":"none"});if(fixedGrid.querySelector("label:nth-child(2)"))fixedGrid.querySelector("label:nth-child(2)").firstChild.textContent="Operació ";if(fixedGrid.querySelector("label:nth-child(3)"))fixedGrid.querySelector("label:nth-child(3)").firstChild.textContent="Taula "}else if(isNorway&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isFlatPx&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}else if(fixedGrid&&!isSweden&&!isFinland&&!isIceland){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display=""})}if(fixedGrid&&(state.provider==="idescat"||isIstac||isIcane||isIeca||isIge||isEustat||state.pxPreset==="unece")){fixedGrid.hidden=true;fixedGrid.style.display="none"}var tl=$("table")&&$("table").parentElement,gl=$("geo")&&$("geo").parentElement;if(tl)tl.style.display=(isEuro||isIne||isIstac||isIcane||isIeca||isIge||isFlatPx||isNorway||isSweden||isFinland||isIceland)?"none":"";if(gl)gl.style.display=(isEuro||isIne||isIstac||isIcane||isIeca||isIge||isFlatPx||isNorway||isSweden||isFinland||isIceland)?"none":""; var sel=(state.provider==="pxweb"||state.provider==="istac"||state.provider==="icane"||state.provider==="ieca"||state.provider==="ige")?"other":state.provider;if($("provider")&&[].slice.call($("provider").options).some(function(o){return o.value===sel}))$("provider").value=sel;if($("otherProvider"))$("otherProvider").value=state.provider==="istac"?"istac":state.provider==="icane"?"icane":state.provider==="ieca"?"ieca":state.provider==="ige"?"ige":(state.provider==="pxweb"&&state.pxPreset?"pxweb:"+state.pxPreset:"")}
+function setProviderUI(){setLabels();var isEuro=state.provider==="eurostat",isIne=state.provider==="ine",isIstac=state.provider==="istac",isIcane=state.provider==="icane",isIge=state.provider==="ige",isSweden=state.provider==="pxweb"&&state.pxPreset==="sweden",isFinland=state.provider==="pxweb"&&state.pxPreset==="finland",isIceland=state.provider==="pxweb"&&state.pxPreset==="iceland",isNorway=state.provider==="pxweb"&&state.pxPreset==="norway",isEustat=state.provider==="pxweb"&&state.pxPreset==="eustat",isFlatPx=state.provider==="pxweb"&&isEustat,sl=null,otherBox=$("otherProviderWrap");if(otherBox)otherBox.hidden=!$("provider")||$("provider").value!=="other";var fixedGrid=document.querySelector("#step2>.grid"),euroBox=$("eurostatLevels");if(fixedGrid){fixedGrid.hidden=false;fixedGrid.style.display="";if(isSweden||isFinland||isIceland){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}}if(euroBox)euroBox.hidden=!(isEuro||isIstac||isIcane||isIge||isSweden||isFinland||isIceland||isNorway||isIne||state.provider==="idescat"||isEustat);if((isEuro||isIne||isIstac||isIcane||isIge)&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isEustat&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i<3?"":"none"});if(fixedGrid.querySelector("label:nth-child(2)"))fixedGrid.querySelector("label:nth-child(2)").firstChild.textContent="Operació ";if(fixedGrid.querySelector("label:nth-child(3)"))fixedGrid.querySelector("label:nth-child(3)").firstChild.textContent="Taula "}else if(isNorway&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display="none"})}else if(isFlatPx&&fixedGrid){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l,i){l.style.display=i===0?"":"none"})}else if(fixedGrid&&!isSweden&&!isFinland&&!isIceland){Array.from(fixedGrid.querySelectorAll("label")).forEach(function(l){l.style.display=""})}if(fixedGrid&&(state.provider==="idescat"||isIstac||isIcane||isIge||isEustat||state.pxPreset==="unece")){fixedGrid.hidden=true;fixedGrid.style.display="none"}var tl=$("table")&&$("table").parentElement,gl=$("geo")&&$("geo").parentElement;if(tl)tl.style.display=(isEuro||isIne||isIstac||isIcane||isIge||isFlatPx||isNorway||isSweden||isFinland||isIceland)?"none":"";if(gl)gl.style.display=(isEuro||isIne||isIstac||isIcane||isIge||isFlatPx||isNorway||isSweden||isFinland||isIceland)?"none":""; var sel=(state.provider==="pxweb"||state.provider==="istac"||state.provider==="icane"||state.provider==="ige")?"other":state.provider;if($("provider")&&[].slice.call($("provider").options).some(function(o){return o.value===sel}))$("provider").value=sel;if($("otherProvider"))$("otherProvider").value=state.provider==="istac"?"istac":state.provider==="icane"?"icane":state.provider==="ige"?"ige":(state.provider==="pxweb"&&state.pxPreset?"pxweb:"+state.pxPreset:"")}
 function icelandEnglishRootLabel(label){
  var s=String(label||"").trim(),n=s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
  var m={
@@ -1186,647 +1182,9 @@ function igeAddLevel(items,index,labelText){
  state.igeItems.set("igeLevel"+index,list);
  sel.onchange=async function(){
   clearQueryView();if(!sel.value)return;
-  try{await igeSelectDynamic(index,sel.value)}catch(e){var msg=String(e&&e.message||e);var pre=state.provider==="ieca"?"IECA: ":(state.provider==="ige"?"IGE: ":"");if(/^(IGE|IECA):/i.test(msg))pre="";status(pre+msg,"error")}
+  try{await igeSelectDynamic(index,sel.value)}catch(e){status((/^IGE:/i.test(String(e&&e.message||e))?"":"IGE: ")+(e&&e.message?String(e.message):String(e)),"error")}
  };
  if(list.length===1){sel.value=list[0].id;sel.onchange()}
-}
-
-// ——— IECA (BADEA) ———
-var IECA_BASE="https://www.juntadeandalucia.es/institutodeestadisticaycartografia/intranet/admin/rest/v1.0";
-async function iecaFetch(url){
- // IECA sovint bloqueja CORS; prova directe + proxies
- try{
-  var r=await fetch(url,{cache:"no-store"});
-  if(r.ok){
-   var tx=await r.clone().text();
-   if(tx&&tx.trim()[0]!=="<")return JSON.parse(tx.replace(/^\uFEFF/,"").trim());
-  }
- }catch(e0){}
- var proxies=[
-  "https://cors.tools/proxy?url="+encodeURIComponent(url),
-  "https://api.allorigins.win/raw?url="+encodeURIComponent(url),
-  "https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(url)
- ];
- var last=null;
- for(var i=0;i<proxies.length;i++){
-  try{
-   var pr=await fetch(proxies[i],{cache:"no-store"});
-   if(!pr.ok){last=new Error("HTTP "+pr.status);continue}
-   var t=await pr.text();
-   var s=String(t||"").replace(/^\uFEFF/,"").trim();
-   if(!s||s[0]==="<"){last=new Error("Proxy HTML");continue}
-   return JSON.parse(s);
-  }catch(e){last=e}
- }
- throw new Error("No s'ha pogut connectar amb l'API de l'IECA. "+(last&&last.message||""));
-}
-async function iecaLoadCatalog(){
- // Catàleg jeràrquic: DEGA datos-por-temas → operacions → arbre BADEA
- status("Carregant temes de l'IECA (DEGA)…");
- var html=await fetchText("https://www.juntadeandalucia.es/institutodeestadisticaycartografia/dega/datos-por-temas",{cache:"no-store"});
- var themes=[],seen=new Set();
- function addTheme(slug,label){
-  slug=String(slug||"").replace(/^\//,"").trim();
-  label=String(label||"").replace(/\s+/g," ").trim();
-  if(!slug||!/^tema-/i.test(slug)||seen.has(slug))return;
-  if(!label||label.length<3)return;
-  seen.add(slug);
-  themes.push({
-   id:"ieca-th-"+slug,
-   label:label,
-   type:"ieca-theme",
-   slug:slug,
-   url:"https://www.juntadeandalucia.es/institutodeestadisticaycartografia/dega/"+slug
-  });
- }
- try{
-  var doc=new DOMParser().parseFromString(html,"text/html");
-  Array.from(doc.querySelectorAll('a[href*="tema-"]')).forEach(function(a){
-   var href=a.getAttribute("href")||"";
-   var m=href.match(/(tema-[a-z0-9-]+)/i);
-   if(m)addTheme(m[1],a.textContent||m[1]);
-  });
- }catch(e){}
- var re=/href=["']([^"']*tema-[a-z0-9-]+[^"']*)["'][^>]*>([^<]+)/gi,m;
- while((m=re.exec(String(html||"")))){
-  var mm=m[1].match(/(tema-[a-z0-9-]+)/i);
-  if(mm)addTheme(mm[1],m[2]);
- }
- themes.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true,sensitivity:"base"})});
- if(!themes.length)throw new Error("no s'han trobat temes a DEGA (datos-por-temas).");
- state.iecaCatalog=themes;
- return themes;
-}
-async function iecaSelectRoot(){
- eurostatClearLevels();
- var list=state.iecaCatalog&&state.iecaCatalog.length?state.iecaCatalog:await iecaLoadCatalog();
- igeAddLevel(list,0,"Tema");
-}
-async function iecaLoadOperations(theme){
- status("Carregant operacions del tema…");
- var html=await fetchText(theme.url,{cache:"no-store"});
- var ops=[],seen=new Set();
- function addOp(url,label){
-  url=String(url||"").trim();
-  label=String(label||"").replace(/\s+/g," ").trim();
-  if(!url||!label||label.length<3)return;
-  if(/twitter|facebook|linkedin|mailto|javascript|#/i.test(url))return;
-  var abs=url;
-  if(url.indexOf("http")!==0){
-   if(url.charAt(0)==="/")abs="https://www.juntadeandalucia.es"+url;
-   else abs="https://www.juntadeandalucia.es/institutodeestadisticaycartografia/dega/"+url.replace(/^\.\//,"");
-  }
-  // Ignora navegació del propi portal
-  if(/datos-por-temas|\/dega\/?$/i.test(abs))return;
-  if(theme.slug&&new RegExp("/"+theme.slug+"/?$","i").test(abs))return;
-  if(seen.has(abs))return;
-  seen.add(abs);
-  var isDega=/\/institutodeestadisticaycartografia\/dega\/[a-z0-9-]+/i.test(abs)&&!/tema-/i.test(abs);
-  var isActividad=/\/actividad\/detalle\//i.test(abs)||/estadistica-cartografia\/actividad/i.test(abs);
-  // Només operacions DEGA o fitxes d'activitat de la Junta
-  if(!isDega&&!isActividad)return;
-  var l=label.toLowerCase();
-  if(/^(inicio|home|contacto|aviso|accesibilidad|mapa web)$/i.test(label))return;
-  if(l.indexOf("datos por temas")>=0)return;
-  ops.push({
-   id:"ieca-op-"+ops.length,
-   label:label+(isDega?"":" · (fitxa)"),
-   type:"ieca-operation",
-   url:abs,
-   isDega:!!isDega
-  });
- }
- try{
-  var doc=new DOMParser().parseFromString(html,"text/html");
-  Array.from(doc.querySelectorAll("a[href]")).forEach(function(a){
-   addOp(a.getAttribute("href")||"",a.textContent||"");
-  });
- }catch(e){}
- var re=/href=["']([^"']+)["'][^>]*>([^<]+)/gi,m;
- while((m=re.exec(String(html||""))))addOp(m[1],m[2]);
- // Prefereix pàgines DEGA (sovint tenen idNode BADEA)
- ops.sort(function(a,b){
-  if(a.isDega!==b.isDega)return a.isDega?-1:1;
-  return a.label.localeCompare(b.label,"es",{numeric:true,sensitivity:"base"});
- });
- if(!ops.length)throw new Error("no s'han trobat operacions en aquest tema.");
- return ops;
-}
-async function iecaLoadBadeaNodes(operation){
- status("Carregant nodes BADEA…");
- var html;
- try{
-  html=await fetchText(operation.url,{cache:"no-store"});
- }catch(e){
-  throw new Error("no s'ha pogut obrir la fitxa de l'operació ("+(e&&e.message||"fetch")+")");
- }
- var nodes=[],seen=new Set();
- function addNode(idNode,label,kind,href){
-  idNode=String(idNode||"").trim();
-  if(!idNode||seen.has(idNode))return;
-  seen.add(idNode);
-  label=String(label||("Node "+idNode)).replace(/\s+/g," ").trim();
-  kind=kind==="datosaldia"?"datosaldia":"anual";
-  nodes.push({
-   id:"ieca-node-"+idNode,
-   label:label,
-   type:"ieca-badea-node",
-   nodeId:idNode,
-   kind:kind,
-   url:"https://www.juntadeandalucia.es/institutodeestadisticaycartografia/badea/informe/"+kind+"/json?node="+encodeURIComponent(idNode)
-  });
- }
- // Etiqueta amb context del <li> pare (ex.: "Media de los cuatro trimestres… → 2025")
- try{
-  var doc=new DOMParser().parseFromString(html,"text/html");
-  Array.from(doc.querySelectorAll('a[href*="idNode="]')).forEach(function(a){
-   var href=(a.getAttribute("href")||"").replace(/&amp;/g,"&");
-   var m=href.match(/idNode=(\d+)/i);
-   if(!m)return;
-   var kind=/datosaldia/i.test(href)?"datosaldia":"anual";
-   var linkText=String(a.textContent||"").replace(/\s+/g," ").trim();
-   var parts=[],li=a.closest("li"),guard=0;
-   while(li&&guard++<6){
-    var clone=li.cloneNode(true);
-    Array.from(clone.querySelectorAll("ul")).forEach(function(u){u.remove()});
-    var tline=String(clone.textContent||"").replace(/\s+/g," ").trim();
-    if(tline&&parts.indexOf(tline)<0)parts.unshift(tline);
-    li=li.parentElement?li.parentElement.closest("li"):null;
-   }
-   var label=parts.length?parts.join(" · "):linkText;
-   if(label.length>140){
-    label=(parts.length>1?parts[0]+" · ":"")+(linkText||parts[parts.length-1]||m[1]);
-   }
-   if(label.length<4)label=linkText||m[1];
-   addNode(m[1],label,kind,href);
-  });
- }catch(eDom){}
-
- // Fallback regex
- if(!nodes.length){
-  var re=/href=["']([^"']*idNode=(\d+)[^"']*)["'][^>]*>([^<]*)/gi,m;
-  while((m=re.exec(String(html||"")))){
-   var href=m[1].replace(/&amp;/g,"&");
-   var kind=/datosaldia/i.test(href)?"datosaldia":"anual";
-   addNode(m[2],m[3]||m[2],kind,href);
-  }
- }
- if(!nodes.length){
-  throw new Error("aquesta operació no té enllaços a consultes BADEA (idNode). Moltes fitxes externes només enllacen publicacions, no l'API.");
- }
- return nodes;
-}
-function iecaNodeLabel(n){
- // A BADEA, label sol ser el títol específic de la taula;
- // consultaTitulo sovint és el nom de la carpeta (repetit).
- var a=String(n&&n.label||"").replace(/\s+/g," ").trim();
- var b=String(n&&n.consultaTitulo||"").replace(/\s+/g," ").trim();
- if(a&&b){
-  if(a.length>=b.length&&a!==b)return a;
-  if(b.length>a.length&&a===b.slice(0,a.length))return b;
-  // Preferix el més llarg
-  return a.length>=b.length?a:b;
- }
- return a||b||(n&&n.consulta!=null?("Consulta "+n.consulta):("Node "+(n&&n.id||"")));
-}
-function iecaTreeChildren(nodos){
- var out=[];
- function walkList(list){
-  (list||[]).forEach(function(n){
-   if(!n)return;
-   var kids=n.children||[];
-   var cons=n.consulta!=null&&n.consulta!==""?String(n.consulta):"";
-   var lab=iecaNodeLabel(n);
-   if(kids.length){
-    out.push({
-     id:"ieca-branch-"+(n.id!=null?n.id:out.length),
-     label:lab,
-     type:"ieca-badea-branch",
-     nodeId:n.id!=null?String(n.id):"",
-     consulta:cons||null,
-     _rawChildren:kids
-    });
-   }else if(cons){
-    out.push({
-     id:"ieca-c-"+cons+"-"+(n.id!=null?n.id:out.length),
-     label:lab,
-     type:"ieca-consulta",
-     code:cons,
-     url:IECA_BASE+"/consulta/"+encodeURIComponent(cons)
-    });
-   }
-  });
- }
- if(Array.isArray(nodos))walkList(nodos);
- else if(nodos&&nodos.children)walkList(nodos.children);
- else if(nodos)walkList([nodos]);
- // Si totes les etiquetes són iguals, afegeix el codi de consulta per distingir-les
- var labels=out.map(function(x){return x.label});
- var allSame=out.length>1&&labels.every(function(l){return l===labels[0]});
- if(allSame){
-  out.forEach(function(x){
-   if(x.code)x.label=x.label+" · "+x.code;
-   else if(x.consulta)x.label=x.label+" · "+x.consulta;
-  });
- }
- out.sort(function(a,b){return a.label.localeCompare(b.label,"es",{numeric:true,sensitivity:"base"})});
- return out;
-}
-async function iecaLoadTree(nodeId,kind){
- kind=kind==="datosaldia"?"datosaldia":"anual";
- var url="https://www.juntadeandalucia.es/institutodeestadisticaycartografia/badea/informe/"+kind+"/json?node="+encodeURIComponent(nodeId);
- var data;
- try{
-  data=await iecaFetch(url);
- }catch(e){
-  // Prova l'altre tipus d'informe
-  var alt=kind==="datosaldia"?"anual":"datosaldia";
-  url="https://www.juntadeandalucia.es/institutodeestadisticaycartografia/badea/informe/"+alt+"/json?node="+encodeURIComponent(nodeId);
-  data=await iecaFetch(url);
-  kind=alt;
- }
- var kids=iecaTreeChildren(data&&data.nodos);
- if(!kids.length&&data&&data.nodos&&data.nodos.consulta){
-  var cons=String(data.nodos.consulta);
-  kids=[{id:"ieca-c-"+cons,label:iecaNodeLabel(data.nodos)||data.actividad||("Consulta "+cons),type:"ieca-consulta",code:cons,url:IECA_BASE+"/consulta/"+encodeURIComponent(cons)}];
- }
- if(!kids.length)throw new Error("aquest node BADEA no conté consultes.");
- return{actividad:data&&data.actividad||"",items:kids,kind:kind};
-}
-async function iecaSelectFromLevel(index,val){
- var items=state.igeItems.get("igeLevel"+index)||[];
- var item=items.find(function(x){return String(x.id)===String(val)});
- if(!item)throw new Error("Element IECA no trobat.");
-
- if(item.type==="ieca-theme"){
-  var ops=await iecaLoadOperations(item);
-  igeAddLevel(ops,index+1,"Operació estadística");
-  return;
- }
- if(item.type==="ieca-operation"){
-  var nodes=await iecaLoadBadeaNodes(item);
-  if(nodes.length===1){
-   // Salta directament a l'arbre del node
-   var tree=await iecaLoadTree(nodes[0].nodeId,nodes[0].kind);
-   igeAddLevel(tree.items,index+1,tree.actividad?"Consultes · "+tree.actividad:"Consultes / carpetes");
-  }else{
-   igeAddLevel(nodes,index+1,"Informe BADEA");
-  }
-  return;
- }
- if(item.type==="ieca-badea-node"){
-  var tree2=await iecaLoadTree(item.nodeId,item.kind);
-  igeAddLevel(tree2.items,index+1,tree2.actividad?"Consultes · "+tree2.actividad:"Consultes / carpetes");
-  return;
- }
- if(item.type==="ieca-badea-branch"){
-  // Expandeix fills ja descarregats o torna a demanar el node
-  var kids=[];
-  if(item._rawChildren&&item._rawChildren.length){
-   kids=iecaTreeChildren({children:item._rawChildren});
-  }else if(item.nodeId){
-   var t3=await iecaLoadTree(item.nodeId,item.kind);
-   kids=t3.items;
-  }
-  // Si la branca té consulta pròpia i no fills útils, obre la consulta
-  if((!kids||!kids.length)&&item.consulta){
-   await iecaSelectConsulta({code:item.consulta,label:item.label,url:IECA_BASE+"/consulta/"+encodeURIComponent(item.consulta)});
-   return;
-  }
-  igeAddLevel(kids,index+1,"Subcarpeta / consulta");
-  return;
- }
- if(item.type==="ieca-consulta"){
-  await iecaSelectConsulta(item);
-  return;
- }
- // compatibilitat
- if(item.type==="ieca-activity"||item.type==="ieca-package"){
-  var ch=(item._children||[]).map(function(c){
-   return c.type?c:{id:"ieca-c-"+c.id,label:c.label,type:"ieca-consulta",code:c.id,url:c.url};
-  });
-  igeAddLevel(ch,index+1,"Consulta");
- }
-}
-async function iecaSelectConsulta(rec){
- status("Carregant consulta IECA…");
- var baseUrl=rec.url||(IECA_BASE+"/consulta/"+encodeURIComponent(rec.code));
- var raw=await iecaFetch(baseUrl);
- if(!raw||!raw.hierarchies)throw new Error("no s'ha pogut interpretar la consulta de l'IECA.");
- state.iecaConsulta=raw;
- state.iecaConsultaId=String(rec.code||raw.metainfo&&raw.metainfo.id||"");
- state.iecaConsultaBaseUrl=IECA_BASE+"/consulta/"+encodeURIComponent(state.iecaConsultaId);
- // Carrega jerarquies completes (períodes, territori, etc.)
- status("Carregant jerarquies BADEA…");
- var hierMembers={};
- var hierList=raw.hierarchies||[];
- for(var hi=0;hi<hierList.length;hi++){
-  var h=hierList[hi];
-  var alias=String(h.alias||"");
-  try{
-   var hurl=h.url||(IECA_BASE+"/jerarquia/?consultaId="+encodeURIComponent(state.iecaConsultaId)+"&alias="+encodeURIComponent(alias));
-   var hd=await iecaFetch(hurl);
-   hierMembers[alias]=iecaFlattenHierarchy(hd,h);
-  }catch(eH){
-   hierMembers[alias]=[];
-  }
- }
- // BADEA pot exposar a /jerarquia/ valors que formen part de la jerarquia però
- // que no s'utilitzen realment en la consulta. Per exemple, una jerarquia
- // temporal pot contenir anys futurs. Demanem explícitament tots els membres
- // temporals i ens quedem només amb els que BADEA retorna amb observacions.
- try{
-  for(var hti=0;hti<hierList.length;hti++){
-   var th=hierList[hti], talias=String(th.alias||"");
-   if(!/TEMPOR/i.test(talias+" "+String(th.des||"")))continue;
-   var tm=hierMembers[talias]||[];
-   if(!tm.length)continue;
-   var allIds=tm.map(function(m){return String(m.id)}).filter(Boolean);
-   if(!allIds.length)continue;
-   var qurl=IECA_BASE+"/consulta/"+encodeURIComponent(state.iecaConsultaId)+
-     "?"+encodeURIComponent(talias)+"="+allIds.map(encodeURIComponent).join(",")+
-     "&posord="+encodeURIComponent("f["+talias+"],c[Measures]");
-   var qraw=await iecaFetch(qurl);
-   var usedCodes=new Set(), usedLabels=new Set();
-   (qraw&&qraw.data||[]).forEach(function(row){
-    var cell=row&&row[hti];
-    if(!cell)return;
-    (Array.isArray(cell.cod)?cell.cod:[cell.cod]).forEach(function(v){
-     if(v!=null&&String(v)!=="")usedCodes.add(String(v));
-    });
-    if(cell.des!=null)usedLabels.add(String(cell.des).trim());
-   });
-   if(usedCodes.size||usedLabels.size){
-    var filtered=tm.filter(function(m){
-     return usedCodes.has(String(m.code))||usedCodes.has(String(m.id))||
-            usedLabels.has(String(m.label||"").trim());
-    });
-    if(filtered.length)hierMembers[talias]=filtered;
-   }
-  }
- }catch(eTemporalRefine){
-  // Si aquesta consulta auxiliar falla, conservem la jerarquia original.
- }
- state.iecaHierMembers=hierMembers;
- // Construeix dataset amb categories de jerarquia (no només l'últim període de la resposta per defecte)
- var ds=iecaToJsonStat(raw,hierMembers);
- if(!ds)throw new Error("no s'ha pogut interpretar la consulta de l'IECA.");
- state.metadata=ds;
- renderMetadata(ds);
- $("tableInfo").hidden=false;
- $("tableInfo").innerHTML="<strong>Consulta:</strong> "+esc((raw.metainfo&&raw.metainfo.title)||rec.label)+"<span class=\"path\">"+esc(state.iecaConsultaBaseUrl)+"</span><p>Este producto emplea la API de BADEA del Instituto de Estadística y Cartografía de Andalucía (IECA), pero no está certificado o aprobado por el IECA.</p><p class=\"filter-help\">Per defecte l'API només retorna l'últim període. Selecciona els períodes (i la resta de dimensions) i prem Consultar; es construirà l'URL filtrada de BADEA.</p>";
- $("query").disabled=false;
- // Preselecciona només l'últim període temporal (sortedCats el posa primer)
- try{
-  var timeDimId=(ds.id||[]).find(function(id){
-   var dim=ds.dimension&&ds.dimension[id];
-   return dim&&(dim.role==="time"||/TEMPOR/i.test(id));
-  });
-  if(timeDimId){
-   var sec=document.querySelector('.filter[data-dim="'+timeDimId+'"]');
-   var list=sec&&sec.querySelector('.options');
-   var metaDims=typeof dims==="function"?dims(ds):[];
-   var dimObj=metaDims.find(function(d){return d.id===timeDimId});
-   if(dimObj&&list){
-    var sc=sortedCats(dimObj.categories||[],dimObj);
-    if(sc.length){
-     setFilterSelection(dimObj,sc,[String(sc[0].code)],list);
-    }
-   }
-  }
- }catch(ePre){}
- status("");
-}
-
-function iecaFlattenHierarchy(hd,hierMeta){
- var out=[],seen=new Set();
- var root=hd&&hd.data;
- var metaText=hierMeta&&[hierMeta.des,hierMeta.label,hierMeta.title,hierMeta.name].filter(Boolean).join(" · ");
- var isTemporal=hierMeta&&(/TEMPOR/i.test(String(hierMeta.alias||""))||/TEMPOR|TRIMESTR|ANUAL|MENSUAL/i.test(String(metaText)));
- function periodFromText(s){
-  s=String(s||"");
-  var q=null,y=null,m;
-  m=s.match(/\\b([1-4])(?:er|º|\\.er|\\.º)?\\s*(?:trimestre|trim\\.)\\s*(?:de\\s*)?(19|20)\\d{2}\\b/i);
-  if(m){q=Number(m[1]);y=Number((m[2]||"")+s.match(/\\b(19|20)\\d{2}\\b/)[0].slice(2));return y*4+q;}
-  m=s.match(/\\b(19|20)\\d{2}\\b/);
-  if(m)y=Number(m[0]);
-  if(y!=null)return y*4+4;
-  return null;
- }
- function rangeFromText(s){
-  s=String(s||"").replace(/\\s+/g," ").trim();
-  if(!s)return null;
-  var ms=s.match(/desde(?:\\s+el)?\\s+([1-4])(?:er|º|\\.er|\\.º)?\\s*(?:trimestre|trim\\.)?\\s*(?:de\\s*)?(19|20)\\d{2}\\s+(?:al|hasta|a)\\s+([1-4])(?:er|º|\\.er|\\.º)?\\s*(?:trimestre|trim\\.)?\\s*(?:de\\s*)?(19|20)\\d{2}/i);
-  if(ms){
-   var ys=Number((ms[2]||"")+ms[0].match(/(?:19|20)\\d{2}/)[0].slice(2));
-   var ye=Number((ms[4]||"")+ms[0].match(/(?:19|20)\\d{2}/g)[1].slice(2));
-   return{min:ys*4+Number(ms[1]),max:ye*4+Number(ms[3])};
-  }
-  var ys2=s.match(/(?:desde|a partir de)\\s+(?:el\\s+)?(?:1er\\s+trimestre\\s+de\\s+)?((?:19|20)\\d{2})/i);
-  var ye2=s.match(/(?:al|hasta)\\s+(?:el\\s+)?(?:[1-4](?:er|º)?\\s+trimestre\\s+de\\s+)?((?:19|20)\\d{2})/i);
-  if(ys2&&ye2)return{min:Number(ys2[1])*4+1,max:Number(ye2[1])*4+4};
-  return null;
- }
- function nodeLabel(n){
-  return String(n&& (n.des!=null?n.des:(n.label!=null?n.label:n.cod)) || "").replace(/\\s+/g," ").trim();
- }
- function yearFromMember(n){
-  var p=periodFromText(nodeLabel(n));
-  return p!=null?Math.floor((p-1)/4):null;
- }
- function accept(n,path){
-  if(!isTemporal)return true;
-  var p=periodFromText(nodeLabel(n));
-  if(p==null){
-   var c=String(n&&n.cod||"");
-   if(/^\\d{4,5}$/.test(c)){
-    var y=Number(c.slice(0,4));
-    if(y>=1900&&y<=2100)p=y*4+4;
-   }
-  }
-  var range=rangeFromText(metaText);
-  for(var i=path.length-1;i>=0&&!range;i--)range=rangeFromText(path[i]);
-  if(range&&p!=null)return p>=range.min&&p<=range.max;
-  return true;
- }
- function pushMember(n,path){
-  var id=n&&n.id!=null?String(n.id):"";
-  if(!id||id==="null"||seen.has(id)||!accept(n,path))return;
-  if(n.level==null||n.level<0)return;
-  seen.add(id);
-  var lab=nodeLabel(n).replace(/^\\([^)]*\\)\\s*/,"").trim();
-  out.push({id:id,code:String(n.cod||id),label:lab||id,level:n.level,year:yearFromMember(n)});
- }
- function walk(n,path){
-  if(!n||typeof n!=="object")return;
-  var label=nodeLabel(n);
-  var nextPath=label?[].concat(path||[],[label]):(path||[]);
-  var kids=n.children||[];
-  var isLeaf=!kids.length||n.isLastLevel===true;
-  if(isLeaf||!kids.length)pushMember(n,nextPath);
-  kids.forEach(function(k){walk(k,nextPath)});
- }
- walk(root,[]);
- if(!out.length){
-  (function walk2(n,path){
-   if(!n)return;
-   var label=nodeLabel(n),nextPath=label?[].concat(path||[],[label]):(path||[]);
-   pushMember(n,nextPath);
-   (n.children||[]).forEach(function(k){walk2(k,nextPath)});
-  })(root,[]);
- }
- out.sort(function(a,b){return String(a.code).localeCompare(String(b.code),"es",{numeric:true})});
- return out;
-}
-function iecaToJsonStat(raw,hierMembers){
- if(!raw||!raw.hierarchies)return null;
- hierMembers=hierMembers||{};
- var hier=raw.hierarchies||[];
- var id=hier.map(function(h,i){return String(h.alias||("D"+i))});
- var size=[];
- var dimension={};
- hier.forEach(function(h,i){
-  var hid=id[i];
-  var members=hierMembers[hid]||[];
-  var codes=[],labelMap={};
-  if(members.length){
-   members.forEach(function(m){
-    var c=String(m.id); // id intern BADEA (el que va a l'URL)
-    codes.push(c);
-    labelMap[c]=m.label||m.code||c;
-   });
-  }else{
-   // fallback: categories presents a data
-   var seen=new Set();
-   (raw.data||[]).forEach(function(row){
-    if(!Array.isArray(row)||!row[i])return;
-    var cell=row[i];
-    var code=(Array.isArray(cell.cod)?cell.cod.join(">"):String(cell.cod||cell.des||"")).trim()||String(i);
-    if(seen.has(code))return;
-    seen.add(code);
-    codes.push(code);
-    labelMap[code]=String(cell.des||code);
-   });
-  }
-  size.push(codes.length||1);
-  dimension[hid]={label:String(h.des||hid),category:{index:codes,label:labelMap}};
-  var labU=String(h.des||"").toUpperCase();
-  if(/TEMPOR|AÑO|ANO|YEAR|ANUAL|MENSUAL|TRIMESTR|MES/i.test(labU)||/TEMPORAL/i.test(hid)){
-   dimension[hid].role="time";
-   dimension[hid].extension={role:"time"};
-  }
-  // Desa mapa id→membre per a la query
-  dimension[hid].extension=dimension[hid].extension||{};
-  dimension[hid].extension.iecaAlias=hid;
-  dimension[hid].extension.iecaPosition=h.position;
- });
- // Valors de la resposta per defecte (parcials); la query completa es fa a iecaQuery
- var n=size.reduce(function(a,b){return a*(b||1)},1);
- var value=new Array(Math.min(n,1)).fill(null); // placeholder fins a consultar
- // Omple el que hi hagi a data per defecte
- try{
-  var dimCats=id.map(function(hid){
-   var idx=dimension[hid].category.index||[];
-   var map=new Map(idx.map(function(c,i){return [c,i]}));
-   return{map:map,index:idx};
-  });
-  var fullN=size.reduce(function(a,b){return a*b},1);
-  if(fullN>0&&fullN<500000){
-   value=new Array(fullN).fill(null);
-   (raw.data||[]).forEach(function(row){
-    if(!Array.isArray(row))return;
-    var coords=[];
-    for(var i=0;i<hier.length;i++){
-     var cell=row[i]||{};
-     // Prova d'encaixar per id de jerarquia o per codi/des
-     var hid=id[i];
-     var members=hierMembers[hid]||[];
-     var key=null;
-     if(members.length){
-      // cerca membre pel final de cod path o des
-      var des=String(cell.des||"");
-      var cods=Array.isArray(cell.cod)?cell.cod.map(String):[String(cell.cod||"")];
-      for(var mi=0;mi<members.length;mi++){
-       var m=members[mi];
-       if(cods.indexOf(String(m.code))>=0||des===m.label||des.indexOf(m.label)>=0){key=String(m.id);break}
-      }
-     }
-     if(key==null){
-      key=(Array.isArray(cell.cod)?cell.cod.join(">"):String(cell.cod||cell.des||"")).trim();
-     }
-     var ix=dimCats[i].map.has(key)?dimCats[i].map.get(key):-1;
-     if(ix<0)return;
-     coords.push(ix);
-    }
-    var measure=row[hier.length]||{};
-    var num=measure.val!=null?Number(String(measure.val).replace(",",".")):null;
-    var flat=0;
-    for(var k=0;k<coords.length;k++){
-     var stride=1;for(var s=k+1;s<size.length;s++)stride*=size[s];
-     flat+=coords[k]*stride;
-    }
-    if(flat>=0&&flat<value.length)value[flat]=Number.isFinite(num)?num:null;
-   });
-  }
- }catch(eFill){}
- return{
-  class:"dataset",
-  version:"2.0",
-  label:(raw.metainfo&&raw.metainfo.title)||"",
-  source:(raw.metainfo&&raw.metainfo.source)||"IECA",
-  id:id,
-  size:size,
-  dimension:dimension,
-  value:value
- };
-}
-async function iecaQuery(filters){
- var id=state.iecaConsultaId;
- if(!id)throw new Error("no hi ha consulta IECA seleccionada.");
- var raw0=state.iecaConsulta;
- var hier=(raw0&&raw0.hierarchies)||[];
- var params=[];
- // BADEA espera ids interns de jerarquia: ALIAS=id1,id2
- // Important: cal enviar TOTS els valors seleccionats (també si són "tots"),
- // perquè la resposta per defecte només porta l'últim període.
- hier.forEach(function(h){
-  var alias=String(h.alias||"");
-  var selected=null;
-  if(state.filters&&state.filters.has(alias)){
-   selected=Array.from(state.filters.get(alias)||[]);
-  }else if(filters&&(filters[alias]||filters[h.des])){
-   selected=filters[alias]||filters[h.des];
-  }
-  if(selected&&selected.length){
-   params.push(encodeURIComponent(alias)+"="+selected.map(encodeURIComponent).join(","));
-  }
- });
- // posord: dimensions en files/columnes
- var f=[],c=[];
- hier.forEach(function(h){
-  var alias=String(h.alias||"");
-  var pos=String(h.position||"f").toLowerCase();
-  if(pos==="c")c.push(alias);
-  else if(pos==="p"){
-   // pàgina → mou a files si hem filtrat diversos valors
-   var sel=state.filters&&state.filters.has(alias)?Array.from(state.filters.get(alias)||[]):[];
-   if(sel.length>1)f.push(alias);
-   else f.push(alias);
-  }else f.push(alias);
- });
- var posord="posord="+encodeURIComponent(
-  f.map(function(a){return "f["+a+"]"}).join(",")+
-  (c.length?","+c.map(function(a){return "c["+a+"]"}).join(","):"")+
-  ",c[Measures]"
- );
- var url=IECA_BASE+"/consulta/"+encodeURIComponent(id);
- if(params.length)url+="?"+params.join("&")+"&"+posord;
- else url+="?"+posord;
- status("Consultant BADEA…");
- var raw=await iecaFetch(url);
- var ds=iecaToJsonStat(raw,state.iecaHierMembers||{});
- if(!ds)throw new Error("resposta IECA no vàlida.");
- return{data:ds,url:url};
 }
 async function igeSelectRoot(){
  igeClearLevels();
@@ -1845,7 +1203,6 @@ async function igeSelectDynamic(index,val){
  var box=$("eurostatLevels");
  if(box)Array.from(box.querySelectorAll("[data-ige-level]")).forEach(function(l){if(Number(l.dataset.igeLevel)>index)l.remove()});
  state.igePath=state.igePath.slice(0,index+1);state.igePath[index]=item.id;
- if(/^ieca-/.test(String(item.type||""))){await iecaSelectFromLevel(index,val);return}
  if(item.type==="table"){await igeSelectTable(item);return}
  if(item.type==="ige-indicator"||item.type==="ige-series"){await igeSelectIndiOrSeries(item);return}
  if(item.type==="ige-mode"){
@@ -3144,7 +2501,6 @@ async function loadStats(){
  else if(state.provider==="eurostat"){await loadEurostatTOC();out=state.eurostatRoots.map(function(x){return{value:x.code,label:x.label}})}
  else if(state.provider==="istac"){await istacLoadOperations();out=[]}
  else if(state.provider==="icane"){await icaneLoadCatalog();out=[]}
- else if(state.provider==="ieca"){await iecaLoadCatalog();out=[]}
  else if(state.provider==="ige"){await igeLoadRoot();out=[]}
  else if(state.pxPreset==="sweden"){await loadSwedenV2Tables();var swRoot=await swedenV2Children([],null);out=swRoot.map(function(x){return{value:x.id,label:x.label}})}
  else if(state.pxPreset==="eustat"){
@@ -3180,7 +2536,6 @@ else out=a(await fetchJson(c.base)).map(function(x){var id=String(f(x,"id","dbid
  if(state.provider==="eurostat"){hideStatSelector(true);await eurostatAddRootLevel()}
  else if(state.provider==="istac"){hideStatSelector(true);istacDraw(0,"");status("")}
  else if(state.provider==="icane"){hideStatSelector(true);icaneDraw();status("")}
- else if(state.provider==="ieca"){hideStatSelector(true);await iecaSelectRoot();status("")}
  else if(state.provider==="ige"){hideStatSelector(true);await igeSelectRoot();status("")}
  else if(state.provider==="idescat"){hideStatSelector(true);recursiveProxyStart("idescat")}
  else if(state.pxPreset==="eustat"){hideStatSelector(true);recursiveProxyStart("eustat")}
@@ -4953,7 +4308,6 @@ async function runQuery(){
   }
   else if(state.provider==="istac"){var parts=[],sf=selectedFilters();Object.keys(sf).forEach(function(k){if(sf[k]&&sf[k].length)parts.push(k+":"+sf[k].join("|"))});var iu=provider().base+"/statistical-resources/v1.0/datasets/ISTAC/"+encodeURIComponent(state.selected.table)+"/~latest.json?lang=es";if(parts.length)iu+="&dim="+encodeURIComponent(parts.join(":"));ds=await fetchJson(iu);ds=istacMetadataToJsonStat(ds);state.lastQueryUrl=iu}
   else if(state.provider==="icane"){ds=icaneSubsetJsonStat(state.icaneRawData,selectedFilters());state.lastQueryUrl=state.lastQueryUrl||""}
-  else if(state.provider==="ieca"){var eq=await iecaQuery(selectedFilters());ds=eq.data;state.lastQueryUrl=eq.url}
   else if(state.provider==="ige"){var iq=await igeQuery(selectedFilters());ds=iq.data;state.lastQueryUrl=iq.url}
   else if(state.provider==="pxweb"){
    var query={query:[],response:{format:state.pxPreset==="eustat"?"json-stat":"json-stat2"}};
@@ -5242,7 +4596,7 @@ function pivotZone(title,zone,ids,dsx){var html=ids.map(function(id){var d=dsx.f
 function renderPivotBuilder(){var b=$("pivotBuilder");if(!b)return;if(!state.lastData){b.innerHTML='<div class="empty">Primer fes una consulta.</div>';return}state.pivot=state.pivot||{rows:[],columns:[]};var dsx=pivotDims(),assigned=new Set([].concat(state.pivot.rows,state.pivot.columns)),available=dsx.filter(function(d){return !assigned.has(d.id)});var ah=available.map(function(d){return '<div class="pivot-dimension available" draggable="true" ondragstart="pivotDragStart(event,\''+esc(d.id)+'\')"><span class="pivot-drag">☷</span><span>'+esc(pivotLabel(d))+'</span></div>'}).join('')||'<span class="pivot-placeholder">Totes les variables estan assignades.</span>';var all=assigned.size===dsx.length,axes=dsx.length<=1?(state.pivot.rows.length+state.pivot.columns.length>0):(state.pivot.rows.length>0&&state.pivot.columns.length>0);b.innerHTML='<div class="pivot-intro"><strong>Constructor de taula</strong><span>Arrossega cada variable a Files o Columnes. Pots canviar-ne l’ordre.</span></div><div class="pivot-layout"><div class="pivot-panel"><div class="pivot-panel-title">Variables disponibles</div><div class="pivot-available">'+ah+'</div></div><div class="pivot-panel">'+pivotZone("Files","rows",state.pivot.rows,dsx)+'</div><div class="pivot-panel">'+pivotZone("Columnes","columns",state.pivot.columns,dsx)+'</div></div><div class="pivot-actions"><button id="pivotBuild" class="primary" '+(all&&axes?'':'disabled')+'>Genera la taula</button><button id="pivotReset" class="secondary">Restableix</button><span class="pivot-help">'+(!all?'Assigna totes les variables a Files o Columnes.':!axes?'Cal tenir almenys una variable a cada eix.':'Configuració correcta.')+'</span></div><div id="pivotResult"></div>';$("pivotBuild").onclick=renderPivotTable;$("pivotReset").onclick=function(){state.pivot={rows:[],columns:[]};renderPivotBuilder()}}
 function pivotHeaderGroups(combs,id){var out=[],i=0;while(i<combs.length){var code=String(combs[i].row[id]&&combs[i].row[id].code||''),j=i+1;while(j<combs.length&&String(combs[j].row[id]&&combs[j].row[id].code||'')===code)j++;out.push({label:combs[i].row[id]&&combs[i].row[id].label||'',span:j-i});i=j}return out}
 function renderPivotTable(){var out=$("pivotResult");if(!state.lastData||!out)return;var z=resultRows(state.lastData),rows=z.rows,dsx=z.dims,rowIds=state.pivot.rows,colIds=state.pivot.columns,all=[].concat(rowIds,colIds),avail=pivotDims();if(!all.length||all.length!==avail.length||new Set(all).size!==all.length){out.innerHTML='<div class="error">Cal assignar totes les variables a Files o Columnes.</div>';return}var rc=pivotComb(rows,rowIds),cc=pivotComb(rows,colIds),values=new Map();rows.forEach(function(r){values.set(pivotKey(r,rowIds)+"§"+pivotKey(r,colIds),r.value)});var h='<div class="pivot-table-title">'+esc(state.metadata&&state.metadata.label||state.selected.table)+'</div><div class="pivot-result-meta">'+rc.length.toLocaleString("ca-ES")+' files · '+cc.length.toLocaleString("ca-ES")+' columnes</div><div class="table-wrap pivot-table-wrap"><table class="data-table pivot-table"><thead>';if(colIds.length){for(var l=0;l<colIds.length;l++){h+='<tr>';if(l===0)rowIds.forEach(function(id){h+='<th class="pivot-row-header" rowspan="'+colIds.length+'">'+esc(pivotLabel(dsx.find(function(d){return d.id===id})))+'</th>'});pivotHeaderGroups(cc,colIds[l]).forEach(function(g){h+='<th class="pivot-value-header" colspan="'+g.span+'">'+esc(String(g.label))+'</th>'});h+='</tr>'}}else{h+='<tr>';rowIds.forEach(function(id){h+='<th class="pivot-row-header">'+esc(pivotLabel(dsx.find(function(d){return d.id===id})))+'</th>'});h+='<th class="pivot-value-header">Valor</th></tr>'}h+='</thead><tbody>';function rowspan(combs,idx,level){if(idx>0){var same=true;for(var q=0;q<=level;q++){if(String(combs[idx].row[rowIds[q]]&&combs[idx].row[rowIds[q]].code||'')!==String(combs[idx-1].row[rowIds[q]]&&combs[idx-1].row[rowIds[q]].code||''))same=false}if(same)return 0}var n=1;while(idx+n<combs.length){var same2=true;for(var q2=0;q2<=level;q2++){if(String(combs[idx].row[rowIds[q2]]&&combs[idx+n].row[rowIds[q2]]&&combs[idx+n].row[rowIds[q2]].code||'')!==String(combs[idx].row[rowIds[q2]]&&combs[idx].row[rowIds[q2]].code||''))same2=false}if(!same2)break;n++}return n}rc.forEach(function(r,i){h+='<tr>';rowIds.forEach(function(id,l){var sp=rowspan(rc,i,l);if(sp)h+='<td class="pivot-label pivot-row-header" rowspan="'+sp+'">'+esc(String(r.row[id]&&r.row[id].label||''))+'</td>'});cc.forEach(function(c){var v=values.get(r.key+"§"+c.key);h+='<td class="num pivot-cell">'+(v==null?'':esc(fmt(v,decimals(state.lastData))))+'</td>'});h+='</tr>'});h+='</tbody></table></div>';out.innerHTML=h;updateXlsxAvailability()}
-function exportSourceLabel(){if(state.provider==="istac")return"Instituto Canario de Estadística (ISTAC)";if(state.provider==="icane")return"Instituto Cántabro de Estadística (ICANE)";if(state.provider==="ieca")return"Instituto de Estadística y Cartografía de Andalucía (IECA)";if(state.provider==="ige")return"Instituto Galego de Estatística (IGE)";if(state.provider==="pxweb"){var names={eustat:"Instituto Vasco de Estadística (Eustat)",finland:"Statistics Finland",iceland:"Statistics Iceland",norway:"Statistics Norway",sweden:"Statistics Sweden",unece:"UNECE - United Nations Economic Comission for Europe"};return names[state.pxPreset]||provider().label}return provider().label}
+function exportSourceLabel(){if(state.provider==="istac")return"Instituto Canario de Estadística (ISTAC)";if(state.provider==="icane")return"Instituto Cántabro de Estadística (ICANE)";if(state.provider==="ige")return"Instituto Galego de Estatística (IGE)";if(state.provider==="pxweb"){var names={eustat:"Eustat",finland:"Statistics Finland",iceland:"Statistics Iceland",norway:"Statistics Norway",sweden:"Statistics Sweden",unece:"UNECE - United Nations Economic Comission for Europe"};return names[state.pxPreset]||provider().label}return provider().label}
  function exportInfo(){var now=new Date(),pad=function(n){return String(n).padStart(2,"0")},date=pad(now.getDate())+"-"+pad(now.getMonth()+1)+"-"+now.getFullYear()+" "+pad(now.getHours())+":"+pad(now.getMinutes());return{tableName:state.metadata&&state.metadata.label||state.selected.table,queryUrl:state.lastQueryUrl,exportDate:date,source:"Font: "+exportSourceLabel()}}
 function rawCartData(name){var z=resultRows(state.lastData),headers=z.dims.map(function(d){return[d.id+"_Codi",d.id+"_Etiqueta"]}).reduce(function(a,b){return a.concat(b)},[]).concat(["Valor"]),info=exportInfo(),out=[[name],[info.source],["URL: "+info.queryUrl],["Data de consulta: "+info.exportDate],[],headers];z.rows.forEach(function(r){out.push(z.dims.map(function(d){return[r[d.id].code,r[d.id].label]}).reduce(function(a,b){return a.concat(b)},[]).concat([r.value==null?"":r.value]))});return out}
 function pivotExport(){
@@ -5304,7 +4658,7 @@ async function exportCart(){
  status("S'ha generat l'Excel amb "+state.cart.length+" consultes i "+wb.SheetNames.length+" fulls.","ok");
 }
 function bind(){
- $("provider").onchange=async function(){var v=$("provider").value;if(v==="other"){state.requestToken++;clearBelow();state.selected.stat="";fill($("stat"),[]);$("stat").disabled=true;state.provider="pxweb";state.pxPreset="";$("otherProvider").value="";setProviderUI();updateUrl();status("");return}if(v==="istac"){state.provider="istac";state.pxPreset=""}else if(v==="icane"){state.provider="icane";state.pxPreset=""}else if(v==="ige"){state.provider="ige";state.pxPreset=""}else if(v.indexOf("pxweb:")===0){state.provider="pxweb";state.pxPreset=v.slice(6)}else{state.provider=v}state.requestToken++;clearBelow();state.selected.stat="";fill($("stat"),[]);$("stat").disabled=true;setProviderUI();updateUrl();status("Carregant estadístiques…");try{await loadStats();status("")}catch(e){status(e.message,"error")}};$("otherProvider").onchange=async function(){var v=$("otherProvider").value;if(!v)return;if(v==="istac"){state.provider="istac";state.pxPreset=""}else if(v==="icane"){state.provider="icane";state.pxPreset=""}else if(v==="ieca"){state.provider="ieca";state.pxPreset=""}else if(v==="ige"){state.provider="ige";state.pxPreset=""}else if(v.indexOf("pxweb:")===0){state.provider="pxweb";state.pxPreset=v.slice(6)}else{state.provider="pxweb";state.pxPreset=v.indexOf(":")>=0?v.slice(v.indexOf(":")+1):v;}state.requestToken++;clearBelow();state.selected.stat="";fill($("stat"),[]);$("stat").disabled=true;setProviderUI();updateUrl();status("Carregant estadístiques…");try{await loadStats();status("")}catch(e){status(e.message,"error")}};
+ $("provider").onchange=async function(){var v=$("provider").value;if(v==="other"){state.requestToken++;clearBelow();state.selected.stat="";fill($("stat"),[]);$("stat").disabled=true;state.provider="pxweb";state.pxPreset="";$("otherProvider").value="";setProviderUI();updateUrl();status("");return}if(v==="istac"){state.provider="istac";state.pxPreset=""}else if(v==="icane"){state.provider="icane";state.pxPreset=""}else if(v==="ige"){state.provider="ige";state.pxPreset=""}else if(v.indexOf("pxweb:")===0){state.provider="pxweb";state.pxPreset=v.slice(6)}else{state.provider=v}state.requestToken++;clearBelow();state.selected.stat="";fill($("stat"),[]);$("stat").disabled=true;setProviderUI();updateUrl();status("Carregant estadístiques…");try{await loadStats();status("")}catch(e){status(e.message,"error")}};$("otherProvider").onchange=async function(){var v=$("otherProvider").value;if(!v)return;if(v==="istac"){state.provider="istac";state.pxPreset=""}else if(v==="icane"){state.provider="icane";state.pxPreset=""}else if(v==="ige"){state.provider="ige";state.pxPreset=""}else{state.provider="pxweb";state.pxPreset=v.slice(6);}state.requestToken++;clearBelow();state.selected.stat="";fill($("stat"),[]);$("stat").disabled=true;setProviderUI();updateUrl();status("Carregant estadístiques…");try{await loadStats();status("")}catch(e){status(e.message,"error")}};
  
   $("stat").onchange=async function(){clearQueryView();await onStatChange();updateUrl()};
  $("concept").onchange=async function(){clearQueryView();if(state.provider==="ine")return;if(state.provider==="pxweb"&&state.pxPreset!=="eustat")await pxSelect("concept");else if(state.provider==="eurostat")await eurostatSelectLevel("concept");else if(state.provider==="pxweb"&&state.pxPreset==="eustat"){state.selected.concept=$("concept").value;state.selected.cross="";state.selected.node="";state.selected.table="";resetSelect("cross");resetSelect("node");resetSelect("table");resetSelect("geo");var et=await eustatLoadOperationTables(state.selected.concept);if(et.length===1){$("cross").value=et[0].id;await $("cross").onchange()}}else{state.selected.concept=$("concept").value;state.selected.cross="";state.selected.node="";state.selected.table="";state.selected.geo="";["cross","node","table","geo"].forEach(resetSelect);state.metadata=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;var c=state.selected.concept,rows=(state.catalog||[]).filter(function(r){return r.concept===c}),x=[...new Set(rows.map(function(r){return r.cross}).filter(Boolean))];fill($("cross"),x.map(function(v){return{value:v,label:v}}));$("cross").disabled=!x.length;if(x.length===1){$("cross").value=x[0];await $("cross").onchange()}else if(x.length===0){var ids=[...new Set(rows.map(function(r){return String(r.node)}).filter(Boolean))];fill($("node"),ids.map(function(id){var q=rows.find(function(r){return String(r.node)===id});return{value:id,label:id+" · "+q.name}}));$("node").disabled=!ids.length;if(ids.length===1){$("node").value=ids[0];await onNodeChange()}}}};
@@ -5312,4 +4666,4 @@ function bind(){
  $("node").onchange=async function(){clearQueryView();if(state.provider==="ine")return;if(state.provider==="eurostat")await eurostatSelectLevel("node");else await onNodeChange()};$("table").onchange=onTableChange;$("geo").onchange=onGeoChange;$("tabData").onclick=function(){$("tabData").classList.add("active");$("tabPivot").classList.remove("active");$("results").hidden=false;$("pivotBuilder").hidden=true};$("tabPivot").onclick=function(){$("tabPivot").classList.add("active");$("tabData").classList.remove("active");$("results").hidden=true;$("pivotBuilder").hidden=false;renderPivotBuilder()};$("results").addEventListener("click",function(e){var b=e.target.closest("button[data-page]");if(b&&!b.disabled)setResultPage(Number(b.dataset.page))});$("results").addEventListener("change",function(e){if(e.target.matches("select[data-page-select]"))setResultPage(Number(e.target.value));if(e.target.matches("select[data-page-size]"))setResultPageSize(Number(e.target.value))});$("temporalOrder").onchange=function(){setTemporalOrder(this.value)};$("query").onclick=runQuery;$("exportCsv").onclick=exportCSV;$("exportXlsx").onclick=exportXLSX;$("addToCart").onclick=addCart;$("cartExport").onclick=exportCart;$("cartClear").onclick=function(){state.cart=[];renderCart()};$("cartToggle").onclick=function(){var p=$("cartPanel");p.hidden=false;$("cartToggle").setAttribute("aria-expanded","true");p.scrollIntoView({behavior:"smooth",block:"start"})};$("clear").onclick=function(){if(state.metadata)renderMetadata(state.metadata)}
 }
 function updateUrl(){var q=new URLSearchParams();q.set("provider",state.provider);if(state.provider==="pxweb")q.set("px",state.pxPreset);if(state.selected.stat)q.set("stat",state.selected.stat);history.replaceState(null,"","?"+q.toString())}
-(async function(){bind();renderCart();var q=new URLSearchParams(location.search);state.provider=q.get("provider")||"idescat";state.pxPreset=q.get("px")||"finland";$("provider").value=(state.provider==="pxweb"||state.provider==="istac"||state.provider==="icane"||state.provider==="ieca"||state.provider==="ige")?"other":state.provider;$("otherProvider").value=state.provider==="istac"?"istac":state.provider==="icane"?"icane":state.provider==="ieca"?"ieca":state.provider==="ige"?"ige":(state.provider==="pxweb"&&state.pxPreset?"pxweb:"+state.pxPreset:"");setProviderUI();try{await loadStats()}catch(e){status(e.message,"error")}})();
+(async function(){bind();renderCart();var q=new URLSearchParams(location.search);state.provider=q.get("provider")||"idescat";state.pxPreset=q.get("px")||"finland";$("provider").value=(state.provider==="pxweb"||state.provider==="istac"||state.provider==="icane"||state.provider==="ige")?"other":state.provider;$("otherProvider").value=state.provider==="istac"?"istac":state.provider==="icane"?"icane":state.provider==="ige"?"ige":(state.provider==="pxweb"&&state.pxPreset?"pxweb:"+state.pxPreset:"");setProviderUI();try{await loadStats()}catch(e){status(e.message,"error")}})();
