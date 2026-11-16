@@ -1090,15 +1090,22 @@ async function igePageItems(url,isRoot){
   }
   // Taules del banc de dades (selector i principals/hipertables)
   if((path.indexOf("/selector.jsp")>=0||path.indexOf("/principais.jsp")>=0||path.indexOf("/principales.jsp")>=0||path.indexOf("/verTabla.jsp")>=0||path.indexOf("/vertabla.jsp")>=0)&&cod){
-   // URL canònica del selector (sense R/C/F predefinits)
    var canon="https://www.ige.gal/igebdt/selector.jsp?idioma=es&COD="+encodeURIComponent(String(cod));
-   add("table",canon,label,String(cod));
+   var featured=path.indexOf("/principais.jsp")>=0||path.indexOf("/principales.jsp")>=0;
+   // id únic: featured vs catàleg (evita dedup prematur)
+   var tid=featured?("ige-feat-"+cod):("ige-tab-"+cod);
+   if(seen.has("table|"+tid))return;
+   seen.add("table|"+tid);
+   out.push({id:tid,label:label,type:"table",url:canon,code:String(cod),featured:!!featured});
    return;
   }
   // Enllaços amb COD= en rutes del banc de dades
   if(path.indexOf("/igebdt/")>=0&&cod&&!path.match(/actividade|seccion|mostrar_/i)){
    var canon2="https://www.ige.gal/igebdt/selector.jsp?idioma=es&COD="+encodeURIComponent(String(cod));
-   add("table",canon2,label,String(cod));
+   var tid2="ige-tab-"+String(cod);
+   if(seen.has("table|"+tid2))return;
+   seen.add("table|"+tid2);
+   out.push({id:tid2,label:label,type:"table",url:canon2,code:String(cod),featured:false});
    return;
   }
  }
@@ -1199,22 +1206,6 @@ async function igeSelectDynamic(index,val){
  status("Consultant l'IGE…");
  var children=await igePageItems(item.url,false);
  var parentCode=String(item.code||"").trim();
- // El catàleg complet de taules d'una activitat és a bancodatos/?codigo=...
- // La pàgina d'activitat només en mostra unes quantes de destacades (principais).
- if(item.type==="activity"&&parentCode){
-  try{
-   var bancoUrl="https://www.ige.gal/igebdt/bancodatos/?idioma=es&API=true&codigo="+encodeURIComponent(parentCode);
-   var bancoItems=await igePageItems(bancoUrl,false);
-   var seenT=new Set(children.filter(function(x){return x.type==="table"}).map(function(x){return String(x.code||x.id)}));
-   bancoItems.forEach(function(x){
-    if(x.type!=="table")return;
-    var k=String(x.code||x.id);
-    if(seenT.has(k))return;
-    seenT.add(k);
-    children.push(x);
-   });
-  }catch(eBanco){/* si falla el banc, ens quedem amb les destacades */}
- }
  var pathIds=new Set(state.igePath.slice(0,index+1).map(function(x){return String(x)}));
  var pathCodes=new Set();
  for(var pi=0;pi<=index;pi++){
@@ -1228,7 +1219,6 @@ async function igeSelectDynamic(index,val){
   code=String(code||"").trim();
   if(!code||!parentCode)return !!code;
   if(code.indexOf(parentCode)===0&&code.length>parentCode.length)return true;
-  // Si el pare és grup curt (03), accepta 0306, 0301, ...
   if(parentCode.length<=2&&code.indexOf(parentCode)===0&&code.length>parentCode.length)return true;
   return false;
  }
@@ -1236,13 +1226,72 @@ async function igeSelectDynamic(index,val){
   code=String(code||"").trim();
   if(!code||!parentCode)return true;
   if(isDescendantCode(code))return true;
-  // mateix bloc de 2 dígits (03xx) quan el pare té 4 dígits — només com a fallback
   return code.slice(0,2)===parentCode.slice(0,2)&&code.length>=4;
  }
 
+ // —— Taules: principals (principais.jsp) vs catàleg complet (bancodatos) ——
+ if(item.type==="activity"||item.type==="ige-more-tables"){
+  var featured=children.filter(function(x){return x.type==="table"&&x.featured&&!igeIsNoiseLabel(x.label)});
+  // Dedup featured by code
+  var seenF=new Set();
+  featured=featured.filter(function(x){var k=String(x.code);if(seenF.has(k))return false;seenF.add(k);return true});
+  featured.sort(function(a,b){return a.label.localeCompare(b.label,"gl",{numeric:true})});
+
+  if(item.type==="ige-more-tables"||(!featured.length&&item.type==="activity")){
+   // Catàleg complet des del banc de dades
+   status("Carregant el catàleg de taules de l'IGE…");
+   var allTables=[];
+   try{
+    var bancoCode=parentCode||String(item.code||"").trim();
+    if(item.type==="ige-more-tables"&&item.activityCode)bancoCode=String(item.activityCode);
+    var bancoUrl="https://www.ige.gal/igebdt/bancodatos/?idioma=es&API=true&codigo="+encodeURIComponent(bancoCode);
+    var bancoItems=await igePageItems(bancoUrl,false);
+    var seenA=new Set();
+    bancoItems.forEach(function(x){
+     if(x.type!=="table"||igeIsNoiseLabel(x.label))return;
+     var k=String(x.code||"");
+     if(!k||seenA.has(k))return;
+     seenA.add(k);
+     allTables.push({id:"ige-tab-"+k,label:x.label,type:"table",url:x.url,code:k,featured:false});
+    });
+   }catch(eBanco){}
+   // Afegeix també les que hi hagués a la pàgina d'activitat
+   children.filter(function(x){return x.type==="table"}).forEach(function(x){
+    var k=String(x.code||"");
+    if(!k||seenA&&seenA.has(k))return;
+    if(!seenA)seenA=new Set();
+    seenA.add(k);
+    allTables.push({id:"ige-tab-"+k,label:x.label,type:"table",url:x.url,code:k,featured:!!x.featured});
+   });
+   allTables.sort(function(a,b){return a.label.localeCompare(b.label,"gl",{numeric:true})});
+   if(allTables.length){
+    igeAddLevel(allTables,index+1,"Taula");
+    status("");
+    return;
+   }
+   throw new Error("no s'han trobat taules en aquest apartat.");
+  }
+
+  // Hi ha taules principals: primer desplegable + opció "Més taules"
+  if(featured.length){
+   var moreOpt={
+    id:"ige-more-"+parentCode,
+    label:"Més taules",
+    type:"ige-more-tables",
+    url:item.url,
+    code:parentCode,
+    activityCode:parentCode
+   };
+   var principalList=featured.concat([moreOpt]);
+   igeAddLevel(principalList,index+1,"Taules principals");
+   status("");
+   return;
+  }
+ }
+
  var tables=children.filter(function(x){return x.type==="table"&&!igeIsNoiseLabel(x.label)});
- // Pàgina d'activitat amb taules: només taules
  if(tables.length){
+  tables.sort(function(a,b){return a.label.localeCompare(b.label,"gl",{numeric:true})});
   igeAddLevel(tables,index+1,"Taula");
   status("");
   return;
