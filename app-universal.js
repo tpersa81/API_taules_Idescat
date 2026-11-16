@@ -2792,6 +2792,59 @@ async function nomisSelectFromLevel(index,val){
  throw new Error("ONS/Nomis: tipus desconegut ("+(item.type||"?")+").");
 }
 
+function nomisExtractCodes(raw){
+ var found=[];
+ var lists=raw&&raw.structure&&raw.structure.codelists&&raw.structure.codelists.codelist;
+ if(!Array.isArray(lists))lists=lists?[lists]:[];
+ lists.forEach(function(cl){
+  var codes=Array.isArray(cl&&cl.code)?cl.code:(cl&&cl.code?[cl.code]:[]);
+  codes.forEach(function(x){
+   var id=String(x&&x.value!=null?x.value:(x&&x.id!=null?x.id:"")).trim();
+   var d=x&&x.description;
+   var lab="";
+   if(typeof d==="object"&&d)lab=String(d.value||d.text||d["#text"]||"").trim();
+   else lab=String(d||x&&x.label||"").trim();
+   if(id)found.push({code:id,label:lab||id});
+  });
+ });
+ if(!found.length){
+  var v=raw&&raw.data&&raw.data.codes;
+  if(Array.isArray(v))v.forEach(function(x){
+   var id=String(x&&x.id!=null?x.id:x&&x.value!=null?x.value:"").trim();
+   var lab=String(x&&x.label||x&&x.name||id).trim();
+   if(id)found.push({code:id,label:lab});
+  });
+ }
+ var seen=new Set();
+ return found.filter(function(x){if(seen.has(x.code))return false;seen.add(x.code);return true});
+}
+async function nomisFetchDimCodes(base,datasetId,dimId,codelist){
+ var cats=[];
+ dimId=String(dimId||"").trim();
+ var dimLower=dimId.toLowerCase();
+ var candidates=[
+  base+"/dataset/"+encodeURIComponent(datasetId)+"/"+encodeURIComponent(dimLower)+".def.sdmx.json",
+  base+"/dataset/"+encodeURIComponent(datasetId)+"/"+encodeURIComponent(dimId)+".def.sdmx.json"
+ ];
+ if(codelist)candidates.push(base+"/codelist/"+encodeURIComponent(codelist)+".def.sdmx.json");
+ var lastErr=null;
+ for(var i=0;i<candidates.length;i++){
+  try{
+   var raw=await fetchJson(candidates[i]);
+   cats=nomisExtractCodes(raw);
+   if(cats.length)return cats;
+  }catch(e){lastErr=e}
+ }
+ if(dimLower==="geography"){
+  try{
+   var raw2=await fetchJson(base+"/dataset/"+encodeURIComponent(datasetId)+"/geography.def.sdmx.json");
+   cats=nomisExtractCodes(raw2);
+   if(cats.length)return cats;
+  }catch(e2){lastErr=e2}
+ }
+ if(lastErr&&!cats.length)console.warn("ONS/Nomis: sense categories per a "+dimId,lastErr);
+ return cats;
+}
 async function nomisSelectDataset(id){
  id=String(id||"").trim();
  if(!id||!/^NM_/i.test(id))throw new Error("ONS/Nomis: identificador de dataset no vàlid ("+id+"). Cal un codi tipus NM_509_1, no el títol de la taula.");
