@@ -197,7 +197,7 @@ try{
    text=await r.text();
   }
 }catch(e){throw new Error("No s'ha pogut llegir la resposta de l'API (HTTP "+r.status+").")}
-// Nomis: de vegades arriba HTML amb HTTP 200
+// ONS: de vegades arriba HTML amb HTTP 200
 if((state.provider==="nomis"||/nomisweb\.co\.uk\//i.test(String(url)))&&String(text||"").replace(/^\uFEFF/,"").trim().charAt(0)==="<"){
   var nomisProxies=[
     "https://cors.tools/proxy?url="+encodeURIComponent(url),
@@ -215,7 +215,7 @@ if((state.provider==="nomis"||/nomisweb\.co\.uk\//i.test(String(url)))&&String(t
       else lastN=new Error("Proxy HTML");
     }catch(ne){lastN=ne}
   }
-  if(!got)throw new Error("ONS/Nomis: s'ha rebut una pàgina HTML en lloc de JSON. "+(lastN&&lastN.message||"")+" · "+url);
+  if(!got)throw new Error("ONS: s'ha rebut una pàgina HTML en lloc de JSON. "+(lastN&&lastN.message||"")+" · "+url);
 }
 var d=null;try{var cleanText=String(text).replace(/^\uFEFF/,"").trim();d=cleanText?JSON.parse(cleanText):null;if(d&&typeof d.contents==="string"){try{d=JSON.parse(String(d.contents).replace(/^\uFEFF/,"").trim())}catch(_){}}}catch(e){if(state.provider==="istac"&&r.ok){try{var m0=String(text).match(/\{[\s\S]*\}/);if(m0)d=JSON.parse(m0[0])}catch(_){}}if(!d){if(!r.ok)throw new Error("Error HTTP "+r.status+": "+text.slice(0,300));throw new Error("Resposta no vàlida de l'API (HTTP "+r.status+"). "+String(text||"").replace(/\s+/g," ").slice(0,180))}}
 if(!r.ok||d&&(d.class==="error"||d.error||d.errors)){
@@ -1310,7 +1310,7 @@ function igeAddLevel(items,index,labelText){
  state.igeItems.set("igeLevel"+index,list);
  sel.onchange=async function(){
   clearQueryView();if(!sel.value)return;
-  try{await igeSelectDynamic(index,sel.value)}catch(e){var msg=String(e&&e.message||e);var pre=state.provider==="nomis"?"ONS/Nomis: ":"IGE: ";if(/^(IGE|ONS\/Nomis):/i.test(msg))pre="";status(pre+msg,"error")}
+  try{await igeSelectDynamic(index,sel.value)}catch(e){var msg=String(e&&e.message||e);var pre=state.provider==="nomis"?"ONS: ":"IGE: ";if(/^(IGE|ONS):/i.test(msg))pre="";status(pre+msg,"error")}
  };
  if(list.length===1){sel.value=list[0].id;sel.onchange()}
 }
@@ -1327,7 +1327,7 @@ async function igeSelectRoot(){
 }
 async function igeSelectDynamic(index,val){
  var items=state.igeItems.get("igeLevel"+index)||[],item=items.find(function(x){return String(x.id)===String(val)});
- if(!item)throw new Error(state.provider==="nomis"?"ONS/Nomis: element no trobat.":"No s'ha trobat l'element seleccionat de l'IGE.");
+ if(!item)throw new Error(state.provider==="nomis"?"ONS: element no trobat.":"No s'ha trobat l'element seleccionat de l'IGE.");
  var box=$("eurostatLevels");
  if(box)Array.from(box.querySelectorAll("[data-ige-level]")).forEach(function(l){if(Number(l.dataset.igeLevel)>index)l.remove()});
  state.igePath=state.igePath.slice(0,index+1);state.igePath[index]=item.id;
@@ -2814,7 +2814,7 @@ async function nomisLoadCatalog(search){
  var q=String(search||"").trim();
  var queries=q?[q]:["population","employment","earnings","claimant","labour","business","gdp","industry","housing","benefit","census","income","workforce","health","education"];
  var byId=new Map();
- status(q?"Cercant a Nomis…":"Carregant catàleg Nomis…");
+ status(q?"Cercant a ONS…":"Carregant catàleg ONS…");
  for(var qi=0;qi<queries.length;qi++){
   var url=base+"/dataset/def.sdmx.json?search="+encodeURIComponent(queries[qi]);
   try{
@@ -2838,7 +2838,7 @@ async function nomisLoadCatalog(search){
      });
     }
    });
-  }catch(eQ){console.warn("Nomis search failed:",queries[qi],eQ)}
+  }catch(eQ){console.warn("ONS search failed:",queries[qi],eQ)}
  }
  var out=Array.from(byId.values());
  out.sort(function(a,b){return a.label.localeCompare(b.label,"en",{numeric:true,sensitivity:"base"})});
@@ -2878,20 +2878,20 @@ async function nomisSelectRoot(){
  setProviderUI();
  var catalog=await nomisLoadCatalog("");
  var themes=nomisThemesFromCatalog(catalog);
- if(!themes.length)throw new Error("ONS/Nomis: no s'han trobat datasets.");
+ if(!themes.length)throw new Error("ONS: no s'han trobat datasets.");
  igeAddLevel(themes,0,"Grup temàtic");
  if(box){box.hidden=false;box.style.display="grid"}
- status("Nomis: "+catalog.length+" datasets · "+themes.length+" temes.");
+ status("ONS: "+catalog.length+" datasets · "+themes.length+" temes.");
 }
 async function nomisSelectFromLevel(index,val){
  var items=state.igeItems.get("igeLevel"+index)||[];
  var item=items.find(function(x){return String(x.id)===String(val)});
- if(!item)throw new Error("ONS/Nomis: element no trobat.");
+ if(!item)throw new Error("ONS: element no trobat.");
  if(item.type==="nomis-theme"){
   var kids=(item._children||[]).map(function(ds){
    return{id:"nomis-ds-"+ds.id,label:ds.label,type:"nomis-dataset",code:ds.id,datasetId:ds.id};
   });
-  if(!kids.length)throw new Error("ONS/Nomis: aquest tema no té datasets.");
+  if(!kids.length)throw new Error("ONS: aquest tema no té datasets.");
   igeAddLevel(kids,index+1,"Dataset");
   return;
  }
@@ -2899,7 +2899,7 @@ async function nomisSelectFromLevel(index,val){
   await nomisSelectDataset(item.datasetId||item.code);
   return;
  }
- throw new Error("ONS/Nomis: tipus desconegut ("+(item.type||"?")+").");
+ throw new Error("ONS: tipus desconegut ("+(item.type||"?")+").");
 }
 
 function nomisExtractCodes(raw){
@@ -2952,13 +2952,13 @@ async function nomisFetchDimCodes(base,datasetId,dimId,codelist){
    if(cats.length)return cats;
   }catch(e2){lastErr=e2}
  }
- if(lastErr&&!cats.length)console.warn("ONS/Nomis: sense categories per a "+dimId,lastErr);
+ if(lastErr&&!cats.length)console.warn("ONS: sense categories per a "+dimId,lastErr);
  return cats;
 }
 async function nomisSelectDataset(id){
  id=String(id||"").trim();
- if(!id||!/^NM_/i.test(id))throw new Error("ONS/Nomis: identificador de dataset no vàlid ("+id+"). Cal un codi tipus NM_509_1, no el títol de la taula.");
- status("Carregant dimensions ONS/Nomis…");
+ if(!id||!/^NM_/i.test(id))throw new Error("ONS: identificador de dataset no vàlid ("+id+"). Cal un codi tipus NM_509_1, no el títol de la taula.");
+ status("Carregant dimensions ONS…");
  var base=provider().base.replace(/\/+$/,"");
  var defUrl=base+"/dataset/"+encodeURIComponent(id)+"/def.sdmx.json";
  var def=await fetchJson(defUrl);
@@ -2978,7 +2978,7 @@ async function nomisSelectDataset(id){
   var dimId=String(dd.conceptref||"").trim();
   var cl=String(dd.codelist||"").trim();
   if(!dimId)continue;
-  // FREQ sovint és residual a Nomis
+  // FREQ sovint és residual a ONS
   if(dimId.toUpperCase()==="FREQ")continue;
   var cats=await nomisFetchDimCodes(base,id,dimId,cl);
   if(!cats.length)continue;
@@ -2994,57 +2994,22 @@ async function nomisSelectDataset(id){
   if(dimId.toUpperCase()==="MEASURES"){dimObj.role="metric";dimObj.extension={role:"metric"}}
   out.dimension[dimId]=dimObj;
  }
- if(!out.id.length)throw new Error("ONS: no s'han pogut recuperar les dimensions del conjunt "+id+". (Algunes codelists Nomis retornen 404.)");
+ if(!out.id.length)throw new Error("ONS: no s'han pogut recuperar les dimensions del conjunt "+id+". (Algunes codelists retornen 404.)");
   state.selected.table=id;state.selected.node=id;state.metadata=out;
  renderMetadata(out);
- nomisPreselectDefaults(out);
  $("tableInfo").hidden=false;
- $("tableInfo").innerHTML="<strong>Dataset:</strong> "+esc(title)+" <code>"+esc(id)+"</code><span class=\"path\">"+esc(defUrl)+"</span><p>Data from Nomis (ONS). Contains public sector information licensed under the Open Government Licence v3.0.</p><p class=\"hint\">Es mostren totes les categories. Per defecte se'n preselecciona un subconjunt petit; amplia la selecció amb compte (màx. 25.000 cel·les i URL no massa llarga).</p>";
+ $("tableInfo").innerHTML="<strong>Dataset:</strong> "+esc(title)+" <code>"+esc(id)+"</code><span class=\"path\">"+esc(defUrl)+"</span><p>Data from the Office for National Statistics (ONS). Contains public sector information licensed under the Open Government Licence v3.0.</p><p class=\"hint\">Es mostren totes les categories, totes seleccionades per defecte. Desmarca les que no vulguis (màx. 25.000 cel·les; la URL no pot ser excessivament llarga).</p>";
  $("query").disabled=false;
  status("");
 }
 
-function nomisPreselectDefaults(ds){
- if(!ds||state.provider!=="nomis")return;
- var metaDims=typeof dims==="function"?dims(ds):[];
- metaDims.forEach(function(d){
-  var up=String(d.id||"").toUpperCase();
-  var cats=Array.isArray(d.categories)?d.categories:[];
-  if(!cats.length)return;
-  var codes=[];
-  if(up==="GEOGRAPHY"){
-   var uk=cats.find(function(c){return String(c.code)==="2092957697"||/united kingdom/i.test(String(c.label||""))});
-   codes=[String((uk||cats[0]).code)];
-  }else if(up==="TIME"){
-   // sortedCats posa els més recents primer per temporal
-   var sc=typeof sortedCats==="function"?sortedCats(cats,d):cats.slice().reverse();
-   codes=sc.slice(0,Math.min(4,sc.length)).map(function(c){return String(c.code)});
-  }else if(/^(CELL|VARIABLE|ITEM)$/.test(up)){
-   codes=[String(cats[0].code)];
-  }else if(up==="MEASURES"){
-   codes=[String(cats[0].code)];
-  }else if(cats.length>30){
-   codes=cats.slice(0,5).map(function(c){return String(c.code)});
-  }else{
-   return; // deixa la selecció completa de renderMetadata
-  }
-  var sec=document.querySelector('.filter[data-dim="'+d.id+'"]');
-  var list=sec&&sec.querySelector('.options');
-  if(list&&typeof setFilterSelection==="function"){
-   setFilterSelection(d,cats,codes,list);
-  }else{
-   state.filters.set(d.id,new Set(codes));
-  }
- });
- if(typeof updateCells==="function")updateCells();
-}
 
 async function nomisQuery(filters){
  var base=provider().base.replace(/\/+$/,""),id=state.selected.table;
  if(!id)throw new Error("ONS: no s'ha seleccionat cap conjunt de dades.");
  var p=new URLSearchParams();
- // A Nomis la UI sovint té NOMÉS UN SUBCONJUNT de categories (p.ex. 7 geografies).
- // Si ometem el paràmetre quan "tot està seleccionat" a la UI, Nomis interpreta
+ // A ONS la UI sovint té NOMÉS UN SUBCONJUNT de categories (p.ex. 7 geografies).
+ // Si ometem el paràmetre quan "tot està seleccionat" a la UI, ONS interpreta
  // "totes les categories del dataset" (milers) i retorna desenes de milers de files.
  // Per tant: sempre enviem explícitament els codis de state.filters.
  dims(state.metadata).forEach(function(d){
@@ -3066,18 +3031,18 @@ async function nomisQuery(filters){
   else if(up==="MEASURES")maxCodes=30;
   else maxCodes=80;
   if(vals.length>maxCodes){
-   throw new Error("ONS/Nomis: masses valors a \""+dimKey+"\" ("+vals.length+"). Màxim "+maxCodes+". Redueix la selecció.");
+   throw new Error("ONS: masses valors a \""+dimKey+"\" ("+vals.length+"). Màxim "+maxCodes+". Redueix la selecció.");
   }
   p.set(dimKey.toLowerCase(),vals.join(","));
  });
  if(!p.has("time"))p.set("time","latest");
- // Sense geography Nomis pot expandir a tot el territori
+ // Sense geography ONS pot expandir a tot el territori
  if(!p.has("geography")){
-  throw new Error("ONS/Nomis: cal seleccionar com a mínim una geografia.");
+  throw new Error("ONS: cal seleccionar com a mínim una geografia.");
  }
  var url=base+"/dataset/"+encodeURIComponent(id)+".jsonstat.json?"+p.toString();
  if(url.length>8000){
-  throw new Error("ONS/Nomis: URL massa llarga ("+url.length+" caràcters). Redueix CELL, VARIABLE o GEOGRAPHY.");
+  throw new Error("ONS: URL massa llarga ("+url.length+" caràcters). Redueix CELL, VARIABLE o GEOGRAPHY.");
  }
  var data=await fetchJson(url);
  if(data&&data.dimension&&!data.version)data.version="2.0";
@@ -5128,5 +5093,5 @@ function bind(){
  $("cross").onchange=async function(){clearQueryView();if(state.provider==="pxweb"&&state.pxPreset!=="eustat")await pxSelect("cross");else if(state.provider==="eurostat")await eurostatSelectLevel("cross");else if(state.provider==="pxweb"&&state.pxPreset==="eustat"){var et=(state.eustatTables||[]).find(function(r){return r.id===$("cross").value});if(et){state.selected.cross=et.id;state.selected.node=et.id;state.selected.table=et.id;if(et.type==="px"){await pxFlatSelectTable(et.id)}else{state.metadata=null;$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=false;$("cellInfo").hidden=true;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(et.label)+"<span class=\"path\">"+esc(et.url)+"</span><p><a href=\""+esc(et.url)+"\" target=\"_blank\" rel=\"noopener\">Obre/descarrega la taula</a></p>"}}}else{var c=$("concept").value,x=$("cross").value;state.selected.cross=x;state.selected.node="";state.selected.table="";state.selected.geo="";resetSelect("node");resetSelect("table");resetSelect("geo");state.metadata=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;var r=(state.catalog||[]).filter(function(v){return v.concept===c&&v.cross===x}),ids=[...new Set(r.map(function(v){return v.node}))];fill($("node"),ids.map(function(id){var q=r.find(function(v){return v.node===id});updateIdescatLevelVisibility();return{value:id,label:id+" · "+q.name}}));$("node").disabled=!ids.length;if(ids.length===1){$("node").value=ids[0];await onNodeChange()}}};
  $("node").onchange=async function(){clearQueryView();if(state.provider==="ine")return;if(state.provider==="eurostat")await eurostatSelectLevel("node");else await onNodeChange()};$("table").onchange=onTableChange;$("geo").onchange=onGeoChange;$("tabData").onclick=function(){$("tabData").classList.add("active");$("tabPivot").classList.remove("active");$("results").hidden=false;$("pivotBuilder").hidden=true};$("tabPivot").onclick=function(){$("tabPivot").classList.add("active");$("tabData").classList.remove("active");$("results").hidden=true;$("pivotBuilder").hidden=false;renderPivotBuilder()};$("results").addEventListener("click",function(e){var b=e.target.closest("button[data-page]");if(b&&!b.disabled)setResultPage(Number(b.dataset.page))});$("results").addEventListener("change",function(e){if(e.target.matches("select[data-page-select]"))setResultPage(Number(e.target.value));if(e.target.matches("select[data-page-size]"))setResultPageSize(Number(e.target.value))});$("temporalOrder").onchange=function(){setTemporalOrder(this.value)};$("query").onclick=runQuery;$("exportCsv").onclick=exportCSV;$("exportXlsx").onclick=exportXLSX;$("addToCart").onclick=addCart;$("cartExport").onclick=exportCart;$("cartClear").onclick=function(){state.cart=[];renderCart()};$("cartToggle").onclick=function(){var p=$("cartPanel");p.hidden=false;$("cartToggle").setAttribute("aria-expanded","true");p.scrollIntoView({behavior:"smooth",block:"start"})};$("clear").onclick=function(){if(state.metadata)renderMetadata(state.metadata)}
 }
-function updateUrl(){var q=new URLSearchParams();q.set("provider",state.provider);if(state.provider==="pxweb")q.set("px",state.pxPreset);if(state.selected.stat)q.set("stat",state.selected.stat);history.replaceState(null,"","?"+q.toString())}
-(async function(){bind();renderCart();var q=new URLSearchParams(location.search);state.provider=q.get("provider")||"idescat";state.pxPreset=q.get("px")||(state.provider==="pxweb"?"finland":"");$("provider").value=(state.provider==="pxweb"||state.provider==="istac"||state.provider==="icane"||state.provider==="ige"||state.provider==="nomis")?"other":state.provider;$("otherProvider").value=state.provider==="istac"?"istac":state.provider==="icane"?"icane":state.provider==="ige"?"ige":state.provider==="nomis"?"nomis":state.provider==="nomis"?"nomis":(state.provider==="pxweb"&&state.pxPreset?"pxweb:"+state.pxPreset:"");setProviderUI();try{await loadStats()}catch(e){status(e.message,"error")}})();
+function updateUrl(){var q=new URLSearchParams();q.set("provider",state.provider==="nomis"?"ons":state.provider);if(state.provider==="pxweb")q.set("px",state.pxPreset);if(state.selected.stat)q.set("stat",state.selected.stat);history.replaceState(null,"","?"+q.toString())}
+(async function(){bind();renderCart();var q=new URLSearchParams(location.search);state.provider=q.get("provider")||"idescat";if(state.provider==="ons")state.provider="nomis";state.pxPreset=q.get("px")||(state.provider==="pxweb"?"finland":"");$("provider").value=(state.provider==="pxweb"||state.provider==="istac"||state.provider==="icane"||state.provider==="ige"||state.provider==="nomis")?"other":state.provider;$("otherProvider").value=state.provider==="istac"?"istac":state.provider==="icane"?"icane":state.provider==="ige"?"ige":state.provider==="nomis"?"nomis":state.provider==="nomis"?"nomis":(state.provider==="pxweb"&&state.pxPreset?"pxweb:"+state.pxPreset:"");setProviderUI();try{await loadStats()}catch(e){status(e.message,"error")}})();
