@@ -2908,27 +2908,26 @@ async function nomisQuery(filters){
  var base=provider().base.replace(/\/+$/,""),id=state.selected.table;
  if(!id)throw new Error("ONS: no s'ha seleccionat cap conjunt de dades.");
  var p=new URLSearchParams();
- // Nomis espera noms de dimensió en minúscules
+
+ // A diferència de selectedFilters(), NOMIS necessita que enviem explícitament
+ // les dimensions que l'usuari ha deixat amb tots els valors seleccionats.
+ // Si les ometem, l'API interpreta que no hi ha restricció per aquella dimensió
+ // i pot retornar una taula molt més gran del límit de 25.000 cel·les.
  dims(state.metadata).forEach(function(d){
-  var vals=[];
-  if(filters&&filters[d.id])vals=Array.from(filters[d.id]||[]);
-  else if(state.filters&&state.filters.has(d.id))vals=Array.from(state.filters.get(d.id)||[]);
-  // selectedFilters omet dimensions amb "tots" seleccionats; per Nomis cal enviar-ne alguns
-  if(!vals.length&&state.filters&&state.filters.has(d.id)){
-   vals=Array.from(state.filters.get(d.id)||[]);
-  }
+  var vals=state.filters&&state.filters.has(d.id)
+    ?Array.from(state.filters.get(d.id)||[])
+    :(filters&&filters[d.id]?Array.from(filters[d.id]):[]);
+
   if(vals.length){
-   // limita geografia/temps per no petar
-   if(d.id.toUpperCase()==="GEOGRAPHY"&&vals.length>30)vals=vals.slice(0,30);
-   if(d.id.toUpperCase()==="TIME"&&vals.length>40)vals=vals.slice(0,40);
    p.set(d.id.toLowerCase(),vals.join(","));
   }
  });
- // Si falta TIME, demana latest
+
+ // Si la dimensió temporal no té cap selecció, NOMIS admet "latest".
  if(!p.has("time"))p.set("time","latest");
+
  var url=base+"/dataset/"+encodeURIComponent(id)+".jsonstat.json?"+p.toString();
  var data=await fetchJson(url);
- // Nomis jsonstat sol ser 2.0-compatible; normalitza role
  if(data&&data.dimension&&!data.version)data.version="2.0";
  return{data:data,url:url};
 }
