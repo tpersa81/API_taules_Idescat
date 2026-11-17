@@ -3025,24 +3025,18 @@ async function nomisQuery(filters){
   else Object.keys(idx).forEach(function(c){codeToPart.set(String(c),{pi:pi,li:Number(idx[c])})});
  });
  for(var flat=0;flat<total;flat++){
-  var rem=flat,partInfo=null,localFlat=0;
-  for(var di=0;di<ids.length;di++){
-   var coord=Math.floor(rem/outStrides[di])%Number(newSize[di]);
-   if(di===targetIndex){
-    var info=codeToPart.get(String(allCodes[coord]));
-    if(!info){partInfo=null;break}
-    partInfo=info;
-    localFlat=0;
-   }else{
-    var psize=Number(first.size[di]),localStride=1;
-    for(var sj=di+1;sj<ids.length;sj++)localStride*=Number(first.size[sj]);
-    localFlat+=coord*localStride;
-   }
+  var rem=flat,coords=new Array(ids.length),partInfo=null;
+  for(var di=0;di<ids.length;di++)coords[di]=Math.floor(rem/outStrides[di])%Number(newSize[di]);
+  partInfo=codeToPart.get(String(allCodes[coords[targetIndex]]));
+  if(!partInfo)continue;
+  var localFlat=0;
+  for(var di2=0;di2<ids.length;di2++){
+   var localCoord=di2===targetIndex?partInfo.li:coords[di2],localStride=1;
+   for(var sj=di2+1;sj<ids.length;sj++)localStride*=Number(first.size[sj]);
+   localFlat+=localCoord*localStride;
   }
-  if(partInfo){
-   var pv=parts[partInfo.pi]&&parts[partInfo.pi].value;
-   if(Array.isArray(pv))values[flat]=pv[localFlat];
-  }
+  var pv=parts[partInfo.pi]&&parts[partInfo.pi].value;
+  if(Array.isArray(pv))values[flat]=pv[localFlat];
  }
  out.value=values;
  if(out&&out.dimension&&!out.version)out.version="2.0";
