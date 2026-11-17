@@ -2905,7 +2905,7 @@ async function nomisSelectDataset(id){
  status("");
 }
 async function nomisQuery(filters){
- var base=provider().base.replace(/\\/+$/,""),id=state.selected.table;
+ var base=provider().base.replace(/\/+$/,""),id=state.selected.table;
  if(!id)throw new Error("ONS: no s'ha seleccionat cap conjunt de dades.");
  var p=new URLSearchParams();
 
