@@ -3417,7 +3417,7 @@ async function pxRecursiveLoadTable(item){
   try{var candidate=await fetchJson(urls[i]);if(isPxMetadata(candidate)){raw=candidate;url=urls[i]}else lastErr=new Error("La resposta no és metadades PxWeb.")}
   catch(e){lastErr=e}
  }
- if(!raw)throw new Error("La taula de "+(state.pxPreset==="finland"?"Statistics Finland":"Statistics Iceland")+" no ha retornat metadades. "+(lastErr&&lastErr.message||""));
+ if(!raw)throw new Error("La taula de PxWeb ("+String(state.pxPreset||"?")+") no ha retornat metadades. "+(lastErr&&lastErr.message||""));
  var ds=pxToJsonStat(raw);
  if(!ds||!Array.isArray(ds.id)||!ds.id.length)throw new Error("Les metadades de la taula no contenen variables vàlides.");
  state.selected.table=tableId;state.selected.node=tableId;state.selected.cross=tableId;state.pxPath=path.slice();state.metadata=ds;
@@ -4906,7 +4906,14 @@ async function runQuery(){
    var query={query:[],response:{format:state.pxPreset==="eustat"?"json-stat":"json-stat2"}};
    dims(state.metadata).forEach(function(d){
     var selected=Array.from(state.filters.get(d.id)||[]),all=d.categories.map(function(c){return c.code});
-    if(selected.length&&(selected.length!==all.length||state.pxPreset==="finland")){
+    if(!selected.length)return;
+    // A Greenland (i altres PxWeb) ometre una dimensió NO vol dir "totes":
+    // l'API deixa només el Total. Cal enviar explicitament all o tots els items.
+    var mustSendAll=state.pxPreset==="finland"||state.pxPreset==="greenland"||state.pxPreset==="iceland"||state.pxPreset==="eustat"||state.pxPreset==="unece";
+    if(selected.length===all.length){
+     if(mustSendAll)query.query.push({code:d.id,selection:{filter:"all",values:["*"]}});
+     // si no mustSendAll, s'omet (comportament històric d'alguns PX)
+    }else{
      query.query.push({code:d.id,selection:{filter:"item",values:selected}});
     }
    });
