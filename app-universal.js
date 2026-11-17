@@ -2886,6 +2886,29 @@ async function dstApi(path,body){
  }
  return r.json();
 }
+
+function dstTableLabel(tb){
+ if(!tb)return "";
+ var id=String(tb.id||"").trim();
+ var text=String(tb.text||"").trim();
+ var unit=String(tb.unit||"").trim();
+ var vars=Array.isArray(tb.variables)?tb.variables.map(function(v){return String(v||"").trim()}).filter(Boolean):[];
+ // Exclou "time" del "by …" (ja surt al període)
+ var by=vars.filter(function(v){return !/^time$/i.test(v)});
+ var period="";
+ if(tb.firstPeriod||tb.latestPeriod){
+  period=String(tb.firstPeriod||"")+(tb.firstPeriod&&tb.latestPeriod?"–":"")+String(tb.latestPeriod||"");
+ }
+ var parts=[];
+ if(id)parts.push(id);
+ var title=text||id;
+ if(by.length)title=title+(title?" by ":"by ")+by.join(", ");
+ if(title&&title!==id)parts.push(title);
+ else if(text)parts.push(text);
+ if(period)parts.push("("+period+")");
+ if(unit)parts.push("["+unit+"]");
+ return parts.join(" · ").replace(/\s+/g," ").trim();
+}
 async function dstSelectRoot(){
  var box=$("eurostatLevels");
  if(box){box.innerHTML="";box.hidden=false;box.style.display="grid"}
@@ -2920,9 +2943,9 @@ async function dstSelectFromLevel(index,val){
   next.push({id:String(s.id),label:String(s.description||s.text||s.id),type:"dst-subject"});
  });
  (node.tables||[]).forEach(function(tb){
-  var tid=String(tb.id||tb.text||"").trim();
+  var tid=String(tb.id||"").trim();
   if(!tid)return;
-  next.push({id:tid,label:tid+(tb.text?" · "+tb.text:""),type:"dst-table"});
+  next.push({id:tid,label:dstTableLabel(tb),type:"dst-table"});
  });
  if(!next.length)throw new Error("Statistics Denmark: aquest tema no té subtemes ni taules.");
  igeAddLevel(next,index+1,next.some(function(x){return x.type==="dst-table"})&&!next.some(function(x){return x.type==="dst-subject"})?"Taula":"Subtema / taula");
