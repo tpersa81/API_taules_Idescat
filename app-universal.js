@@ -2908,12 +2908,8 @@ async function nomisQuery(filters){
  var base=provider().base.replace(/\/+$/,""),id=state.selected.table;
  if(!id)throw new Error("ONS: no s'ha seleccionat cap conjunt de dades.");
  var p=new URLSearchParams();
-
- // A NOMIS, una dimensió que no s'especifica ja significa "totes les
- // categories". Per tant, només enviem les dimensions que l'usuari ha
- // filtrat. Això evita URLs enormes quan, per exemple, CELL queda sense
- // filtre.
  var selected=filters||selectedFilters()||{};
+
  Object.keys(selected).forEach(function(k){
   var vals=Array.isArray(selected[k])?selected[k]:[];
   if(vals.length)p.set(String(k).toLowerCase(),vals.join(","));
@@ -2925,12 +2921,20 @@ async function nomisQuery(filters){
      url=base+"/dataset/"+encodeURIComponent(id)+".jsonstat.json?"+query,
      data;
 
- // NOMIS admet GET i POST. Si una selecció filtrada genera una URL molt
- // llarga, passem els mateixos paràmetres al cos de la petició.
- if(url.length>7000){
+ // CELL (APS) i VARIABLE (APS workplace) són dimensions de gran cardinalitat.
+ // Quan es filtren, enviem la consulta per POST encara que la URL sigui curta.
+ // Això evita problemes de parsing/longitud de la URI amb aquestes codelists.
+ var hasLargeNomisFilter=Object.keys(selected).some(function(k){
+  return /^(cell|variable)$/i.test(String(k));
+ });
+
+ if(hasLargeNomisFilter||url.length>7000){
   data=await fetchJson(base+"/dataset/"+encodeURIComponent(id)+".jsonstat.json",{
    method:"POST",
-   headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},
+   headers:{
+    "Content-Type":"application/x-www-form-urlencoded",
+    "Accept":"application/json, text/json, */*"
+   },
    body:query
   });
  }else{
