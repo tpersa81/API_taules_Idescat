@@ -3368,6 +3368,24 @@ function pxRecursiveClearLevels(){
  var box=$("eurostatLevels");if(box){box.innerHTML="";box.hidden=true}
  state.pxItems.forEach(function(v,k){if(/^pxRecursiveLevel\d+$/.test(k))state.pxItems.delete(k)});
 }
+/** Buida nivells posteriors + secció 3 (filtres) + secció 4 (resultats). */
+function pxRecursiveResetAfter(index){
+ var box=$("eurostatLevels");
+ if(box)Array.from(box.querySelectorAll("label")).forEach(function(l){if(Number(l.dataset.eurostatLevel)>index)l.remove()});
+ state.pxItems.forEach(function(v,k){
+  var m=/^pxRecursiveLevel(\d+)$/.exec(k);
+  if(m&&Number(m[1])>index)state.pxItems.delete(k);
+ });
+ state.metadata=null;
+ state.selected.table="";
+ state.selected.node="";
+ state.selected.cross="";
+ if(typeof clearQueryView==="function")clearQueryView();
+ if($("query"))$("query").disabled=true;
+ if($("tableInfo"))$("tableInfo").hidden=true;
+ if($("cellInfo"))$("cellInfo").hidden=true;
+ if($("filters"))$("filters").innerHTML="";
+}
 function pxRecursiveLevelLabel(index,list){
  var isTable=list&&list.length&&list.every(function(x){return x&&((String(x.type||"").toLowerCase()==="table")||String(x.type||"").toLowerCase()==="t"||x.tableId||/\\.px$/i.test(String(x.id||"")))});
  return isTable?"Taula":"Nivell "+(index+1);
@@ -3409,6 +3427,7 @@ function finlandTableUrls(path){
  return [...new Set(urls)];
 }
 async function pxRecursiveLoadTable(item){
+ status("Carregant taula i categories…");
  var path=(item&&item.path||[]).slice(),tableId=String(item&&item.tableId||path[path.length-1]||"").trim(),urls=[];
  if(state.pxPreset==="finland")urls=finlandTableUrls(path);
  else urls=[pxUrl(path)];
@@ -3424,7 +3443,7 @@ async function pxRecursiveLoadTable(item){
  if(state.pxPreset==="finland")state.finlandTableUrl=url;
  renderMetadata(ds);$("tableInfo").hidden=false;
  $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||raw.label||tableId)+"<span class=\"path\">"+esc(url)+"</span>";
- $("query").disabled=false;
+ $("query").disabled=false;status("");
 }
 function pxRecursiveAddLevel(children,index){
  var box=$("eurostatLevels");if(!box)return;
@@ -3436,12 +3455,29 @@ function pxRecursiveAddLevel(children,index){
  var label=document.createElement("label");label.dataset.eurostatLevel=String(index);label.textContent=pxRecursiveLevelLabel(index,list)+" ";
  var sel=document.createElement("select");sel.id="pxRecursiveLevel"+index;sel.appendChild(new Option("— Selecciona —",""));label.appendChild(sel);box.appendChild(label);
  list.forEach(function(x){sel.appendChild(new Option(x.id+" · "+x.label,x.id))});
- sel.onchange=async function(){var val=sel.value;if(!val)return;try{
-  var item=(state.pxItems.get("pxRecursiveLevel"+index)||[]).find(function(x){return String(x.id)===String(val)});if(!item)return;
-  Array.from(box.querySelectorAll("label")).forEach(function(l){if(Number(l.dataset.eurostatLevel)>index)l.remove()});
-  if(pxRecursiveTableItems([item]).length){await pxRecursiveLoadTable(item);return}
-  pxRecursiveAddLevel(await pxRecursiveChildren(item.path),index+1);
- }catch(e){var em=e&&e.message?e.message:String(e),st=e&&e.stack?String(e.stack).split("\n").find(function(x){return /app-universal\\.js/.test(x)}):"";status(em+(st?" · "+st.trim():""),"error")}};
+  sel.onchange=async function(){
+  var val=sel.value;
+  // Qualsevol canvi: buida el que ve al darrere (nivells, filtres i resultats)
+  pxRecursiveResetAfter(index);
+  if(!val){status("");return}
+  try{
+   var item=(state.pxItems.get("pxRecursiveLevel"+index)||[]).find(function(x){return String(x.id)===String(val)});
+   if(!item)return;
+   if(pxRecursiveTableItems([item]).length){
+    status("Carregant taula…");
+    await pxRecursiveLoadTable(item);
+    status("");
+    return;
+   }
+   status(index===0?"Carregant temes…":"Carregant subtemes…");
+   var kids=await pxRecursiveChildren(item.path);
+   pxRecursiveAddLevel(kids,index+1);
+   status("");
+  }catch(e){
+   var em=e&&e.message?e.message:String(e);
+   status(em,"error");
+  }
+ };
  if(list.length===1){
   var only=list[0];
   if(only&&only.id){
@@ -3456,7 +3492,9 @@ async function pxRecursiveSelectRoot(rootCode){
  rootCode=String(rootCode||"").trim();
  if(!rootCode)throw new Error("No s'ha pogut identificar el tema seleccionat.");
  state.pxPath=[rootCode];
+ status("Carregant temes…");
  var children=await pxRecursiveChildren([rootCode]);
+ status("");
  if(children.length===1&&pxRecursiveTableItems(children).length===1){
   var only=children[0];
   if(!only||!only.id)throw new Error("La resposta de PxWeb conté una taula sense identificador.");
