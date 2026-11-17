@@ -230,7 +230,7 @@ function fill(sel,items,ph){if(!sel)return;var old=sel.value;sel.innerHTML="";if
 function resetSelect(id){if($(id)){$(id).innerHTML='<option value="">— Selecciona —</option>';$(id).disabled=true}}
 function busy(v){document.body.classList.toggle("busy",v)}
 function status(s,t){var msg=s==null?"":String(s);if(msg==="Cannot read properties of undefined (reading 'id')"){var st="";try{st=String(new Error().stack||"").split("\n").slice(1,7).join(" | ")}catch(_){ }msg=msg+" [DEBUG 27]"+(st?" · CAPTURAT A: "+st:"")}$("status").textContent=msg;$("status").className=t||""}
-function provider(){var p={idescat:{label:"Idescat",base:"https://api.idescat.cat/taules/v2",doc:"https://www.idescat.cat/dev/api/taules/"},pxweb:{label:"PXWeb",base:"",doc:"https://pxdata.stat.fi/api1.html"},ine:{label:"INE",base:"https://servicios.ine.es/wstempus/js",doc:"https://www.ine.es/OpenAPI/"},eurostat:{label:"Eurostat",base:"https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0",doc:"https://ec.europa.eu/eurostat/web/user-guides/data-browser/api-data-access/"},istac:{label:"Instituto Canario de Estadística (ISTAC)",base:"https://datos.canarias.es/api/estadisticas",doc:"https://www.gobiernodecanarias.org/istac/datos-abiertos/documentacion-api/"},icane:{label:"Instituto Cántabro de Estadística (ICANE)",base:"https://datos.icane.es/api/3/action",doc:"https://datos.icane.es/about"},ige:{label:"Instituto Galego de Estatística (IGE)",base:"https://www.ige.gal/igebdt/igeapi",doc:"https://www.ige.gal/web/mostrar_paxina.jsp?idioma=es&paxina=004015"},nomis:{label:"UK - Office for National Statistics (ONS)",base:"https://www.nomisweb.co.uk/api/v01",doc:"https://www.nomisweb.co.uk/api/v01/help"},dst:{label:"Statistics Denmark",base:"https://api.statbank.dk/v1",doc:"https://www.dst.dk/en/Statistik/hjaelp-til-statistikbanken/api"}};if(state.provider==="pxweb"){var x={finland:"https://pxdata.stat.fi/PxWeb/api/v1/en/StatFin",sweden:"https://api.scb.se/OV0104/v1/doris/en/ssd",unece:"https://w3.unece.org/PXWeb2015/api/v1/en/STAT",iceland:"https://px.hagstofa.is/pxen/api/v1/en",eustat:"https://www.eustat.eus/bankupx/api/v1/es/DB",norway:"https://data.ssb.no/api/pxwebapi/v2"};p.pxweb.base=x[state.pxPreset]||x.finland}return p[state.provider]}
+function provider(){var p={idescat:{label:"Idescat",base:"https://api.idescat.cat/taules/v2",doc:"https://www.idescat.cat/dev/api/taules/"},pxweb:{label:"PXWeb",base:"",doc:"https://pxdata.stat.fi/api1.html"},ine:{label:"INE",base:"https://servicios.ine.es/wstempus/js",doc:"https://www.ine.es/OpenAPI/"},eurostat:{label:"Eurostat",base:"https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0",doc:"https://ec.europa.eu/eurostat/web/user-guides/data-browser/api-data-access/"},istac:{label:"Instituto Canario de Estadística (ISTAC)",base:"https://datos.canarias.es/api/estadisticas",doc:"https://www.gobiernodecanarias.org/istac/datos-abiertos/documentacion-api/"},icane:{label:"Instituto Cántabro de Estadística (ICANE)",base:"https://datos.icane.es/api/3/action",doc:"https://datos.icane.es/about"},ige:{label:"Instituto Galego de Estatística (IGE)",base:"https://www.ige.gal/igebdt/igeapi",doc:"https://www.ige.gal/web/mostrar_paxina.jsp?idioma=es&paxina=004015"},nomis:{label:"UK - Office for National Statistics (ONS)",base:"https://www.nomisweb.co.uk/api/v01",doc:"https://www.nomisweb.co.uk/api/v01/help"},dst:{label:"Statistics Denmark",base:"https://api.statbank.dk/v1",doc:"https://www.dst.dk/en/Statistik/hjaelp-til-statistikbanken/api"}};if(state.provider==="pxweb"){var x={finland:"https://pxdata.stat.fi/PxWeb/api/v1/en/StatFin",sweden:"https://api.scb.se/OV0104/v1/doris/en/ssd",unece:"https://w3.unece.org/PXWeb2015/api/v1/en/STAT",iceland:"https://px.hagstofa.is/pxen/api/v1/en",eustat:"https://www.eustat.eus/bankupx/api/v1/es/DB",norway:"https://data.ssb.no/api/pxwebapi/v2",greenland:"https://bank.stat.gl/api/v1/en/Greenland"};p.pxweb.base=x[state.pxPreset]||x.finland}return p[state.provider]}
 function pxUrl(path){
  var p=(path||[]).slice();
  // Statistics Finland mostra els identificadors de carpeta com StatFin__xxx,
@@ -1071,6 +1071,7 @@ function setProviderUI(){
      isSweden=state.provider==="pxweb"&&state.pxPreset==="sweden",
      isFinland=state.provider==="pxweb"&&state.pxPreset==="finland",
      isIceland=state.provider==="pxweb"&&state.pxPreset==="iceland",
+     isGreenland=state.provider==="pxweb"&&state.pxPreset==="greenland",
      isNorway=state.provider==="pxweb"&&state.pxPreset==="norway",
      isEustat=state.provider==="pxweb"&&state.pxPreset==="eustat",
      isUnece=state.provider==="pxweb"&&state.pxPreset==="unece";
@@ -1107,7 +1108,7 @@ function setProviderUI(){
   // Navegació només amb #eurostatLevels
   if(isEuro||isIne||isIstac||isIcane||isIge||isNomis||isDst){
    hideAll();
-  }else if(isSweden||isFinland||isIceland||isEustat||isNorway||isUnece){
+  }else if(isSweden||isFinland||isIceland||isGreenland||isEustat||isNorway||isUnece){
    // PxWeb / SSB: només el selector arrel del grid; la resta va a eurostatLevels o es va revelant
    showOnly([0]);
   }else if(isIdescat){
@@ -1119,7 +1120,7 @@ function setProviderUI(){
   }
  }
  if(euroBox){
-  euroBox.hidden=!(isEuro||isIstac||isIcane||isIge||isNomis||isDst||isSweden||isFinland||isIceland||isNorway||isUnece||isIne||isEustat);
+  euroBox.hidden=!(isEuro||isIstac||isIcane||isIge||isNomis||isDst||isSweden||isFinland||isIceland||isGreenland||isNorway||isUnece||isIne||isEustat);
  }
 }
 
@@ -3225,7 +3226,7 @@ async function onStatChange(){
   else if(state.provider==="eurostat"){await eurostatSelectRoot(state.selected.stat)}
   else if(state.provider==="nomis"){await nomisSelectDataset(state.selected.stat)}
   else if(state.pxPreset==="sweden"){await swedenSelectRoot(state.selected.stat)}
-  else if(state.pxPreset==="finland"||state.pxPreset==="iceland"){await pxRecursiveSelectRoot(state.selected.stat)}
+  else if(state.pxPreset==="finland"||state.pxPreset==="iceland"||state.pxPreset==="greenland"){await pxRecursiveSelectRoot(state.selected.stat)}
   else if(state.pxPreset==="eustat"){
  state.selected.concept="";state.selected.cross="";state.selected.node="";state.selected.table="";
  ["concept","cross","node","table","geo"].forEach(resetSelect);
