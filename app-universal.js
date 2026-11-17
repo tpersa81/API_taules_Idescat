@@ -2814,7 +2814,7 @@ async function nomisLoadCatalog(search){
  var q=String(search||"").trim();
  var queries=q?[q]:["population","employment","earnings","claimant","labour","business","gdp","industry","housing","benefit","census","income","workforce","health","education"];
  var byId=new Map();
- status(q?"Cercant a ONS…":"Carregant catàleg d'ONS…");
+ status(q?"Cercant a Nomis…":"Carregant catàleg Nomis…");
  for(var qi=0;qi<queries.length;qi++){
   var url=base+"/dataset/def.sdmx.json?search="+encodeURIComponent(queries[qi]);
   try{
@@ -2958,7 +2958,7 @@ async function nomisFetchDimCodes(base,datasetId,dimId,codelist){
 async function nomisSelectDataset(id){
  id=String(id||"").trim();
  if(!id||!/^NM_/i.test(id))throw new Error("ONS/Nomis: identificador de dataset no vàlid ("+id+"). Cal un codi tipus NM_509_1, no el títol de la taula.");
- status("Carregant dimensions d'ONS…");
+ status("Carregant dimensions ONS/Nomis…");
  var base=provider().base.replace(/\/+$/,"");
  var defUrl=base+"/dataset/"+encodeURIComponent(id)+"/def.sdmx.json";
  var def=await fetchJson(defUrl);
@@ -2982,23 +2982,8 @@ async function nomisSelectDataset(id){
   if(dimId.toUpperCase()==="FREQ")continue;
   var cats=await nomisFetchDimCodes(base,id,dimId,cl);
   if(!cats.length)continue;
-  // Geografia: prefereix UK / països; limita la llista
-  if(dimId.toUpperCase()==="GEOGRAPHY"){
-   var prefer=cats.filter(function(c){
-    var l=String(c.label||"").toLowerCase(),code=String(c.code||"");
-    return code==="2092957697"||/united kingdom|^uk$|great britain|england and wales|england$|wales$|scotland|northern ireland/.test(l);
-   });
-   if(prefer.length)cats=prefer;
-   else if(cats.length>80)cats=cats.slice(0,80);
-  }
-  // TIME: només els més recents
-  if(dimId.toUpperCase()==="TIME"&&cats.length>16){
-   cats=cats.slice(-16);
-  }
-  // CELL / VARIABLE / ITEM: milers de codis → capar la llista (si no, >25k cel·les i URL enorme)
-  if(/^(CELL|VARIABLE|ITEM)$/i.test(dimId)&&cats.length>40){
-   cats=cats.slice(0,40);
-  }
+  // Es carreguen TOTES les categories a la UI; la selecció per defecte i el límit de consulta eviten >25k cel·les.
+  
   var labels={},index=[];
   cats.forEach(function(x){labels[x.code]=x.label;index.push(x.code)});
   out.id.push(dimId);
@@ -3014,7 +2999,7 @@ async function nomisSelectDataset(id){
  renderMetadata(out);
  nomisPreselectDefaults(out);
  $("tableInfo").hidden=false;
- $("tableInfo").innerHTML="<strong>Dataset:</strong> "+esc(title)+" <code>"+esc(id)+"</code><span class=\"path\">"+esc(defUrl)+"</span><p>Data from Nomis (ONS). Contains public sector information licensed under the Open Government Licence v3.0.</p><p class=\"hint\">Dimensions amb moltes categories (CELL, VARIABLE…) es limiten per defecte per no superar el límit de cel·les ni allargar la URL.</p>";
+ $("tableInfo").innerHTML="<strong>Dataset:</strong> "+esc(title)+" <code>"+esc(id)+"</code><span class=\"path\">"+esc(defUrl)+"</span><p>Data from Nomis (ONS). Contains public sector information licensed under the Open Government Licence v3.0.</p><p class=\"hint\">Es mostren totes les categories. Per defecte se'n preselecciona un subconjunt petit; amplia la selecció amb compte (màx. 25.000 cel·les i URL no massa llarga).</p>";
  $("query").disabled=false;
  status("");
 }
@@ -3058,39 +3043,47 @@ async function nomisQuery(filters){
  var base=provider().base.replace(/\/+$/,""),id=state.selected.table;
  if(!id)throw new Error("ONS: no s'ha seleccionat cap conjunt de dades.");
  var p=new URLSearchParams();
- filters=filters||{};
- // Important: NO reenviar dimensions amb "totes les categories" seleccionades.
- // Dimensions com CELL/VARIABLE tenen milers de codis; posar-los a la URL
- // provoca Failed to fetch (URL massa llarga). Si s'omet el paràmetre, Nomis
- // retorna totes les categories d'aquella dimensió per als altres filtres.
+ // A Nomis la UI sovint té NOMÉS UN SUBCONJUNT de categories (p.ex. 7 geografies).
+ // Si ometem el paràmetre quan "tot està seleccionat" a la UI, Nomis interpreta
+ // "totes les categories del dataset" (milers) i retorna desenes de milers de files.
+ // Per tant: sempre enviem explícitament els codis de state.filters.
  dims(state.metadata).forEach(function(d){
   var dimKey=String(d.id||"");
-  var vals=[];
-  if(filters[dimKey])vals=Array.from(filters[dimKey]||[]);
-  else if(filters[dimKey.toUpperCase()])vals=Array.from(filters[dimKey.toUpperCase()]||[]);
-  else if(filters[dimKey.toLowerCase()])vals=Array.from(filters[dimKey.toLowerCase()]||[]);
-  if(!vals.length)return;
   var up=dimKey.toUpperCase();
+  var vals=[];
+  if(state.filters&&state.filters.has(dimKey)){
+   vals=Array.from(state.filters.get(dimKey)||[]);
+  }else if(filters){
+   if(filters[dimKey])vals=Array.from(filters[dimKey]||[]);
+   else if(filters[dimKey.toUpperCase()])vals=Array.from(filters[dimKey.toUpperCase()]||[]);
+   else if(filters[dimKey.toLowerCase()])vals=Array.from(filters[dimKey.toLowerCase()]||[]);
+  }
+  if(!vals.length)return;
   var maxCodes=40;
-  if(up==="GEOGRAPHY")maxCodes=40;
-  else if(up==="TIME")maxCodes=50;
+  if(up==="GEOGRAPHY")maxCodes=50;
+  else if(up==="TIME")maxCodes=40;
   else if(up==="CELL"||up==="VARIABLE"||up==="ITEM")maxCodes=60;
   else if(up==="MEASURES")maxCodes=30;
   else maxCodes=80;
   if(vals.length>maxCodes){
-   throw new Error("ONS/Nomis: masses valors a \""+dimKey+"\" ("+vals.length+"). Com a màxim "+maxCodes+" per evitar URLs massa llargues. Redueix la selecció d'aquesta dimensió (o deixa-la sencera i filtra les altres).");
+   throw new Error("ONS/Nomis: masses valors a \""+dimKey+"\" ("+vals.length+"). Màxim "+maxCodes+". Redueix la selecció.");
   }
   p.set(dimKey.toLowerCase(),vals.join(","));
  });
  if(!p.has("time"))p.set("time","latest");
+ // Sense geography Nomis pot expandir a tot el territori
+ if(!p.has("geography")){
+  throw new Error("ONS/Nomis: cal seleccionar com a mínim una geografia.");
+ }
  var url=base+"/dataset/"+encodeURIComponent(id)+".jsonstat.json?"+p.toString();
- if(url.length>7000){
-  throw new Error("ONS/Nomis: la consulta genera una URL massa llarga ("+url.length+" caràcters). Redueix sobretot CELL, VARIABLE o GEOGRAPHY.");
+ if(url.length>8000){
+  throw new Error("ONS/Nomis: URL massa llarga ("+url.length+" caràcters). Redueix CELL, VARIABLE o GEOGRAPHY.");
  }
  var data=await fetchJson(url);
  if(data&&data.dimension&&!data.version)data.version="2.0";
  return{data:data,url:url};
 }
+
 
 async function onStatChange(){
  state.selected.stat=$("stat").value;clearBelow(true);if(!state.selected.stat)return;busy(true);
