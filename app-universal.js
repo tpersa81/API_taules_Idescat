@@ -2909,17 +2909,14 @@ async function nomisQuery(filters){
  if(!id)throw new Error("ONS: no s'ha seleccionat cap conjunt de dades.");
  var p=new URLSearchParams();
 
- // NOMIS permet indicar explícitament totes les categories d'una dimensió.
- // Això és necessari per distingir una dimensió realment "tota seleccionada"
- // d'una dimensió omesa (que NOMIS interpreta com "totes les dades").
- dims(state.metadata).forEach(function(d){
-  var vals=state.filters&&state.filters.has(d.id)
-    ?Array.from(state.filters.get(d.id)||[])
-    :(filters&&filters[d.id]?Array.from(filters[d.id]):[]);
-
-  if(vals.length){
-   p.set(d.id.toLowerCase(),vals.join(","));
-  }
+ // A NOMIS, una dimensió que no s'especifica ja significa "totes les
+ // categories". Per tant, només enviem les dimensions que l'usuari ha
+ // filtrat. Això evita URLs enormes quan, per exemple, CELL queda sense
+ // filtre.
+ var selected=filters||selectedFilters()||{};
+ Object.keys(selected).forEach(function(k){
+  var vals=Array.isArray(selected[k])?selected[k]:[];
+  if(vals.length)p.set(String(k).toLowerCase(),vals.join(","));
  });
 
  if(!p.has("time"))p.set("time","latest");
@@ -2928,11 +2925,8 @@ async function nomisQuery(filters){
      url=base+"/dataset/"+encodeURIComponent(id)+".jsonstat.json?"+query,
      data;
 
- // CELL pot contenir milers de codis. Amb GET això genera una URL molt
- // llarga i el navegador pot acabar retornant simplement "Failed to fetch",
- // tot i que la consulta sigui vàlida. NOMIS admet GET i POST; en aquests
- // casos enviem els mateixos paràmetres en el cos POST, mantenint la URL
- // GET com a referència de la consulta per a exportacions i diagnòstic.
+ // NOMIS admet GET i POST. Si una selecció filtrada genera una URL molt
+ // llarga, passem els mateixos paràmetres al cos de la petició.
  if(url.length>7000){
   data=await fetchJson(base+"/dataset/"+encodeURIComponent(id)+".jsonstat.json",{
    method:"POST",
