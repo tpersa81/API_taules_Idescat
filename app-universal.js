@@ -2905,33 +2905,149 @@ async function nomisSelectDataset(id){
  status("");
 }
 async function nomisQuery(filters){
- var base=provider().base.replace(/\/+$/,""),id=state.selected.table;
+ var base=provider().base.replace(/\\/+$/,""),id=state.selected.table;
  if(!id)throw new Error("ONS: no s'ha seleccionat cap conjunt de dades.");
- var p=new URLSearchParams();
-
- // A diferència de selectedFilters(), NOMIS necessita que enviem explícitament
- // les dimensions que l'usuari ha deixat amb tots els valors seleccionats.
- // Si les ometem, l'API interpreta que no hi ha restricció per aquella dimensió
- // i pot retornar una taula molt més gran del límit de 25.000 cel·les.
- dims(state.metadata).forEach(function(d){
+ var selectedDims=dims(state.metadata).map(function(d){
   var vals=state.filters&&state.filters.has(d.id)
     ?Array.from(state.filters.get(d.id)||[])
     :(filters&&filters[d.id]?Array.from(filters[d.id]):[]);
-
-  if(vals.length){
-   p.set(d.id.toLowerCase(),vals.join(","));
-  }
+  return{id:d.id,vals:vals};
  });
 
- // Si la dimensió temporal no té cap selecció, NOMIS admet "latest".
- if(!p.has("time"))p.set("time","latest");
+ // NOMIS admet llistes de codis separades per comes i també rangs numèrics
+ // amb "...". Comprimim només trams realment consecutius per reduir la URL.
+ function compressNomisCodes(vals){
+  var out=[],i=0;
+  while(i<vals.length){
+   var start=String(vals[i]),a=Number(start),j=i;
+   if(/^\\d+$/.test(start)){
+    while(j+1<vals.length&&/^\\d+$/.test(String(vals[j+1]))&&Number(vals[j+1])===Number(vals[j])+1)j++;
+   }
+   if(j>i)out.push(start+"..."+String(vals[j]));
+   else out.push(start);
+   i=j+1;
+  }
+  return out;
+ }
 
- var url=base+"/dataset/"+encodeURIComponent(id)+".jsonstat.json?"+p.toString();
- var data=await fetchJson(url);
- if(data&&data.dimension&&!data.version)data.version="2.0";
- return{data:data,url:url};
+ function buildUrl(dimValues){
+  var p=new URLSearchParams();
+  selectedDims.forEach(function(d){
+   var vals=dimValues&&dimValues[d.id]!=null?dimValues[d.id]:d.vals;
+   if(vals&&vals.length)p.set(d.id.toLowerCase(),vals.join(","));
+  });
+  if(!p.has("time"))p.set("time","latest");
+  return base+"/dataset/"+encodeURIComponent(id)+".jsonstat.json?"+p.toString();
+ }
+
+ var dimMap={};
+ selectedDims.forEach(function(d){dimMap[d.id]=d.vals});
+ var initialUrl=buildUrl(dimMap);
+
+ // Les codelists grans (especialment CELL a NM_17_1) poden generar URLs
+ // massa llargues per al servidor/navegador. En lloc de truncar dades, dividim
+ // la consulta en blocs i recomponem el JSON-stat al client.
+ var chunkDim=null;
+ selectedDims.forEach(function(d){
+  if(d.vals.length>1&&(!chunkDim||d.vals.length>chunkDim.vals.length))chunkDim=d;
+ });
+
+ var compressed=chunkDim?compressNomisCodes(chunkDim.vals):[];
+ var compressedDim={};
+ if(chunkDim)selectedDims.forEach(function(d){compressedDim[d.id]=d.vals.slice()});
+ if(chunkDim)compressedDim[chunkDim.id]=compressed;
+
+ var urls=[];
+ if(chunkDim&&compressed.length){
+  var current=[];
+  for(var ci=0;ci<compressed.length;ci++){
+   var candidate=current.concat([compressed[ci]]);
+   compressedDim[chunkDim.id]=candidate;
+   var test=buildUrl(compressedDim);
+   if(current.length&&test.length>7000){
+    compressedDim[chunkDim.id]=current.slice();
+    urls.push(buildUrl(compressedDim));
+    current=[compressed[ci]];
+   }else{
+    current=candidate;
+   }
+  }
+  if(current.length){
+   compressedDim[chunkDim.id]=current.slice();
+   urls.push(buildUrl(compressedDim));
+  }
+ }else{
+  urls=[initialUrl];
+ }
+
+ // Si la URL ja és curta, fem una única petició normal.
+ if(urls.length===1){
+  var data=await fetchJson(urls[0]);
+  if(data&&data.dimension&&!data.version)data.version="2.0";
+  return{data:data,url:urls[0]};
+ }
+
+ var parts=[];
+ for(var ui=0;ui<urls.length;ui++){
+  parts.push(await fetchJson(urls[ui]));
+ }
+
+ // Reconstrueix el JSON-stat mantenint l'ordre dels codis seleccionats.
+ var targetDim=chunkDim.id,allCodes=chunkDim.vals.slice();
+ var first=parts[0],ids=Array.isArray(first&&first.id)?first.id.map(String):[];
+ var targetIndex=ids.indexOf(String(targetDim));
+ if(targetIndex<0)throw new Error("ONS: la dimensió "+targetDim+" no és present en la resposta JSON-stat.");
+ var out=JSON.parse(JSON.stringify(first));
+ var labels=((first.dimension||{})[targetDim]||{}).category&&((first.dimension||{})[targetDim]||{}).category.label||{};
+ var newSize=first.size.slice();
+ newSize[targetIndex]=allCodes.length;
+ out.size=newSize;
+ out.dimension[targetDim].category.index={};
+ allCodes.forEach(function(code,i){
+  var c=String(code);
+  out.dimension[targetDim].category.index[c]=i;
+  if(labels[c]==null){
+   for(var pi=0;pi<parts.length;pi++){
+    var pl=parts[pi]&&parts[pi].dimension&&parts[pi].dimension[targetDim]&&parts[pi].dimension[targetDim].category&&parts[pi].dimension[targetDim].category.label;
+    if(pl&&pl[c]!=null){labels[c]=pl[c];break}
+   }
+  }
+ });
+ out.dimension[targetDim].category.label=labels;
+
+ var total=newSize.reduce(function(a,b){return a*Number(b)},1),values=new Array(total).fill(null);
+ var outStrides=newSize.map(function(_,i){var z=1;for(var j=i+1;j<newSize.length;j++)z*=Number(newSize[j]);return z});
+ var codeToPart=new Map();
+ parts.forEach(function(part,pi){
+  var cat=part&&part.dimension&&part.dimension[targetDim]&&part.dimension[targetDim].category;
+  var idx=cat&&cat.index||{};
+  if(Array.isArray(idx))idx.forEach(function(c,li){codeToPart.set(String(c),{pi:pi,li:li})});
+  else Object.keys(idx).forEach(function(c){codeToPart.set(String(c),{pi:pi,li:Number(idx[c])})});
+ });
+ for(var flat=0;flat<total;flat++){
+  var rem=flat,partInfo=null,localFlat=0;
+  for(var di=0;di<ids.length;di++){
+   var coord=Math.floor(rem/outStrides[di])%Number(newSize[di]);
+   if(di===targetIndex){
+    var info=codeToPart.get(String(allCodes[coord]));
+    if(!info){partInfo=null;break}
+    partInfo=info;
+    localFlat=0;
+   }else{
+    var psize=Number(first.size[di]),localStride=1;
+    for(var sj=di+1;sj<ids.length;sj++)localStride*=Number(first.size[sj]);
+    localFlat+=coord*localStride;
+   }
+  }
+  if(partInfo){
+   var pv=parts[partInfo.pi]&&parts[partInfo.pi].value;
+   if(Array.isArray(pv))values[flat]=pv[localFlat];
+  }
+ }
+ out.value=values;
+ if(out&&out.dimension&&!out.version)out.version="2.0";
+ return{data:out,url:urls.join(" | ")};
 }
-
 async function onStatChange(){
  state.selected.stat=$("stat").value;clearBelow(true);if(!state.selected.stat)return;busy(true);
  try{
