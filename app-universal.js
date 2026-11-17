@@ -2814,7 +2814,7 @@ async function nomisLoadCatalog(search){
  var q=String(search||"").trim();
  var queries=q?[q]:["population","employment","earnings","claimant","labour","business","gdp","industry","housing","benefit","census","income","workforce","health","education"];
  var byId=new Map();
- status(q?"Cercant a Nomis…":"Carregant catàleg Nomis…");
+ status(q?"Cercant a ONS":"Carregant catàleg ONS…");
  for(var qi=0;qi<queries.length;qi++){
   var url=base+"/dataset/def.sdmx.json?search="+encodeURIComponent(queries[qi]);
   try{
@@ -2958,7 +2958,7 @@ async function nomisFetchDimCodes(base,datasetId,dimId,codelist){
 async function nomisSelectDataset(id){
  id=String(id||"").trim();
  if(!id||!/^NM_/i.test(id))throw new Error("ONS/Nomis: identificador de dataset no vàlid ("+id+"). Cal un codi tipus NM_509_1, no el títol de la taula.");
- status("Carregant dimensions ONS/Nomis…");
+ status("Carregant dimensions ONS…");
  var base=provider().base.replace(/\/+$/,"");
  var defUrl=base+"/dataset/"+encodeURIComponent(id)+"/def.sdmx.json";
  var def=await fetchJson(defUrl);
