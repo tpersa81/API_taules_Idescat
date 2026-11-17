@@ -2905,14 +2905,13 @@ async function nomisSelectDataset(id){
  status("");
 }
 async function nomisQuery(filters){
- var base=provider().base.replace(/\/+$/,""),id=state.selected.table;
+ var base=provider().base.replace(/\\/+$/,""),id=state.selected.table;
  if(!id)throw new Error("ONS: no s'ha seleccionat cap conjunt de dades.");
  var p=new URLSearchParams();
 
- // A diferència de selectedFilters(), NOMIS necessita que enviem explícitament
- // les dimensions que l'usuari ha deixat amb tots els valors seleccionats.
- // Si les ometem, l'API interpreta que no hi ha restricció per aquella dimensió
- // i pot retornar una taula molt més gran del límit de 25.000 cel·les.
+ // NOMIS permet indicar explícitament totes les categories d'una dimensió.
+ // Això és necessari per distingir una dimensió realment "tota seleccionada"
+ // d'una dimensió omesa (que NOMIS interpreta com "totes les dades").
  dims(state.metadata).forEach(function(d){
   var vals=state.filters&&state.filters.has(d.id)
     ?Array.from(state.filters.get(d.id)||[])
@@ -2923,11 +2922,27 @@ async function nomisQuery(filters){
   }
  });
 
- // Si la dimensió temporal no té cap selecció, NOMIS admet "latest".
  if(!p.has("time"))p.set("time","latest");
 
- var url=base+"/dataset/"+encodeURIComponent(id)+".jsonstat.json?"+p.toString();
- var data=await fetchJson(url);
+ var query=p.toString(),
+     url=base+"/dataset/"+encodeURIComponent(id)+".jsonstat.json?"+query,
+     data;
+
+ // CELL pot contenir milers de codis. Amb GET això genera una URL molt
+ // llarga i el navegador pot acabar retornant simplement "Failed to fetch",
+ // tot i que la consulta sigui vàlida. NOMIS admet GET i POST; en aquests
+ // casos enviem els mateixos paràmetres en el cos POST, mantenint la URL
+ // GET com a referència de la consulta per a exportacions i diagnòstic.
+ if(url.length>7000){
+  data=await fetchJson(base+"/dataset/"+encodeURIComponent(id)+".jsonstat.json",{
+   method:"POST",
+   headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},
+   body:query
+  });
+ }else{
+  data=await fetchJson(url);
+ }
+
  if(data&&data.dimension&&!data.version)data.version="2.0";
  return{data:data,url:url};
 }
