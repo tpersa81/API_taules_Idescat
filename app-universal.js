@@ -6145,6 +6145,27 @@ function ensureVisualLib(preferredBy){
  return visualLibPromise;
 }
 
+
+/** Dependències de gràfics no-mapa (rank, barres, línies…): jQuery + Flot. */
+function ensureVisualChartDeps(){
+ if(window.jQuery&&typeof jQuery.plot==="function")return Promise.resolve();
+ return vizLoadScriptFallback("lib/jquery.1.8.3.js")
+  .then(function(){return vizLoadScriptFallback("lib/jquery.flot.js")})
+  .then(function(){
+   try{
+    if(VisualJS.setup&&VisualJS.setup.lib&&VisualJS.setup.lib.jquery){
+     var B=VISUAL_CDN;
+     VisualJS.setup.lib.jquery.js=B+"lib/jquery.1.8.3.js";
+     VisualJS.setup.lib.jquery.exists=function(){return typeof jQuery==="function"};
+     if(VisualJS.setup.lib.jquery.flot){
+      VisualJS.setup.lib.jquery.flot.js=B+"lib/jquery.flot.js";
+      VisualJS.setup.lib.jquery.flot.exists=function(){return typeof jQuery==="function"&&typeof jQuery.plot==="function"};
+     }
+    }
+   }catch(e){}
+  });
+}
+
 async function renderVizPanel(){
  var panel=$("vizPanel"),status=$("vizStatus"),chart=$("vizChart"),controls=$("vizControls");
  if(!panel||!chart)return;
@@ -6211,6 +6232,14 @@ async function renderVizPanel(){
     }
    }catch(e){}
   }
+  var chartData;
+  if(type==="cmap"){
+   chartData=built.data.map(function(d){return{id:d.id,val:d.val}});
+  }else{
+   chartData=built.data.slice().sort(function(a,b){return b.val-a.val}).map(function(d){
+    return [String(d.label||d.id), d.val];
+   });
+  }
   var payload={
    id:"vizChart",
    lang:"ca",
@@ -6222,17 +6251,29 @@ async function renderVizPanel(){
    unit:{symbol:"%",position:"end"},
    legend:true,
    type:type,
-   fixed:[640,420],
-   data: built.data.map(function(d){return type==="cmap"?{id:d.id,val:d.val}:[d.label||d.id,d.val]})
+   fixed: type==="rank" ? [640, Math.max(420, 24*chartData.length+80)] : [640,420],
+   data: chartData
   };
   if(type==="cmap")payload.by=mapBy;
-  try{
-   if(typeof visual==="function")visual(payload);
-   else if(window.VisualJS&&typeof VisualJS.load==="function")VisualJS.load(payload);
-   else throw new Error("Visual no disponible");
-  }catch(e){
-   if(status)status.textContent="Error en dibuixar: "+(e&&e.message?e.message:String(e))+(mapBy?" · by="+mapBy:"");
-   console.error("Visual draw error", e, payload, "mapKeys", window.VisualJS&&VisualJS.map&&Object.keys(VisualJS.map));
+  if(type==="rank"){
+   payload.axis={ticks:{y:false,x:true}};
+  }
+  function doDraw(){
+   try{
+    if(typeof visual==="function")visual(payload);
+    else if(window.VisualJS&&typeof VisualJS.load==="function")VisualJS.load(payload);
+    else throw new Error("Visual no disponible");
+   }catch(e){
+    if(status)status.textContent="Error en dibuixar: "+(e&&e.message?e.message:String(e))+(mapBy?" · by="+mapBy:"");
+    console.error("Visual draw error", e, payload);
+   }
+  }
+  if(type==="rank"){
+   ensureVisualChartDeps().then(doDraw).catch(function(e){
+    if(status)status.textContent="No s'han pogut carregar jQuery/Flot per al ranking: "+(e&&e.message?e.message:e);
+   });
+  }else{
+   doDraw();
   }
  }
  if(typeSel)typeSel.onchange=draw;
