@@ -3003,64 +3003,75 @@ async function ineLoadBaseLevel(pageUrl){
  function cleanLabel(s){
   return String(s||"").replace(/\s+/g," ").trim();
  }
+ function isNoiseTitle(s){
+  s=cleanLabel(s).toLowerCase();
+  if(!s)return true;
+  if(/^(aviso|tooltip|fecha|más información|ver más)$/i.test(s))return true;
+  if(/^aviso a los usuarios/i.test(s))return true;
+  return false;
+ }
  function linkInfo(raw,label){
   var abs=absUrl(raw);if(!abs)return null;
   var u;try{u=new URL(abs)}catch(e){return null}
   var host=u.hostname.toLowerCase(),path=u.pathname.toLowerCase();
-  if(host!=="www.ine.es"&&host!=="ine.es")return null;
-  var tpx=u.searchParams.get("tpx"),t=u.searchParams.get("t");
+  if(host&&host!=="www.ine.es"&&host!=="ine.es"){
+   // hash-only local tabs
+   if(String(raw||"").charAt(0)==="#")return null;
+   if(!host){/* relative ok */}else return null;
+  }
+  if(host&&host!=="www.ine.es"&&host!=="ine.es")return null;
+  var tpx=u.searchParams.get("tpx"),tt=u.searchParams.get("t");
   var capsel=u.searchParams.get("capsel")||"";
   var padre=u.searchParams.get("padre")||"";
   var typePc=u.searchParams.get("type")||"";
   var pathPx=u.searchParams.get("path")||"";
-  label=cleanLabel(label)||cleanLabel(u.searchParams.get("file"))||"";
+  label=cleanLabel(label)||"";
   if(tpx&&path.indexOf("/jaxi/")>=0)return{id:String(tpx),label:label||("Taula "+tpx),type:"table",tableId:String(tpx),url:abs};
-  if(t&&path.indexOf("/jaxit3/")>=0)return{id:String(t),label:label||("Taula "+t),type:"table",tableId:String(t),url:abs};
-  // Navegació INEbase (capsel / padre / pcaxis)
-  if(path.indexOf("/inebase/")>=0||path.indexOf("/dynt3/")>=0){
-   // Mateix node actual → no cal
-   if(capsel&&capsel===currentCapsel&&(!padre||padre===currentPadre||!currentPadre))return null;
-   if(capsel){
-    return{id:abs,label:label||("Apartat "+capsel),type:"capsel",url:abs,capsel:capsel,padre:padre||""};
-   }
-   if(padre){
-    return{id:abs,label:label||("Apartat "+padre),type:"capsel",url:abs,capsel:"",padre:padre};
-   }
-   if(/pcaxis/i.test(typePc)||pathPx){
-    return{id:abs,label:label||"Sèrie PC-Axis",type:"capsel",url:abs,capsel:"",padre:""};
-   }
+  if(tt&&path.indexOf("/jaxit3/")>=0)return{id:String(tt),label:label||("Taula "+tt),type:"table",tableId:String(tt),url:abs};
+  if(path.indexOf("/inebase/")>=0||path.indexOf("/dynt3/")>=0||path.indexOf("/dyngs/inebase/")>=0){
+   if(capsel&&capsel===currentCapsel&&(!padre||!currentPadre||padre===currentPadre))return null;
+   if(capsel)return{id:abs,label:label||("Apartat "+capsel),type:"capsel",url:abs,capsel:capsel,padre:padre||""};
+   if(padre)return{id:abs,label:label||("Apartat "+padre),type:"capsel",url:abs,capsel:"",padre:padre};
+   if(/pcaxis/i.test(typePc)||pathPx)return{id:abs,label:label||"Sèrie PC-Axis",type:"capsel",url:abs,capsel:"",padre:""};
+   // altres pàgines operacion/resultados
+   if(path.indexOf("operacion.htm")>=0||path.indexOf("listaoperaciones")>=0)return null;
   }
   return null;
  }
 
- // --- 1) Arbre jeràrquic de pàgines operacion.htm (ul.secciones / ul.subSecc) ---
- function parseList(ul,depth){
-  var out=[],lis=Array.from(ul.children||[]).filter(function(el){return el.tagName==="LI"});
-  lis.forEach(function(li,idx){
-   // enllaç directe
-   var a=null;
+ /** Parseja un <ul> de resultats INEbase (secciones / subSecc). */
+ function parseUl(ul,depth){
+  var out=[];
+  if(!ul)return out;
+  Array.from(ul.children||[]).forEach(function(li,idx){
+   if(!li||li.tagName!=="LI")return;
+   // tooltip: ignora
+   var sub=null;
    Array.from(li.children||[]).forEach(function(ch){
-    if(ch.tagName==="A"&&!a)a=ch;
+    if(ch.tagName==="UL"&&!sub)sub=ch;
    });
-   if(!a){
-    var a2=li.querySelector(":scope > a[href]");
-    if(a2)a=a2;
-   }
-   var sub=li.querySelector(":scope > ul.subSecc")||li.querySelector(":scope > ul.secciones")||li.querySelector(":scope > ul");
-   // títol de secció sense enllaç (span.title)
-   var spanTitle=li.querySelector(":scope > span.title, :scope > span > span.title");
-   if(!spanTitle){
-    var sp=Array.from(li.children||[]).find(function(ch){return ch.tagName==="SPAN"&&/\btitle\b/.test(ch.className||"")});
-    if(sp)spanTitle=sp;
-   }
-   if(a&&a.getAttribute("href")){
-    var info=linkInfo(a.getAttribute("href"),a.textContent||"");
+   if(!sub)sub=li.querySelector(":scope > ul");
+
+   var directA=null;
+   Array.from(li.children||[]).forEach(function(ch){
+    if(ch.tagName==="A"&&ch.getAttribute("href")&&!directA)directA=ch;
+   });
+
+   // Títol de secció: span.title (pot contenir span.fecha)
+   var titleEl=null;
+   Array.from(li.children||[]).forEach(function(ch){
+    if(ch.tagName==="SPAN"&&/\btitle\b/.test(ch.className||"")&&!titleEl)titleEl=ch;
+   });
+   var title=titleEl?cleanLabel(titleEl.textContent):"";
+   if(isNoiseTitle(title))title="";
+
+   if(directA){
+    var info=linkInfo(directA.getAttribute("href"),directA.textContent||title);
     if(info){
      if(sub){
-      var kids=parseList(sub,depth+1);
+      var kids=parseUl(sub,depth+1);
       if(kids.length){
-       // secció amb enllaç propi + fills: preferim els fills sota una secció amb el títol de l'enllaç
-       out.push({id:"section:"+info.id,label:info.label,type:"section",url:info.url,children:kids});
+       out.push({id:"section:"+info.url,label:info.label,type:"section",url:info.url,children:kids});
        return;
       }
      }
@@ -3068,98 +3079,140 @@ async function ineLoadBaseLevel(pageUrl){
      return;
     }
    }
+
    if(sub){
-    var kids2=parseList(sub,depth+1);
-    var title=cleanLabel(spanTitle&&spanTitle.textContent||"");
-    // evita títols de tooltip
-    if(title&&/aviso/i.test(title)&&title.length<40)title="";
+    var kids2=parseUl(sub,depth+1);
     if(kids2.length){
      if(title){
       out.push({id:"section:"+depth+":"+idx+":"+title,label:title,type:"section",url:pageUrl,children:kids2});
      }else{
       kids2.forEach(function(k){out.push(k)});
      }
+    }else if(title){
+     // secció buida: prova enllaços niuats qualsevol
+     var nested=[];
+     li.querySelectorAll("a[href]").forEach(function(a){
+      var inf=linkInfo(a.getAttribute("href"),a.textContent||"");
+      if(inf)nested.push(inf);
+     });
+     if(nested.length)out.push({id:"section:"+depth+":"+idx+":"+title,label:title,type:"section",url:pageUrl,children:nested});
     }
     return;
    }
-   // enllaços niuats qualsevol
-   if(!a){
-    var nested=li.querySelectorAll("a[href]");
-    nested.forEach(function(na){
-     var info2=linkInfo(na.getAttribute("href"),na.textContent||"");
-     if(info2)out.push(info2);
-    });
-   }
+
+   // enllaços solts dins del li
+   li.querySelectorAll(":scope > a[href], :scope > span > a[href]").forEach(function(a){
+    var inf=linkInfo(a.getAttribute("href"),a.textContent||"");
+    if(inf)out.push(inf);
+   });
   });
   return out;
  }
 
- var hierarchical=[];
- // Pestanyes de resultats: cada panell pot tenir ul.secciones
- var tabPanels=Array.from(doc.querySelectorAll('div[id^="tabs-"], div.resultados'));
- var sectionLists=[];
- if(tabPanels.length){
-  tabPanels.forEach(function(panel){
-   panel.querySelectorAll("ul.secciones").forEach(function(ul){sectionLists.push(ul)});
+ // ========== 1) Pestanyes (Trimestrales / Anuales / Módulos…) ==========
+ var tabItems=[];
+ var tabLinks=Array.from(doc.querySelectorAll('a[href^="#tabs-"]'));
+ // fallback: barra de pestanyes típica
+ if(!tabLinks.length){
+  doc.querySelectorAll("span.cata_titulo").forEach(function(sp){
+   var a=sp.closest("a");
+   if(a&&/^#tabs-/.test(a.getAttribute("href")||""))tabLinks.push(a);
   });
  }
- if(!sectionLists.length){
-  doc.querySelectorAll("ul.secciones").forEach(function(ul){sectionLists.push(ul)});
- }
- // Dedup by element
- sectionLists=sectionLists.filter(function(ul,i,arr){return arr.indexOf(ul)===i});
- sectionLists.forEach(function(ul){
-  parseList(ul,0).forEach(function(it){hierarchical.push(it)});
+ // dedup per href
+ var seenTab=new Set();
+ tabLinks.forEach(function(a){
+  var href=a.getAttribute("href")||"";
+  if(seenTab.has(href))return;
+  seenTab.add(href);
+  var id=href.replace(/^#/,"");
+  var panel=doc.getElementById(id);
+  if(!panel)return;
+  var label=cleanLabel(a.textContent||id);
+  // ignora microdatos si no hi ha navegació útil? millor incloure tot
+  var kids=[];
+  panel.querySelectorAll(":scope > div ul.secciones, :scope ul.secciones").forEach(function(ul){
+   // només ul.secciones que no estiguin niuades dins una altra secciones del mateix panel de forma duplicada
+  });
+  // Preferim els ul.secciones de primer nivell dins del panell
+  var topLists=Array.from(panel.querySelectorAll("ul.secciones")).filter(function(ul){
+   var parent=ul.parentElement;
+   // evita sub-llistes: ul.secciones no ha d'estar dins un altre ul.secciones
+   while(parent&&parent!==panel){
+    if(parent.matches&&parent.matches("ul.secciones"))return false;
+    parent=parent.parentElement;
+   }
+   return true;
+  });
+  if(!topLists.length){
+   // alguns panells només tenen subSecc
+   topLists=Array.from(panel.querySelectorAll(":scope ul.subSecc")).filter(function(ul,i,arr){
+    // primer nivell de subSecc directament sota estructura del panell
+    return i===0||ul.parentElement&&ul.parentElement.parentElement===panel;
+   }).slice(0,1);
+  }
+  topLists.forEach(function(ul){
+   parseUl(ul,0).forEach(function(it){kids.push(it)});
+  });
+  // si no hi ha secciones, enllaços del panell
+  if(!kids.length){
+   var seen=new Set();
+   panel.querySelectorAll("a[href]").forEach(function(a2){
+    var inf=linkInfo(a2.getAttribute("href"),a2.textContent||"");
+    if(!inf)return;
+    var k=inf.type+":"+(inf.capsel||inf.tableId||inf.url);
+    if(seen.has(k))return;seen.add(k);
+    kids.push(inf);
+   });
+  }
+  if(kids.length){
+   tabItems.push({id:"tab:"+id,label:label,type:"section",url:pageUrl+"#"+id,children:kids});
+  }
  });
 
- // --- 2) Arbre dynt3 (role=tree / a[id^=c_]) ---
- if(!hierarchical.length){
-  var treeLinks=Array.from(doc.querySelectorAll('a[id^="c_"][href], a.desplegar[href], li[role] > a[href]'));
-  var seenT=new Set();
-  treeLinks.forEach(function(aEl){
-   var info=linkInfo(aEl.getAttribute("href"),aEl.textContent||"");
-   if(!info)return;
-   var key=info.type+":"+(info.capsel||info.tableId||info.url);
-   if(seenT.has(key))return;
-   seenT.add(key);
-   hierarchical.push(info);
-  });
- }
+ if(tabItems.length)return tabItems;
 
- // --- 3) Fallback pla: tots els enllaços de la pàgina ---
- if(!hierarchical.length){
-  var flat=[],seenF=new Set();
-  function addFlat(info){
-   if(!info)return;
-   var key=info.type+":"+(info.capsel||info.tableId||info.id||info.url);
-   if(seenF.has(key))return;
-   seenF.add(key);
-   flat.push(info);
+ // ========== 2) Sense pestanyes: ul.secciones a la pàgina ==========
+ var hierarchical=[];
+ var topLists2=Array.from(doc.querySelectorAll("ul.secciones")).filter(function(ul){
+  var parent=ul.parentElement,hops=0;
+  while(parent&&hops<8){
+   if(parent.matches&&parent.matches("ul.secciones"))return false;
+   parent=parent.parentElement;hops++;
   }
-  Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
-   addFlat(linkInfo(aEl.getAttribute("href"),aEl.textContent||""));
-  });
-  var md=/\[([^\]]+)\]\(([^)]+)\)/g,m;
-  while((m=md.exec(String(html||""))))addFlat(linkInfo(m[2],m[1]));
-  hierarchical=flat;
- }
+  return true;
+ });
+ topLists2.forEach(function(ul){parseUl(ul,0).forEach(function(it){hierarchical.push(it)})});
+ if(hierarchical.length)return hierarchical;
 
- // Agrupa capsels amb el mateix padre (Resultados nacionales / CCAA) quan no hi ha jerarquia de seccions
- if(hierarchical.length&&hierarchical.every(function(x){return x.type==="capsel"||x.type==="table"})){
-  var byPadre=new Map();
-  hierarchical.forEach(function(x){
-   if(x.type!=="capsel"||!x.padre)return;
-   if(!byPadre.has(x.padre))byPadre.set(x.padre,[]);
-   byPadre.get(x.padre).push(x);
-  });
-  // Només agrupar si hi ha diversos pares amb diversos fills (estructura típica de resultats)
-  if(byPadre.size>1&&hierarchical.length>6){
-   // manté pla: l'usuari ja veu els títols; agrupar aquí amaga Series
-  }
- }
+ // ========== 3) Arbre dynt3 ==========
+ var treeLinks=Array.from(doc.querySelectorAll('a[id^="c_"][href], a.desplegar[href]'));
+ var seenT=new Set(),treeItems=[];
+ treeLinks.forEach(function(aEl){
+  var info=linkInfo(aEl.getAttribute("href"),aEl.textContent||"");
+  if(!info)return;
+  var key=info.type+":"+(info.capsel||info.tableId||info.url);
+  if(seenT.has(key))return;seenT.add(key);
+  treeItems.push(info);
+ });
+ if(treeItems.length)return treeItems;
 
- return hierarchical;
+ // ========== 4) Fallback pla ==========
+ var flat=[],seenF=new Set();
+ function addFlat(info){
+  if(!info)return;
+  var key=info.type+":"+(info.capsel||info.tableId||info.id||info.url);
+  if(seenF.has(key))return;seenF.add(key);
+  flat.push(info);
+ }
+ Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
+  addFlat(linkInfo(aEl.getAttribute("href"),aEl.textContent||""));
+ });
+ var md=/\[([^\]]+)\]\(([^)]+)\)/g,mm;
+ while((mm=md.exec(String(html||""))))addFlat(linkInfo(mm[2],mm[1]));
+ return flat;
 }
+
 
 
 async function ineLoadTablesFromBase(op){
