@@ -1356,16 +1356,18 @@ async function runQuery(){
    state.lastQueryUrl=up
   }
   else {
+   // Preferim JSON-stat DATASET (cub complet) + filtre al client.
+   // DATOS_TABLA fragmenta l'edat (Grupos/Semiintervalos/Totales) i podia deixar trams buits.
    var sf=selectedFilters();
-   var hasIneFilters=Object.keys(sf).some(function(k){return sf[k]&&sf[k].length});
-   if(hasIneFilters){
-    var ir=await ineDatosTablaFiltered(state.selected.table,sf);
-    ds=ir.data;state.lastQueryUrl=ir.url;
-   }else{
-    var iu=ineJsonStatUrl(state.selected.table);
+   var iu=ineJsonStatUrl(state.selected.table);
+   try{
     ds=await fetchJson(iu);
     ds=ineNormalizeMetadataCodes(ds);
+    if(sf&&Object.keys(sf).length)ds=diceJsonStat(ds,sf);
     state.lastQueryUrl=iu;
+   }catch(jsErr){
+    var ir=await ineDatosTablaFiltered(state.selected.table,sf);
+    ds=ir.data;state.lastQueryUrl=ir.url;
    }
   }
   if(token!==state.requestToken)return;state.lastData=ds;state.page=1;renderResults(ds);var n=Array.isArray(ds.value)?ds.value.length:Object.keys(ds.value||{}).length;$("resultCount").textContent=n.toLocaleString("ca-ES")+" valors retornats";$("exportCsv").disabled=false;$("exportXlsx").disabled=false;$("addToCart").disabled=false;status("")
@@ -3572,27 +3574,38 @@ function ineDatosTablaToJsonStat(raw,metadata){
  var timeMap=new Map(),rows=[];
  function norm(x){return String(x==null?"":x).normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").trim().toUpperCase()}
  function metaFor(s){return Array.isArray(s&&s.MetaData)?s.MetaData:[]}
+ function dimAffinity(d,m){
+  var vn=norm((m&&m.Variable&&m.Variable.Nombre)||m.T3_Variable||"");
+  var dn=norm(d.label||d.id),dk=dn.replace(/[^A-Z0-9]/g,"");
+  var vk=vn.replace(/[^A-Z0-9]/g,"");
+  if(!vn)return 0;
+  if(vn===dn||vk===dk)return 50;
+  if(vn.indexOf(dn)>=0||dn.indexOf(vn)>=0)return 40;
+  if(/EDAD/.test(vk)&&/EDAD/.test(dk))return 35;
+  if(/SEXO|SEX/.test(vk)&&/SEXO|SEX/.test(dk))return 35;
+  if(/(COMUNIDAD|AUTONOM|CCAA|PROVIN|MUNICIP)/.test(vk)&&/(COMUNIDAD|AUTONOM|CCAA|PROVIN|MUNICIP|GEO)/.test(dk))return 35;
+  if(/TOTAL NACIONAL/.test(vn)&&/(COMUNIDAD|AUTONOM|CCAA|GEO|NACIONAL)/.test(dk+dn))return 25;
+  return 0;
+ }
  function categoryMatch(d,m){
   if(!m)return null;
   var name=norm(m.Nombre||""),code=String(m.Codigo==null?"":m.Codigo).trim(),id=String(m.Id==null?"":m.Id).trim();
-  var tv=norm(m.T3_Variable||"");
-  var dn=norm(d.label||d.id),dk=dn.replace(/[^A-Z0-9]/g,"");
+  var aff=dimAffinity(d,m);
   var best=null,bestScore=-1;
   (d.categories||[]).forEach(function(cat){
    var cc=String(cat.code==null?"":cat.code),suffix=cc.indexOf("_")>=0?cc.slice(cc.lastIndexOf("_")+1):cc;
    var score=0;
    if(name&&norm(cat.label)===name)score=100;
    else if(code&&cc===code)score=90;
+   else if(code&&suffix===code)score=85;
    else if(id&&cc===id)score=80;
-   else if(code&&suffix===code)score=70;
-   else if(id&&suffix===id)score=60;
+   else if(id&&suffix===id)score=70;
    if(score>0){
-    var ck=norm(cat.label||"").replace(/[^A-Z0-9]/g,"");
-    if(tv&&((tv===dn)||(tv===dk)))score+=10;
-    if(ck===dk)score+=2;
+    score+=aff;
     if(score>bestScore){bestScore=score;best=cat}
    }
   });
+  if(best&&aff<=0&&!code&&bestScore<100)return null;
   return best;
  }
  series.forEach(function(s){
@@ -3606,7 +3619,7 @@ function ineDatosTablaToJsonStat(raw,metadata){
      var hit=categoryMatch(d,m);
      if(!hit)return;
      var name=norm(m.Nombre||""),code=String(m.Codigo==null?"":m.Codigo).trim(),id=String(m.Id==null?"":m.Id).trim();
-     var score=(norm(hit.label)===name?100:0)+(String(hit.code)===code?20:0)+(String(hit.code)===id?10:0);
+     var score=dimAffinity(d,m)+(norm(hit.label)===name?100:0)+(String(hit.code)===code?20:0)+(String(hit.code)===id?10:0);
      if(!best||score>best.score)best={code:String(hit.code),score:score};
     });
     key.push(best?best.code:"");
@@ -3630,11 +3643,13 @@ function ineDatosTablaToJsonStat(raw,metadata){
  var total=out.size.reduce(function(a,b){return a*b},1),vals=new Array(total).fill(null),strides=[];
  var st=1;for(var j=out.size.length-1;j>=0;j--){strides[j]=st;st*=out.size[j]};
  rows.forEach(function(r){
-  var coords=[];
+  var coords=[],ok=true;
   nonTime.forEach(function(d,j){
    var m=index.get(d.id),code=String(r.key[j]||"");
-   coords.push(m&&m.has(code)?m.get(code):0);
+   if(!m||!m.has(code)){ok=false;return}
+   coords.push(m.get(code));
   });
+  if(!ok)return;
   var tm=index.get(td.id),ti=tm&&tm.get(String(r.time));if(ti==null)return;
   coords.push(ti);
   var flat=0;coords.forEach(function(v,j){flat+=v*strides[j]});
