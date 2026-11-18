@@ -6007,6 +6007,12 @@ function vizBuildComarcaShare(ds,opts){
 
 var VISUAL_CDN="https://cdn.jsdelivr.net/gh/idescat/visual@master/";
 var visualLibPromise=null;
+var VISUAL_MAP_FILES={
+ com2025:"maps/cat2025com.js",
+ com2023:"maps/cat2023com.js",
+ com2015:"maps/cat2015com.js",
+ com:"maps/cat2013com.js"
+};
 
 function vizLoadScript(src){
  return new Promise(function(resolve,reject){
@@ -6026,17 +6032,68 @@ function vizLoadScript(src){
  });
 }
 
-function vizResolveMapBy(){
- if(!window.VisualJS)return null;
- if(!VisualJS.map)VisualJS.map={};
- if(VisualJS.map.com2025&&VisualJS.map.com2025.area)return "com2025";
- if(VisualJS.map.com2023&&VisualJS.map.com2023.area)return "com2023";
- if(VisualJS.map.com&&VisualJS.map.com.area)return "com";
+/** Carrega un JS de mapa via fetch+eval (més fiable que <script> dinàmic a alguns entorns). */
+function vizLoadMapEval(relPath){
+ var url=VISUAL_CDN+relPath+(relPath.indexOf("?")>=0?"":"")+((relPath.indexOf("?")>=0)?"&":"?")+"v=1";
+ // evita cache stale sense trencar CDN
+ url=VISUAL_CDN+relPath;
+ return fetch(url,{mode:"cors",cache:"force-cache"}).then(function(r){
+  if(!r.ok)throw new Error("HTTP "+r.status+" · "+url);
+  return r.text();
+ }).then(function(code){
+  if(!window.VisualJS)throw new Error("VisualJS no està definit abans del mapa");
+  if(!VisualJS.map)VisualJS.map={};
+  // elimina BOM
+  if(code.charCodeAt(0)===0xFEFF)code=code.slice(1);
+  try{
+   // eslint-disable-next-line no-eval
+   (0,eval)(code);
+  }catch(e){
+   throw new Error("Error avaluant "+relPath+": "+(e&&e.message?e.message:e));
+  }
+ });
+}
+
+/** Any del període a partir de etiqueta/codi Idescat (10/2026, 2026M10, 2026, …). */
+function vizPeriodYear(periodLabel,periodCode){
+ var s=String(periodLabel||"")+" "+String(periodCode||"");
+ var m=s.match(/\b(20\d{2}|19\d{2})\b/);
+ if(m)return Number(m[1]);
+ m=String(periodCode||"").match(/^(19\d{2}|20\d{2})/);
+ if(m)return Number(m[1]);
+ return null;
+}
+
+/**
+ * Tria el mapa de comarques segons visual.js.org:
+ *  com2025 ≥2025 | com2023 2023–2024 | com2015 2015–2022 | com <2015
+ */
+function vizMapByForYear(year){
+ if(year==null||!Number.isFinite(year))return "com2025";
+ if(year>=2025)return "com2025";
+ if(year>=2023)return "com2023";
+ if(year>=2015)return "com2015";
+ return "com";
+}
+
+function vizMapReady(by){
+ return !!(window.VisualJS&&VisualJS.map&&VisualJS.map[by]&&VisualJS.map[by].area&&Array.isArray(VisualJS.map[by].features));
+}
+
+function vizResolveMapBy(year){
+ var preferred=vizMapByForYear(year);
+ var order=[preferred,"com2025","com2023","com2015","com"];
+ var seen={};
+ for(var i=0;i<order.length;i++){
+  var k=order[i];
+  if(seen[k])continue;seen[k]=true;
+  if(vizMapReady(k))return k;
+ }
  return null;
 }
 
 function ensureVisualLib(){
- if(vizResolveMapBy()&&typeof window.visual==="function")return Promise.resolve();
+ if(typeof window.visual==="function"&&vizMapReady("com2025")&&vizMapReady("com"))return Promise.resolve();
  if(visualLibPromise)return visualLibPromise;
  var B=VISUAL_CDN;
  visualLibPromise=vizLoadScript(B+"lib/d3.v3.js")
@@ -6047,24 +6104,27 @@ function ensureVisualLib(){
    return vizLoadScript(B+"maps/visual.maps.js");
   })
   .then(function(){
-   // Mapa comarcal 2025 (Lluçanès, etc.) — adequat per dades 2024+
-   return vizLoadScript(B+"maps/cat2025com.js").catch(function(){return null});
-  })
-  .then(function(){
-   if(vizResolveMapBy())return null;
-   return vizLoadScript(B+"maps/cat2023com.js").catch(function(){return null});
-  })
-  .then(function(){
-   if(vizResolveMapBy())return null;
-   return vizLoadScript(B+"maps/cat2013com.js");
+   // Carrega TOTES les versions de comarques (tria segons període al dibuixar)
+   var keys=["com2025","com2023","com2015","com"];
+   var chain=Promise.resolve();
+   keys.forEach(function(k){
+    chain=chain.then(function(){
+     if(vizMapReady(k))return null;
+     return vizLoadMapEval(VISUAL_MAP_FILES[k]).catch(function(err){
+      console.warn("Mapa "+k+" no carregat:", err);
+      return null;
+     });
+    });
+   });
+   return chain;
   })
   .then(function(){
    if(typeof window.visual!=="function"&&window.VisualJS&&typeof VisualJS.load==="function"){
     window.visual=function(o){return VisualJS.load(o)};
    }
    if(typeof window.visual!=="function")throw new Error("Visual no ha quedat disponible.");
-   var by=vizResolveMapBy();
-   if(!by)throw new Error("El mapa de comarques no s'ha carregat (VisualJS.map.com*).");
+   var any=vizResolveMapBy(2026);
+   if(!any)throw new Error("Cap mapa de comarques disponible (com/com2015/com2023/com2025).");
   })
   .catch(function(e){visualLibPromise=null;throw e});
  return visualLibPromise;
@@ -6106,21 +6166,24 @@ async function renderVizPanel(){
   chart.innerHTML="";
   chart.id="vizChart";
   chart.className="visual";
-  if(status){
-   status.textContent="Proporció d'homes sobre el total d'afiliats · "+built.periodLabel+" · "+built.n+" comarques"+
-    (built.skipped?" · "+built.skipped+" sense parella Homes/Total":"");
-  }
-  var mapBy=vizResolveMapBy();
+  var year=vizPeriodYear(built.periodLabel,built.periodCode);
+  var mapBy=type==="cmap"?vizResolveMapBy(year):null;
   if(type==="cmap"&&!mapBy){
-   if(status)status.textContent="Error: mapa de comarques no disponible (VisualJS.map).";
+   if(status)status.textContent="Error: mapa de comarques no disponible (VisualJS.map). Clau demanada: "+vizMapByForYear(year)+" (any "+(year!=null?year:"?")+").";
    return;
   }
+  if(status){
+   status.textContent="Proporció d'homes sobre el total d'afiliats · "+built.periodLabel+" · "+built.n+" comarques"+
+    (built.skipped?" · "+built.skipped+" sense parella Homes/Total":"")+
+    (type==="cmap"&&mapBy?" · mapa "+mapBy:"");
+  }
   if(type==="cmap"){
-   // Evita que Visual torni a demanar el mapa per lazyload amb ruta relativa
    try{
-    if(VisualJS.setup&&VisualJS.setup.map&&VisualJS.setup.map[mapBy]){
-     VisualJS.setup.map[mapBy].js=VISUAL_CDN+"maps/"+(mapBy==="com"?"cat2013com.js":mapBy==="com2023"?"cat2023com.js":mapBy==="com2025"?"cat2025com.js":"cat2013com.js");
-     VisualJS.setup.map[mapBy].exists=function(){return !!(VisualJS.map&&VisualJS.map[mapBy]&&VisualJS.map[mapBy].area)};
+    var mapFile=VISUAL_MAP_FILES[mapBy]||VISUAL_MAP_FILES.com;
+    if(VisualJS.setup&&VisualJS.setup.map){
+     if(!VisualJS.setup.map[mapBy])VisualJS.setup.map[mapBy]={js:VISUAL_CDN+mapFile};
+     VisualJS.setup.map[mapBy].js=VISUAL_CDN+mapFile;
+     VisualJS.setup.map[mapBy].exists=function(){return vizMapReady(mapBy)};
     }
     if(VisualJS.setup&&VisualJS.setup.lib&&VisualJS.setup.lib.d3){
      VisualJS.setup.lib.d3.js=VISUAL_CDN+"lib/d3.v3.js";
