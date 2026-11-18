@@ -6148,21 +6148,30 @@ function ensureVisualLib(preferredBy){
 
 /** Dependències de gràfics no-mapa (rank, barres, línies…): jQuery + Flot. */
 function ensureVisualChartDeps(){
- if(window.jQuery&&typeof jQuery.plot==="function")return Promise.resolve();
+ function patchSetup(){
+  try{
+   if(VisualJS.setup&&VisualJS.setup.lib&&VisualJS.setup.lib.jquery){
+    var B=VISUAL_CDN;
+    VisualJS.setup.lib.jquery.js=B+"lib/jquery.1.8.3.js";
+    VisualJS.setup.lib.jquery.exists=function(){return typeof jQuery==="function"};
+    if(VisualJS.setup.lib.jquery.flot){
+     VisualJS.setup.lib.jquery.flot.js=B+"lib/jquery.flot.js";
+     VisualJS.setup.lib.jquery.flot.exists=function(){return typeof jQuery==="function"&&typeof jQuery.plot==="function"};
+    }
+   }
+  }catch(e){}
+ }
+ if(window.jQuery&&typeof jQuery.plot==="function"){
+  patchSetup();
+  return Promise.resolve();
+ }
  return vizLoadScriptFallback("lib/jquery.1.8.3.js")
   .then(function(){return vizLoadScriptFallback("lib/jquery.flot.js")})
   .then(function(){
-   try{
-    if(VisualJS.setup&&VisualJS.setup.lib&&VisualJS.setup.lib.jquery){
-     var B=VISUAL_CDN;
-     VisualJS.setup.lib.jquery.js=B+"lib/jquery.1.8.3.js";
-     VisualJS.setup.lib.jquery.exists=function(){return typeof jQuery==="function"};
-     if(VisualJS.setup.lib.jquery.flot){
-      VisualJS.setup.lib.jquery.flot.js=B+"lib/jquery.flot.js";
-      VisualJS.setup.lib.jquery.flot.exists=function(){return typeof jQuery==="function"&&typeof jQuery.plot==="function"};
-     }
-    }
-   }catch(e){}
+   patchSetup();
+   if(!(window.jQuery&&typeof jQuery.plot==="function")){
+    throw new Error("jQuery.plot no disponible després de carregar Flot");
+   }
   });
 }
 
@@ -6200,9 +6209,22 @@ async function renderVizPanel(){
  var type=typeSel&&typeSel.value?typeSel.value:"cmap";
  function draw(){
   type=typeSel&&typeSel.value?typeSel.value:"cmap";
-  chart.innerHTML="";
-  chart.id="vizChart";
-  chart.className="visual";
+  // Visual/Flot muten el DOM: cal un contenidor net a cada dibuix
+  chart=$("vizChart");
+  if(!chart){
+   var host=$("vizPanel");
+   if(!host){if(status)status.textContent="No hi ha contenidor de visualització.";return}
+   chart=document.createElement("div");
+   chart.id="vizChart";
+   host.appendChild(chart);
+  }
+  var fresh=document.createElement("div");
+  fresh.id="vizChart";
+  fresh.className="visual";
+  fresh.style.minHeight="420px";
+  fresh.style.width="100%";
+  if(chart.parentNode)chart.parentNode.replaceChild(fresh,chart);
+  chart=fresh;
   var year=vizPeriodYear(built.periodLabel,built.periodCode);
   var mapBy=type==="cmap"?vizResolveMapBy(year):null;
   if(type==="cmap"&&!mapBy){
@@ -6260,6 +6282,16 @@ async function renderVizPanel(){
   }
   function doDraw(){
    try{
+    var el=document.getElementById("vizChart");
+    if(!el)throw new Error("Contenidor #vizChart introbable");
+    if(window.jQuery&&!jQuery("#vizChart").length){
+     throw new Error("jQuery no troba #vizChart");
+    }
+    // Evita estat intern d'un dibuix anterior (mapa) sobre el mateix id
+    try{
+     if(window.VisualJS&&VisualJS.container)delete VisualJS.container.vizChart;
+     if(window.VisualJS)VisualJS.show=true;
+    }catch(e){}
     if(typeof visual==="function")visual(payload);
     else if(window.VisualJS&&typeof VisualJS.load==="function")VisualJS.load(payload);
     else throw new Error("Visual no disponible");
