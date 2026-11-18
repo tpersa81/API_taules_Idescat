@@ -6006,6 +6006,7 @@ function vizBuildComarcaShare(ds,opts){
 }
 
 var VISUAL_CDN="https://cdn.jsdelivr.net/gh/idescat/visual@master/";
+var VISUAL_CDN_FALLBACK="https://raw.githubusercontent.com/idescat/visual/master/";
 var visualLibPromise=null;
 var VISUAL_MAP_FILES={
  com2025:"maps/cat2025com.js",
@@ -6016,7 +6017,7 @@ var VISUAL_MAP_FILES={
 
 function vizLoadScript(src){
  return new Promise(function(resolve,reject){
-  var existing=document.querySelector('script[src="'+src+'"]');
+  var existing=document.querySelector('script[data-viz-src="'+src+'"],script[src="'+src+'"]');
   if(existing){
    if(existing.getAttribute("data-loaded")==="1")return resolve();
    existing.addEventListener("load",function(){resolve()});
@@ -6026,31 +6027,17 @@ function vizLoadScript(src){
   var el=document.createElement("script");
   el.src=src;
   el.async=false;
+  el.setAttribute("data-viz-src",src);
   el.onload=function(){el.setAttribute("data-loaded","1");resolve()};
   el.onerror=function(){reject(new Error("No s'ha pogut carregar "+src))};
   document.head.appendChild(el);
  });
 }
 
-/** Carrega un JS de mapa via fetch+eval (més fiable que <script> dinàmic a alguns entorns). */
-function vizLoadMapEval(relPath){
- var url=VISUAL_CDN+relPath+(relPath.indexOf("?")>=0?"":"")+((relPath.indexOf("?")>=0)?"&":"?")+"v=1";
- // evita cache stale sense trencar CDN
- url=VISUAL_CDN+relPath;
- return fetch(url,{mode:"cors",cache:"force-cache"}).then(function(r){
-  if(!r.ok)throw new Error("HTTP "+r.status+" · "+url);
-  return r.text();
- }).then(function(code){
-  if(!window.VisualJS)throw new Error("VisualJS no està definit abans del mapa");
-  if(!VisualJS.map)VisualJS.map={};
-  // elimina BOM
-  if(code.charCodeAt(0)===0xFEFF)code=code.slice(1);
-  try{
-   // eslint-disable-next-line no-eval
-   (0,eval)(code);
-  }catch(e){
-   throw new Error("Error avaluant "+relPath+": "+(e&&e.message?e.message:e));
-  }
+function vizLoadScriptFallback(path){
+ // path relatiu tipus maps/cat2025com.js o lib/d3.v3.js
+ return vizLoadScript(VISUAL_CDN+path).catch(function(){
+  return vizLoadScript(VISUAL_CDN_FALLBACK+path);
  });
 }
 
@@ -6077,7 +6064,10 @@ function vizMapByForYear(year){
 }
 
 function vizMapReady(by){
- return !!(window.VisualJS&&VisualJS.map&&VisualJS.map[by]&&VisualJS.map[by].area&&Array.isArray(VisualJS.map[by].features));
+ try{
+  var m=window.VisualJS&&VisualJS.map&&VisualJS.map[by];
+  return !!(m&&m.area&&m.features&&m.features.length);
+ }catch(e){return false}
 }
 
 function vizResolveMapBy(year){
@@ -6092,39 +6082,64 @@ function vizResolveMapBy(year){
  return null;
 }
 
-function ensureVisualLib(){
- if(typeof window.visual==="function"&&vizMapReady("com2025")&&vizMapReady("com"))return Promise.resolve();
+function vizEnsureMapNamespace(){
+ window.VisualJS=window.VisualJS||{};
+ if(!VisualJS.map)VisualJS.map={};
+}
+
+function vizLoadOneMap(key){
+ if(vizMapReady(key))return Promise.resolve(key);
+ var rel=VISUAL_MAP_FILES[key];
+ if(!rel)return Promise.reject(new Error("Clau de mapa desconeguda: "+key));
+ vizEnsureMapNamespace();
+ return vizLoadScriptFallback(rel).then(function(){
+  if(!vizMapReady(key)){
+   throw new Error("Script "+rel+" carregat però VisualJS.map."+key+" no és vàlid");
+  }
+  return key;
+ });
+}
+
+function ensureVisualLib(preferredBy){
+ preferredBy=preferredBy||"com2025";
+ if(typeof window.visual==="function"&&vizMapReady(preferredBy))return Promise.resolve();
+ if(typeof window.visual==="function"&&vizResolveMapBy(2026))return Promise.resolve();
  if(visualLibPromise)return visualLibPromise;
- var B=VISUAL_CDN;
- visualLibPromise=vizLoadScript(B+"lib/d3.v3.js")
-  .then(function(){return vizLoadScript(B+"visual.js")})
-  .then(function(){return vizLoadScript(B+"visual.setup.js")})
+
+ visualLibPromise=Promise.resolve()
+  .then(function(){return vizLoadScriptFallback("lib/d3.v3.js")})
+  .then(function(){return vizLoadScriptFallback("visual.js")})
+  .then(function(){return vizLoadScriptFallback("visual.setup.js")})
   .then(function(){
-   if(window.VisualJS&&!VisualJS.map)VisualJS.map={};
-   return vizLoadScript(B+"maps/visual.maps.js");
+   vizEnsureMapNamespace();
+   return vizLoadScriptFallback("maps/visual.maps.js");
   })
   .then(function(){
-   // Carrega TOTES les versions de comarques (tria segons període al dibuixar)
-   var keys=["com2025","com2023","com2015","com"];
+   // Carrega el mapa preferit primer i després la resta (best-effort)
+   var keys=[preferredBy,"com2025","com2023","com2015","com"];
+   var uniq=[],seen={};
+   keys.forEach(function(k){if(!seen[k]&&VISUAL_MAP_FILES[k]){seen[k]=true;uniq.push(k)}});
+   var loaded=[];
    var chain=Promise.resolve();
-   keys.forEach(function(k){
+   uniq.forEach(function(k){
     chain=chain.then(function(){
-     if(vizMapReady(k))return null;
-     return vizLoadMapEval(VISUAL_MAP_FILES[k]).catch(function(err){
-      console.warn("Mapa "+k+" no carregat:", err);
+     return vizLoadOneMap(k).then(function(){loaded.push(k)}).catch(function(err){
+      console.warn(err);
       return null;
      });
     });
    });
-   return chain;
+   return chain.then(function(){return loaded});
   })
-  .then(function(){
+  .then(function(loaded){
    if(typeof window.visual!=="function"&&window.VisualJS&&typeof VisualJS.load==="function"){
     window.visual=function(o){return VisualJS.load(o)};
    }
-   if(typeof window.visual!=="function")throw new Error("Visual no ha quedat disponible.");
-   var any=vizResolveMapBy(2026);
-   if(!any)throw new Error("Cap mapa de comarques disponible (com/com2015/com2023/com2025).");
+   if(typeof window.visual!=="function")throw new Error("Visual no ha quedat disponible (visual.js).");
+   if(!vizResolveMapBy(2026)){
+    var have=window.VisualJS&&VisualJS.map?Object.keys(VisualJS.map).join(", "):"(cap)";
+    throw new Error("Cap mapa de comarques disponible. Claus a VisualJS.map: "+have+". Carregats: "+(loaded&&loaded.length?loaded.join(", "):"cap")+".");
+   }
   })
   .catch(function(e){visualLibPromise=null;throw e});
  return visualLibPromise;
@@ -6154,7 +6169,8 @@ async function renderVizPanel(){
    '<label>Període<select id="vizPeriod" disabled><option>'+esc(built.periodLabel)+'</option></select></label>';
  }
  try{
-  await ensureVisualLib();
+  var yPref=vizPeriodYear(built.periodLabel,built.periodCode);
+ await ensureVisualLib(vizMapByForYear(yPref));
  }catch(e){
   if(status)status.textContent="No s'ha pogut carregar Visual (Idescat): "+(e&&e.message?e.message:e);
   return;
