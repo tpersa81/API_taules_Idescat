@@ -3013,12 +3013,8 @@ async function ineLoadBaseLevel(pageUrl){
  function linkInfo(raw,label){
   var abs=absUrl(raw);if(!abs)return null;
   var u;try{u=new URL(abs)}catch(e){return null}
-  var host=u.hostname.toLowerCase(),path=u.pathname.toLowerCase();
-  if(host&&host!=="www.ine.es"&&host!=="ine.es"){
-   // hash-only local tabs
-   if(String(raw||"").charAt(0)==="#")return null;
-   if(!host){/* relative ok */}else return null;
-  }
+  var host=(u.hostname||"").toLowerCase(),path=u.pathname.toLowerCase();
+  // enllaços relatius sense host: OK; host estranger: no
   if(host&&host!=="www.ine.es"&&host!=="ine.es")return null;
   var tpx=u.searchParams.get("tpx"),tt=u.searchParams.get("t");
   var capsel=u.searchParams.get("capsel")||"";
@@ -3029,11 +3025,12 @@ async function ineLoadBaseLevel(pageUrl){
   if(tpx&&path.indexOf("/jaxi/")>=0)return{id:String(tpx),label:label||("Taula "+tpx),type:"table",tableId:String(tpx),url:abs};
   if(tt&&path.indexOf("/jaxit3/")>=0)return{id:String(tt),label:label||("Taula "+tt),type:"table",tableId:String(tt),url:abs};
   if(path.indexOf("/inebase/")>=0||path.indexOf("/dynt3/")>=0||path.indexOf("/dyngs/inebase/")>=0){
-   if(capsel&&capsel===currentCapsel&&(!padre||!currentPadre||padre===currentPadre))return null;
+   // Node actual
+   if(capsel&&currentCapsel&&capsel===currentCapsel)return null;
    if(capsel)return{id:abs,label:label||("Apartat "+capsel),type:"capsel",url:abs,capsel:capsel,padre:padre||""};
-   if(padre)return{id:abs,label:label||("Apartat "+padre),type:"capsel",url:abs,capsel:"",padre:padre};
+   if(padre&&padre!==currentPadre)return{id:abs,label:label||("Apartat "+padre),type:"capsel",url:abs,capsel:"",padre:padre};
+   if(padre&&!capsel&&padre===currentPadre)return null;
    if(/pcaxis/i.test(typePc)||pathPx)return{id:abs,label:label||"Sèrie PC-Axis",type:"capsel",url:abs,capsel:"",padre:""};
-   // altres pàgines operacion/resultados
    if(path.indexOf("operacion.htm")>=0||path.indexOf("listaoperaciones")>=0)return null;
   }
   return null;
@@ -3045,7 +3042,6 @@ async function ineLoadBaseLevel(pageUrl){
   if(!ul)return out;
   Array.from(ul.children||[]).forEach(function(li,idx){
    if(!li||li.tagName!=="LI")return;
-   // tooltip: ignora
    var sub=null;
    Array.from(li.children||[]).forEach(function(ch){
     if(ch.tagName==="UL"&&!sub)sub=ch;
@@ -3057,7 +3053,6 @@ async function ineLoadBaseLevel(pageUrl){
     if(ch.tagName==="A"&&ch.getAttribute("href")&&!directA)directA=ch;
    });
 
-   // Títol de secció: span.title (pot contenir span.fecha)
    var titleEl=null;
    Array.from(li.children||[]).forEach(function(ch){
     if(ch.tagName==="SPAN"&&/\btitle\b/.test(ch.className||"")&&!titleEl)titleEl=ch;
@@ -3089,7 +3084,6 @@ async function ineLoadBaseLevel(pageUrl){
       kids2.forEach(function(k){out.push(k)});
      }
     }else if(title){
-     // secció buida: prova enllaços niuats qualsevol
      var nested=[];
      li.querySelectorAll("a[href]").forEach(function(a){
       var inf=linkInfo(a.getAttribute("href"),a.textContent||"");
@@ -3100,7 +3094,6 @@ async function ineLoadBaseLevel(pageUrl){
     return;
    }
 
-   // enllaços solts dins del li
    li.querySelectorAll(":scope > a[href], :scope > span > a[href]").forEach(function(a){
     var inf=linkInfo(a.getAttribute("href"),a.textContent||"");
     if(inf)out.push(inf);
@@ -3109,93 +3102,127 @@ async function ineLoadBaseLevel(pageUrl){
   return out;
  }
 
- // ========== 1) Pestanyes (Trimestrales / Anuales / Módulos…) ==========
- var tabItems=[];
- var tabLinks=Array.from(doc.querySelectorAll('a[href^="#tabs-"]'));
- // fallback: barra de pestanyes típica
- if(!tabLinks.length){
-  doc.querySelectorAll("span.cata_titulo").forEach(function(sp){
-   var a=sp.closest("a");
-   if(a&&/^#tabs-/.test(a.getAttribute("href")||""))tabLinks.push(a);
-  });
+ function onlyTables(list){
+  return (list||[]).filter(function(x){return x&&x.type==="table"});
  }
- // dedup per href
- var seenTab=new Set();
- tabLinks.forEach(function(a){
-  var href=a.getAttribute("href")||"";
-  if(seenTab.has(href))return;
-  seenTab.add(href);
-  var id=href.replace(/^#/,"");
-  var panel=doc.getElementById(id);
-  if(!panel)return;
-  var label=cleanLabel(a.textContent||id);
-  // ignora microdatos si no hi ha navegació útil? millor incloure tot
-  var kids=[];
-  panel.querySelectorAll(":scope > div ul.secciones, :scope ul.secciones").forEach(function(ul){
-   // només ul.secciones que no estiguin niuades dins una altra secciones del mateix panel de forma duplicada
+ function partition(list){
+  var tables=[],rest=[];
+  (list||[]).forEach(function(x){
+   if(!x)return;
+   if(x.type==="table")tables.push(x);
+   else rest.push(x);
   });
-  // Preferim els ul.secciones de primer nivell dins del panell
-  var topLists=Array.from(panel.querySelectorAll("ul.secciones")).filter(function(ul){
-   var parent=ul.parentElement;
-   // evita sub-llistes: ul.secciones no ha d'estar dins un altre ul.secciones
-   while(parent&&parent!==panel){
+  return{tables:tables,rest:rest};
+ }
+
+ // ========== 1) Pestanyes (Trimestrales / Anuales / Módulos…) ==========
+ // Només a pàgines d'operació (no a dynt3 amb capsel concret)
+ var onCapselPage=!!currentCapsel;
+ if(!onCapselPage){
+  var tabItems=[];
+  var tabLinks=Array.from(doc.querySelectorAll('a[href^="#tabs-"]'));
+  if(!tabLinks.length){
+   doc.querySelectorAll("span.cata_titulo").forEach(function(sp){
+    var a=sp.closest("a");
+    if(a&&/^#tabs-/.test(a.getAttribute("href")||""))tabLinks.push(a);
+   });
+  }
+  var seenTab=new Set();
+  tabLinks.forEach(function(a){
+   var href=a.getAttribute("href")||"";
+   if(seenTab.has(href))return;
+   seenTab.add(href);
+   var id=href.replace(/^#/,"");
+   var panel=doc.getElementById(id);
+   if(!panel)return;
+   var label=cleanLabel(a.textContent||id);
+   var kids=[];
+   var topLists=Array.from(panel.querySelectorAll("ul.secciones")).filter(function(ul){
+    var parent=ul.parentElement;
+    while(parent&&parent!==panel){
+     if(parent.matches&&parent.matches("ul.secciones"))return false;
+     parent=parent.parentElement;
+    }
+    return true;
+   });
+   topLists.forEach(function(ul){
+    parseUl(ul,0).forEach(function(it){kids.push(it)});
+   });
+   if(!kids.length){
+    var seen=new Set();
+    panel.querySelectorAll("a[href]").forEach(function(a2){
+     var inf=linkInfo(a2.getAttribute("href"),a2.textContent||"");
+     if(!inf)return;
+     var k=inf.type+":"+(inf.capsel||inf.tableId||inf.url);
+     if(seen.has(k))return;seen.add(k);
+     kids.push(inf);
+    });
+   }
+   if(kids.length){
+    tabItems.push({id:"tab:"+id,label:label,type:"section",url:pageUrl+"#"+id,children:kids});
+   }
+  });
+  if(tabItems.length)return tabItems;
+
+  // ========== 2) Sense pestanyes: ul.secciones ==========
+  var hierarchical=[];
+  var topLists2=Array.from(doc.querySelectorAll("ul.secciones")).filter(function(ul){
+   var parent=ul.parentElement,hops=0;
+   while(parent&&hops<8){
     if(parent.matches&&parent.matches("ul.secciones"))return false;
-    parent=parent.parentElement;
+    parent=parent.parentElement;hops++;
    }
    return true;
   });
-  if(!topLists.length){
-   // alguns panells només tenen subSecc
-   topLists=Array.from(panel.querySelectorAll(":scope ul.subSecc")).filter(function(ul,i,arr){
-    // primer nivell de subSecc directament sota estructura del panell
-    return i===0||ul.parentElement&&ul.parentElement.parentElement===panel;
-   }).slice(0,1);
+  topLists2.forEach(function(ul){parseUl(ul,0).forEach(function(it){hierarchical.push(it)})});
+  if(hierarchical.length)return hierarchical;
+ }
+
+ // ========== 3) Pàgina dynt3 (capsel): prioritzar TAULES del contingut ==========
+ // El menú lateral repeteix els germans (Población/Activos/Parados…); no s'han
+ // d'oferir com a fills del node actual si ja hi ha taules.
+ var tables=[],capsels=[],seenT=new Set(),seenC=new Set();
+ function addTable(info){
+  if(!info||info.type!=="table")return;
+  var k=info.tableId||info.id;
+  if(seenT.has(k))return;seenT.add(k);
+  tables.push(info);
+ }
+ function addCapsel(info){
+  if(!info||info.type!=="capsel")return;
+  // exclusió de germans: mateix padre que la pàgina actual i capsel diferent
+  // (són el menú lateral). Els fills reals solen aparèixer sense taules al contingut.
+  if(currentPadre&&info.padre&&String(info.padre)===String(currentPadre)&&info.capsel&&info.capsel!==currentCapsel){
+   // es recull com a possible fill només si més endavant no hi ha taules
   }
-  topLists.forEach(function(ul){
-   parseUl(ul,0).forEach(function(it){kids.push(it)});
-  });
-  // si no hi ha secciones, enllaços del panell
-  if(!kids.length){
-   var seen=new Set();
-   panel.querySelectorAll("a[href]").forEach(function(a2){
-    var inf=linkInfo(a2.getAttribute("href"),a2.textContent||"");
-    if(!inf)return;
-    var k=inf.type+":"+(inf.capsel||inf.tableId||inf.url);
-    if(seen.has(k))return;seen.add(k);
-    kids.push(inf);
-   });
-  }
-  if(kids.length){
-   tabItems.push({id:"tab:"+id,label:label,type:"section",url:pageUrl+"#"+id,children:kids});
-  }
+  var k=info.capsel||info.url;
+  if(seenC.has(k))return;seenC.add(k);
+  capsels.push(info);
+ }
+
+ // Taules: preferentment zona de contingut (enllaços jaxi)
+ Array.from(doc.querySelectorAll('a[href*="jaxiT3/Tabla"], a[href*="jaxi/Tabla"], a[href*="jaxiT3/tabla"], a[href*="jaxi/tabla"]')).forEach(function(aEl){
+  var info=linkInfo(aEl.getAttribute("href"),aEl.textContent||"");
+  addTable(info);
  });
-
- if(tabItems.length)return tabItems;
-
- // ========== 2) Sense pestanyes: ul.secciones a la pàgina ==========
- var hierarchical=[];
- var topLists2=Array.from(doc.querySelectorAll("ul.secciones")).filter(function(ul){
-  var parent=ul.parentElement,hops=0;
-  while(parent&&hops<8){
-   if(parent.matches&&parent.matches("ul.secciones"))return false;
-   parent=parent.parentElement;hops++;
-  }
-  return true;
- });
- topLists2.forEach(function(ul){parseUl(ul,0).forEach(function(it){hierarchical.push(it)})});
- if(hierarchical.length)return hierarchical;
-
- // ========== 3) Arbre dynt3 ==========
- var treeLinks=Array.from(doc.querySelectorAll('a[id^="c_"][href], a.desplegar[href]'));
- var seenT=new Set(),treeItems=[];
- treeLinks.forEach(function(aEl){
+ // Capsels / arbre lateral
+ Array.from(doc.querySelectorAll('a[id^="c_"][href], a.desplegar[href], a[href*="capsel="], a[href*="padre="]')).forEach(function(aEl){
   var info=linkInfo(aEl.getAttribute("href"),aEl.textContent||"");
   if(!info)return;
-  var key=info.type+":"+(info.capsel||info.tableId||info.url);
-  if(seenT.has(key))return;seenT.add(key);
-  treeItems.push(info);
+  if(info.type==="table")addTable(info);
+  else if(info.type==="capsel")addCapsel(info);
  });
- if(treeItems.length)return treeItems;
+
+ // Si som en un capsel concret i hi ha taules → només taules (evita germans del menú)
+ if(onCapselPage&&tables.length)return tables;
+
+ // Si no hi ha taules, ofereix sub-capsels (p.ex. Condiciones → Resultados nacionales)
+ if(capsels.length){
+  // Filtra: si currentPadre està definit, prefereix fills amb el mateix padre
+  // (subopcions del bloc) quan no hi ha taules — és el cas Condiciones de trabajo.
+  return capsels;
+ }
+ if(tables.length)return tables;
 
  // ========== 4) Fallback pla ==========
  var flat=[],seenF=new Set();
@@ -3210,8 +3237,11 @@ async function ineLoadBaseLevel(pageUrl){
  });
  var md=/\[([^\]]+)\]\(([^)]+)\)/g,mm;
  while((mm=md.exec(String(html||""))))addFlat(linkInfo(mm[2],mm[1]));
+ var parts=partition(flat);
+ if(onCapselPage&&parts.tables.length)return parts.tables;
  return flat;
 }
+
 
 
 
