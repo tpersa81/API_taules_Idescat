@@ -5837,30 +5837,46 @@ function vizDetectDims(ds){
  var timeDim=dd.find(function(d){return temporal(d)})||null;
  var sexDim=dd.find(function(d){
   var id=vizNorm(d.id),lab=vizNorm(d.label);
-  if(/^(sexe|sex|sexo)$/.test(id)||/\b(sexe|sex|sexo)\b/.test(lab))return true;
-  var labs=(d.categories||[]).map(function(c){return vizNorm(c.label)});
-  var hasM=labs.some(function(x){return /^(homes|hombres|males|men|home|hombre)$/.test(x)||x==="m"});
-  var hasF=labs.some(function(x){return /^(dones|mujeres|females|women|dona|mujer)$/.test(x)||x==="f"});
-  var hasT=labs.some(function(x){return /^(total|totals|ambos sexos|ambdós sexos|ambdos sexos)$/.test(x)});
-  return hasM&&(hasF||hasT);
- })||null;
+  if(/^(sexe|sex|sexo|sex)$/.test(id)||/(^|\b)(sexe|sex|sexo)(\b|$)/.test(lab))return true;
+  return false;
+ });
+ if(!sexDim){
+  sexDim=dd.find(function(d){
+   var cats=d.categories||[];
+   var hasM=cats.some(function(c){return vizFindSexCode({categories:[c]},"M")});
+   var hasF=cats.some(function(c){return vizFindSexCode({categories:[c]},"F")});
+   var hasT=cats.some(function(c){return vizFindSexCode({categories:[c]},"T")});
+   return hasM&&(hasF||hasT);
+  })||null;
+ }
  var geoDim=dd.find(function(d){
   if(timeDim&&d.id===timeDim.id)return false;
   if(sexDim&&d.id===sexDim.id)return false;
   var id=vizNorm(d.id),lab=vizNorm(d.label);
-  if(/comarca/.test(id)||/comarca/.test(lab))return true;
-  if(/^(geo|territori|territorio|area|àmbit|ambit)$/.test(id))return true;
-  var n=(d.categories||[]).length;
-  // heurística: ~40-50 categories sol ser comarques (+ agregats)
-  if(n>=40&&n<=55)return true;
+  if(/^(com|comarca|comarques)$/.test(id)||/comarca/.test(lab))return true;
   return false;
- })||null;
+ });
+ if(!geoDim){
+  geoDim=dd.find(function(d){
+   if(timeDim&&d.id===timeDim.id)return false;
+   if(sexDim&&d.id===sexDim.id)return false;
+   var id=vizNorm(d.id),lab=vizNorm(d.label);
+   if(/^(geo|territori|territorio|area|ambit)$/.test(id))return true;
+   var n=(d.categories||[]).length;
+   if(n>=40&&n<=55)return true;
+   return false;
+  })||null;
+ }
  return {dims:dd,rows:rows,timeDim:timeDim,sexDim:sexDim,geoDim:geoDim};
 }
 
 function vizIsExcludedGeo(label,code){
- var s=vizNorm(label)+" "+vizNorm(code);
- return /catalunya|cataluna|no resident|no residents|total$|total /.test(s)||/^09$/.test(String(code).trim());
+ var s=vizNorm(label);
+ var c=String(code==null?"":code).trim().toUpperCase();
+ if(c==="TOTAL"||c==="CAT"||c==="09"&&/catalunya/.test(s))return true;
+ if(/catalunya|cataluna/.test(s))return true;
+ if(/no resident/.test(s)||c==="99")return true;
+ return false;
 }
 
 function vizComarcaId(code,label){
@@ -5878,11 +5894,29 @@ function vizComarcaId(code,label){
 function vizFindSexCode(sexDim,kind){
  if(!sexDim)return null;
  var cats=sexDim.categories||[];
+ function hit(lab,code){
+  lab=vizNorm(lab);
+  code=String(code==null?"":code).trim();
+  var cu=code.toUpperCase();
+  if(kind==="M"){
+   if(cu==="M"||cu==="H"||cu==="1"||cu==="SEX_M"||cu==="MALE")return true;
+   if(/(^|\b)(homes|hombres|males|men|home|hombre|male)(\b|$)/.test(lab))return true;
+   return false;
+  }
+  if(kind==="F"){
+   if(cu==="F"||cu==="D"||cu==="2"||cu==="6"||cu==="SEX_F"||cu==="FEMALE")return true;
+   if(/(^|\b)(dones|mujeres|females|women|dona|mujer|female)(\b|$)/.test(lab))return true;
+   return false;
+  }
+  if(kind==="T"){
+   if(cu==="T"||cu==="TOTAL"||cu==="0"||cu==="SEX_T"||cu==="TOT")return true;
+   if(/(^|\b)(total|totals|ambos sexos|ambdos sexos|ambdos|ambos)(\b|$)/.test(lab))return true;
+   return false;
+  }
+  return false;
+ }
  for(var i=0;i<cats.length;i++){
-  var lab=vizNorm(cats[i].label),code=String(cats[i].code);
-  if(kind==="M"&&(/^(homes|hombres|males|men|home|hombre)$/.test(lab)||lab==="m"||code==="M"||code==="1"))return code;
-  if(kind==="F"&&(/^(dones|mujeres|females|women|dona|mujer)$/.test(lab)||lab==="f"||code==="F"||code==="2"||code==="6"))return code;
-  if(kind==="T"&&(/^(total|totals|ambos sexos|ambdos sexos|ambdós sexos|ambos)$/.test(lab)||lab==="t"||code==="T"||code==="0"))return code;
+  if(hit(cats[i].label,cats[i].code))return String(cats[i].code);
  }
  return null;
 }
@@ -5909,7 +5943,10 @@ function vizBuildComarcaShare(ds,opts){
  if(!det.sexDim)return {error:"No s'ha detectat la dimensió de sexe (cal Homes i Total)."};
  var codeM=vizFindSexCode(det.sexDim,"M");
  var codeT=vizFindSexCode(det.sexDim,"T");
- if(!codeM||!codeT)return {error:"No s'han pogut identificar les categories Homes i Total."};
+ if(!codeM||!codeT){
+  var catList=(det.sexDim.categories||[]).map(function(c){return (c.code||"?")+":"+(c.label||"?")}).join(", ");
+  return {error:"No s'han pogut identificar les categories Homes i Total a «"+(det.sexDim.label||det.sexDim.id)+"» ["+catList+"]."};
+ }
  var period=opts.period||vizLatestPeriod(det.timeDim,det.rows);
  var periodCode=period?String(temporalCategoryCode(period)||(period.code!=null?period.code:period)):null;
  var periodLabel=period?(period.label||periodCode):"(sense període)";
