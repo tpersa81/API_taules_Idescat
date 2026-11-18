@@ -5832,23 +5832,32 @@ function vizNorm(s){
  return String(s==null?"":s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
 }
 
+function vizCats(d){
+ if(!d)return [];
+ if(Array.isArray(d.categories)&&d.categories.length)return d.categories;
+ if(Array.isArray(d.cats)&&d.cats.length)return d.cats;
+ return [];
+}
 function vizDetectDims(ds){
- var z=resultRows(ds),dd=z.dims||[],rows=z.rows||[];
+ // dims() usa "categories"; resultRows() usa "cats" → unifiquem
+ var dd=dims(ds).map(function(d){return Object.assign({},d,{categories:vizCats(d)})});
+ var z=resultRows(ds),rows=z.rows||[];
  var timeDim=dd.find(function(d){return temporal(d)})||null;
  var sexDim=dd.find(function(d){
   var id=vizNorm(d.id),lab=vizNorm(d.label);
-  if(/^(sexe|sex|sexo|sex)$/.test(id)||/(^|\b)(sexe|sex|sexo)(\b|$)/.test(lab))return true;
+  if(/^(sexe|sex|sexo)$/.test(id)||/(^|\b)(sexe|sex|sexo)(\b|$)/.test(lab))return true;
   return false;
  });
  if(!sexDim){
   sexDim=dd.find(function(d){
-   var cats=d.categories||[];
+   var cats=vizCats(d);
    var hasM=cats.some(function(c){return vizFindSexCode({categories:[c]},"M")});
    var hasF=cats.some(function(c){return vizFindSexCode({categories:[c]},"F")});
    var hasT=cats.some(function(c){return vizFindSexCode({categories:[c]},"T")});
    return hasM&&(hasF||hasT);
   })||null;
  }
+ if(sexDim)sexDim=Object.assign({},sexDim,{categories:vizCats(sexDim)});
  var geoDim=dd.find(function(d){
   if(timeDim&&d.id===timeDim.id)return false;
   if(sexDim&&d.id===sexDim.id)return false;
@@ -5862,11 +5871,12 @@ function vizDetectDims(ds){
    if(sexDim&&d.id===sexDim.id)return false;
    var id=vizNorm(d.id),lab=vizNorm(d.label);
    if(/^(geo|territori|territorio|area|ambit)$/.test(id))return true;
-   var n=(d.categories||[]).length;
+   var n=vizCats(d).length;
    if(n>=40&&n<=55)return true;
    return false;
   })||null;
  }
+ if(geoDim)geoDim=Object.assign({},geoDim,{categories:vizCats(geoDim)});
  return {dims:dd,rows:rows,timeDim:timeDim,sexDim:sexDim,geoDim:geoDim};
 }
 
