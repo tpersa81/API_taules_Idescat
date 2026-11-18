@@ -2931,6 +2931,27 @@ async function csoRest(path){
  if(!r.ok)throw new Error("CSO Ireland: HTTP "+r.status+" · "+url);
  return r.json();
 }
+
+function csoTableLabel(m){
+ if(!m)return "";
+ var code=String(m.MtrCode||"").trim();
+ var title=String(m.MtrTitle||"").trim();
+ var cls=(m.classification||[]).map(function(c){return String(c.ClsValue||"").trim()}).filter(Boolean);
+ // evita dimensions genèriques poc útils al títol
+ cls=cls.filter(function(v){return !/^(statistic|year|quarter|month|time)$/i.test(v)});
+ var freq=String(m.FrqValue||"").trim();
+ var per=Array.isArray(m.period)?m.period:[];
+ var range="";
+ if(per.length)range=String(per[0])+(per.length>1?"–"+String(per[per.length-1]):"");
+ var parts=[];
+ if(code)parts.push(code);
+ var mid=title||code;
+ if(cls.length)mid=mid+(mid?" · by ":"by ")+cls.join(", ");
+ if(mid&&mid!==code)parts.push(mid);
+ if(freq)parts.push(freq);
+ if(range)parts.push("("+range+")");
+ return parts.join(" · ").replace(/\s+/g," ").trim();
+}
 async function csoSelectRoot(){
  var box=$("eurostatLevels");
  if(box){box.innerHTML="";box.hidden=false;box.style.display="grid"}
@@ -3001,7 +3022,7 @@ async function csoSelectFromLevel(index,val){
   var next=found.map(function(m){
    var code=String(m.MtrCode||"").trim();
    if(!code)return null;
-   return{id:code,label:code+" · "+String(m.MtrTitle||code),type:"cso-table",raw:m};
+   return{id:code,label:csoTableLabel(m),type:"cso-table",raw:m};
   }).filter(Boolean);
   // unique by id
   var seen={};
