@@ -6026,30 +6026,45 @@ function vizLoadScript(src){
  });
 }
 
+function vizResolveMapBy(){
+ if(!window.VisualJS)return null;
+ if(!VisualJS.map)VisualJS.map={};
+ if(VisualJS.map.com2025&&VisualJS.map.com2025.area)return "com2025";
+ if(VisualJS.map.com2023&&VisualJS.map.com2023.area)return "com2023";
+ if(VisualJS.map.com&&VisualJS.map.com.area)return "com";
+ return null;
+}
+
 function ensureVisualLib(){
- // Mode manual amb URLs absolutes (lazyload relatiu falla a GitHub Pages).
- if(window.VisualJS&&typeof window.visual==="function"&&window.VisualJS.map&&(VisualJS.map.com||VisualJS.map.com2023||VisualJS.map.com2025)){
-  return Promise.resolve();
- }
+ if(vizResolveMapBy()&&typeof window.visual==="function")return Promise.resolve();
  if(visualLibPromise)return visualLibPromise;
  var B=VISUAL_CDN;
  visualLibPromise=vizLoadScript(B+"lib/d3.v3.js")
   .then(function(){return vizLoadScript(B+"visual.js")})
   .then(function(){return vizLoadScript(B+"visual.setup.js")})
-  .then(function(){return vizLoadScript(B+"maps/visual.maps.js")})
   .then(function(){
-   return vizLoadScript(B+"maps/cat2023com.js").catch(function(){
-    return vizLoadScript(B+"maps/cat2013com.js");
-   });
+   if(window.VisualJS&&!VisualJS.map)VisualJS.map={};
+   return vizLoadScript(B+"maps/visual.maps.js");
+  })
+  .then(function(){
+   // Mapa comarcal 2025 (Lluçanès, etc.) — adequat per dades 2024+
+   return vizLoadScript(B+"maps/cat2025com.js").catch(function(){return null});
+  })
+  .then(function(){
+   if(vizResolveMapBy())return null;
+   return vizLoadScript(B+"maps/cat2023com.js").catch(function(){return null});
+  })
+  .then(function(){
+   if(vizResolveMapBy())return null;
+   return vizLoadScript(B+"maps/cat2013com.js");
   })
   .then(function(){
    if(typeof window.visual!=="function"&&window.VisualJS&&typeof VisualJS.load==="function"){
     window.visual=function(o){return VisualJS.load(o)};
    }
-   if(typeof window.visual!=="function")throw new Error("Visual no ha quedat disponible després de carregar els scripts.");
-   if(!(VisualJS.map&&(VisualJS.map.com||VisualJS.map.com2023||VisualJS.map.com2025))){
-    throw new Error("El mapa de comarques no s'ha carregat (VisualJS.map.com*).");
-   }
+   if(typeof window.visual!=="function")throw new Error("Visual no ha quedat disponible.");
+   var by=vizResolveMapBy();
+   if(!by)throw new Error("El mapa de comarques no s'ha carregat (VisualJS.map.com*).");
   })
   .catch(function(e){visualLibPromise=null;throw e});
  return visualLibPromise;
@@ -6095,14 +6110,28 @@ async function renderVizPanel(){
    status.textContent="Proporció d'homes sobre el total d'afiliats · "+built.periodLabel+" · "+built.n+" comarques"+
     (built.skipped?" · "+built.skipped+" sense parella Homes/Total":"");
   }
-  var mapBy="com";
-  try{
-   if(window.VisualJS&&VisualJS.map){
-    if(VisualJS.map.com2025)mapBy="com2025";
-    else if(VisualJS.map.com2023)mapBy="com2023";
-    else if(VisualJS.map.com)mapBy="com";
-   }
-  }catch(e){}
+  var mapBy=vizResolveMapBy();
+  if(type==="cmap"&&!mapBy){
+   if(status)status.textContent="Error: mapa de comarques no disponible (VisualJS.map).";
+   return;
+  }
+  if(type==="cmap"){
+   // Evita que Visual torni a demanar el mapa per lazyload amb ruta relativa
+   try{
+    if(VisualJS.setup&&VisualJS.setup.map&&VisualJS.setup.map[mapBy]){
+     VisualJS.setup.map[mapBy].js=VISUAL_CDN+"maps/"+(mapBy==="com"?"cat2013com.js":mapBy==="com2023"?"cat2023com.js":mapBy==="com2025"?"cat2025com.js":"cat2013com.js");
+     VisualJS.setup.map[mapBy].exists=function(){return !!(VisualJS.map&&VisualJS.map[mapBy]&&VisualJS.map[mapBy].area)};
+    }
+    if(VisualJS.setup&&VisualJS.setup.lib&&VisualJS.setup.lib.d3){
+     VisualJS.setup.lib.d3.js=VISUAL_CDN+"lib/d3.v3.js";
+     VisualJS.setup.lib.d3.exists=function(){return typeof d3==="object"};
+    }
+    if(VisualJS.setup&&VisualJS.setup.lib&&VisualJS.setup.lib.maps){
+     VisualJS.setup.lib.maps.js=VISUAL_CDN+"maps/visual.maps.js";
+     VisualJS.setup.lib.maps.exists=function(){return typeof VisualJS.func==="object"&&typeof VisualJS.func.colors==="function"};
+    }
+   }catch(e){}
+  }
   var payload={
    id:"vizChart",
    lang:"ca",
@@ -6123,8 +6152,8 @@ async function renderVizPanel(){
    else if(window.VisualJS&&typeof VisualJS.load==="function")VisualJS.load(payload);
    else throw new Error("Visual no disponible");
   }catch(e){
-   if(status)status.textContent="Error en dibuixar: "+(e&&e.message?e.message:String(e));
-   console.error("Visual draw error", e, payload);
+   if(status)status.textContent="Error en dibuixar: "+(e&&e.message?e.message:String(e))+(mapBy?" · by="+mapBy:"");
+   console.error("Visual draw error", e, payload, "mapKeys", window.VisualJS&&VisualJS.map&&Object.keys(VisualJS.map));
   }
  }
  if(typeSel)typeSel.onchange=draw;
