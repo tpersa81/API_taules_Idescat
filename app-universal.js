@@ -3393,6 +3393,13 @@ function pxRecursiveLevelLabel(index,list){
 function pxRecursiveTableItems(list){
  return (list||[]).filter(function(x){return x&&((String(x.type||"").toLowerCase()==="table")||String(x.type||"").toLowerCase()==="t"||x.tableId||/\\.px$/i.test(String(x.id||"")))});
 }
+function pxPlainText(s){
+ s=String(s==null?"":s);
+ // treu marques HTML típiques de PxWeb (<em>[CODI]</em>, etc.)
+ s=s.replace(/<[^>]+>/g," ");
+ s=s.replace(/&nbsp;/gi," ").replace(/&amp;/gi,"&").replace(/&lt;/gi,"<").replace(/&gt;/gi,">").replace(/&quot;/gi,'"');
+ return s.replace(/\s+/g," ").trim();
+}
 async function pxRecursiveChildren(path){
  var raw=await fetchJson(pxUrl(path)),src=a(raw),items=[];
  src.forEach(function(x){
@@ -3400,7 +3407,7 @@ async function pxRecursiveChildren(path){
   var id=String(f(x,"id","code","dbid","path")||"").trim();
   if(!id)return;
   var type=String(f(x,"type","class")||"folder").trim().toLowerCase();
-  items.push({id:id,label:String(f(x,"text","label","name","title")||id).trim(),type:type,path:(path||[]).concat([id]),tableId:type==="t"||type==="table"||/\.px$/i.test(id)?id:""});
+  items.push({id:id,label:pxPlainText(f(x,"text","label","name","title")||id),type:type,path:(path||[]).concat([id]),tableId:type==="t"||type==="table"||/\.px$/i.test(id)?id:""});
  });
  return items;
 }
@@ -3442,7 +3449,7 @@ async function pxRecursiveLoadTable(item){
  state.selected.table=tableId;state.selected.node=tableId;state.selected.cross=tableId;state.pxPath=path.slice();state.metadata=ds;
  if(state.pxPreset==="finland")state.finlandTableUrl=url;
  renderMetadata(ds);$("tableInfo").hidden=false;
- $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(raw.title||raw.label||tableId)+"<span class=\"path\">"+esc(url)+"</span>";
+ $("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(pxPlainText(raw.title||raw.label||tableId))+"<span class=\"path\">"+esc(url)+"</span>";
  $("query").disabled=false;status("");
 }
 function pxRecursiveAddLevel(children,index){
