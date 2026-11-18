@@ -2990,203 +2990,177 @@ async function ineLoadTablesFromBase(op){
 async function ineLoadBaseLevel(pageUrl){
  var html=await fetchText(pageUrl,{cache:"no-store"});
  var doc=new DOMParser().parseFromString(html,"text/html");
- var currentCapsel="";
- try{currentCapsel=new URL(pageUrl).searchParams.get("capsel")||""}catch(e){}
- var capsels=[],tables=[],seenCapsel=new Set(),seenTable=new Set();
- function inspectLink(raw,label){
-  var abs;
-  try{abs=new URL(String(raw||"").replace(/&amp;/g,"&"),pageUrl).href}catch(e){return}
-  var u;try{u=new URL(abs)}catch(e2){return}
+ var currentCapsel="",currentPadre="";
+ try{
+  var cu=new URL(pageUrl);
+  currentCapsel=cu.searchParams.get("capsel")||"";
+  currentPadre=cu.searchParams.get("padre")||"";
+ }catch(e){}
+
+ function absUrl(raw){
+  try{return new URL(String(raw||"").replace(/&amp;/g,"&"),pageUrl).href}catch(e){return ""}
+ }
+ function cleanLabel(s){
+  return String(s||"").replace(/\s+/g," ").trim();
+ }
+ function linkInfo(raw,label){
+  var abs=absUrl(raw);if(!abs)return null;
+  var u;try{u=new URL(abs)}catch(e){return null}
   var host=u.hostname.toLowerCase(),path=u.pathname.toLowerCase();
-  if(host!=="www.ine.es"&&host!=="ine.es")return;
-  label=String(label||"").replace(/\s+/g," ").trim();
-  var tpx=u.searchParams.get("tpx"),t=u.searchParams.get("t"),capsel=u.searchParams.get("capsel"),padre=u.searchParams.get("padre");
-  if(capsel&&capsel!==currentCapsel&&path.indexOf("/inebase/")>=0){
-   var key="capsel:"+capsel;
-   if(!seenCapsel.has(key)){
-    seenCapsel.add(key);
-    capsels.push({id:abs,label:label||("Apartat "+capsel),type:"capsel",url:abs,capsel:capsel,padre:padre||""});
+  if(host!=="www.ine.es"&&host!=="ine.es")return null;
+  var tpx=u.searchParams.get("tpx"),t=u.searchParams.get("t");
+  var capsel=u.searchParams.get("capsel")||"";
+  var padre=u.searchParams.get("padre")||"";
+  var typePc=u.searchParams.get("type")||"";
+  var pathPx=u.searchParams.get("path")||"";
+  label=cleanLabel(label)||cleanLabel(u.searchParams.get("file"))||"";
+  if(tpx&&path.indexOf("/jaxi/")>=0)return{id:String(tpx),label:label||("Taula "+tpx),type:"table",tableId:String(tpx),url:abs};
+  if(t&&path.indexOf("/jaxit3/")>=0)return{id:String(t),label:label||("Taula "+t),type:"table",tableId:String(t),url:abs};
+  // Navegació INEbase (capsel / padre / pcaxis)
+  if(path.indexOf("/inebase/")>=0||path.indexOf("/dynt3/")>=0){
+   // Mateix node actual → no cal
+   if(capsel&&capsel===currentCapsel&&(!padre||padre===currentPadre||!currentPadre))return null;
+   if(capsel){
+    return{id:abs,label:label||("Apartat "+capsel),type:"capsel",url:abs,capsel:capsel,padre:padre||""};
    }
-   return;
+   if(padre){
+    return{id:abs,label:label||("Apartat "+padre),type:"capsel",url:abs,capsel:"",padre:padre};
+   }
+   if(/pcaxis/i.test(typePc)||pathPx){
+    return{id:abs,label:label||"Sèrie PC-Axis",type:"capsel",url:abs,capsel:"",padre:""};
+   }
   }
-  if(tpx&&path.indexOf("/jaxi/tabla.htm")>=0){
-   var tid=String(tpx).trim(),tk="tpx:"+tid;
-   if(tid&&!seenTable.has(tk)){seenTable.add(tk);tables.push({id:tid,label:label||("Taula "+tid),type:"table",tableId:tid});}
-   return;
-  }
-  if(t&&path.indexOf("/jaxit3/tabla.htm")>=0){
-   var tid2=String(t).trim(),tk2="table:"+tid2;
-   if(tid2&&!seenTable.has(tk2)){seenTable.add(tk2);tables.push({id:tid2,label:label||("Taula "+tid2),type:"table",tableId:tid2});}
-  }
+  return null;
  }
- Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
-  inspectLink(aEl.getAttribute("href")||"",aEl.textContent||"");
+
+ // --- 1) Arbre jeràrquic de pàgines operacion.htm (ul.secciones / ul.subSecc) ---
+ function parseList(ul,depth){
+  var out=[],lis=Array.from(ul.children||[]).filter(function(el){return el.tagName==="LI"});
+  lis.forEach(function(li,idx){
+   // enllaç directe
+   var a=null;
+   Array.from(li.children||[]).forEach(function(ch){
+    if(ch.tagName==="A"&&!a)a=ch;
+   });
+   if(!a){
+    var a2=li.querySelector(":scope > a[href]");
+    if(a2)a=a2;
+   }
+   var sub=li.querySelector(":scope > ul.subSecc")||li.querySelector(":scope > ul.secciones")||li.querySelector(":scope > ul");
+   // títol de secció sense enllaç (span.title)
+   var spanTitle=li.querySelector(":scope > span.title, :scope > span > span.title");
+   if(!spanTitle){
+    var sp=Array.from(li.children||[]).find(function(ch){return ch.tagName==="SPAN"&&/\btitle\b/.test(ch.className||"")});
+    if(sp)spanTitle=sp;
+   }
+   if(a&&a.getAttribute("href")){
+    var info=linkInfo(a.getAttribute("href"),a.textContent||"");
+    if(info){
+     if(sub){
+      var kids=parseList(sub,depth+1);
+      if(kids.length){
+       // secció amb enllaç propi + fills: preferim els fills sota una secció amb el títol de l'enllaç
+       out.push({id:"section:"+info.id,label:info.label,type:"section",url:info.url,children:kids});
+       return;
+      }
+     }
+     out.push(info);
+     return;
+    }
+   }
+   if(sub){
+    var kids2=parseList(sub,depth+1);
+    var title=cleanLabel(spanTitle&&spanTitle.textContent||"");
+    // evita títols de tooltip
+    if(title&&/aviso/i.test(title)&&title.length<40)title="";
+    if(kids2.length){
+     if(title){
+      out.push({id:"section:"+depth+":"+idx+":"+title,label:title,type:"section",url:pageUrl,children:kids2});
+     }else{
+      kids2.forEach(function(k){out.push(k)});
+     }
+    }
+    return;
+   }
+   // enllaços niuats qualsevol
+   if(!a){
+    var nested=li.querySelectorAll("a[href]");
+    nested.forEach(function(na){
+     var info2=linkInfo(na.getAttribute("href"),na.textContent||"");
+     if(info2)out.push(info2);
+    });
+   }
+  });
+  return out;
+ }
+
+ var hierarchical=[];
+ // Pestanyes de resultats: cada panell pot tenir ul.secciones
+ var tabPanels=Array.from(doc.querySelectorAll('div[id^="tabs-"], div.resultados'));
+ var sectionLists=[];
+ if(tabPanels.length){
+  tabPanels.forEach(function(panel){
+   panel.querySelectorAll("ul.secciones").forEach(function(ul){sectionLists.push(ul)});
+  });
+ }
+ if(!sectionLists.length){
+  doc.querySelectorAll("ul.secciones").forEach(function(ul){sectionLists.push(ul)});
+ }
+ // Dedup by element
+ sectionLists=sectionLists.filter(function(ul,i,arr){return arr.indexOf(ul)===i});
+ sectionLists.forEach(function(ul){
+  parseList(ul,0).forEach(function(it){hierarchical.push(it)});
  });
- var md=/\[([^\]]+)\]\(([^)]+)\)/g,m;
- while((m=md.exec(String(html||""))))inspectLink(m[2],m[1]);
 
- var capRe=new RegExp("https?:\\\\/\\\\/(?:www\\\\.)?ine\\\\.es\\\\/[^\\\\s\\\"'<>)]*?[?&]capsel=(\\\\d+)(?:&[^\\\\s\\\"'<>)]*)?","gi"),cm;
- while((cm=capRe.exec(String(html||"")))){
-  var rawUrl=cm[0].replace(/[),.;]+$/,""),uu;
-  try{uu=new URL(rawUrl);var cc=uu.searchParams.get("capsel"),pp=uu.searchParams.get("padre")||"";if(cc&&cc!==currentCapsel&&!seenCapsel.has("capsel:"+cc)){seenCapsel.add("capsel:"+cc);capsels.push({id:uu.href,label:"Apartat "+cc,type:"capsel",url:uu.href,capsel:cc,padre:pp})}}catch(e){}
- }
- var capRe2=new RegExp("[?&]capsel=(\\\\d+)(?:&[^\\\\s\\\"'<>)]*)?","gi");
- while((cm=capRe2.exec(String(html||"")))){
-  var cc2=cm[1],uu2;
-  try{uu2=new URL(pageUrl);uu2.searchParams.set("capsel",cc2);var pp2=uu2.searchParams.get("padre")||"";if(cc2&&cc2!==currentCapsel&&!seenCapsel.has("capsel:"+cc2)){seenCapsel.add("capsel:"+cc2);capsels.push({id:uu2.href,label:"Apartat "+cc2,type:"capsel",url:uu2.href,capsel:cc2,padre:pp2})}}catch(e){}
- }
-
- // El text de l'enllaç d'INEbase sovint només conté el número de capsel.
- // El títol de la pàgina és el nom real que volem mostrar a la navegació.
- capsels=await ineExplainCapselItems(capsels);
-
- if(currentCapsel){
-  var children=capsels.filter(function(x){return x.padre===currentCapsel});
-  return children.length?children:tables;
- }
-
- if(capsels.length){
-  var groups=[],byParent=new Map();
-  capsels.forEach(function(x){
-   var p=x.padre||"";
-   if(!p){groups.push(x);return}
-   if(!byParent.has(p)){
-    var g={id:"capsel-group:"+p,label:"Apartat "+p,type:"capsel-group",padre:p,children:[],url:(function(){try{var u=new URL("https://www.ine.es/dynt3/inebase/index.htm");u.searchParams.set("capsel",String(p));return u.href}catch(e){return ""}})()};
-    byParent.set(p,g);groups.push(g);
-   }
-   byParent.get(p).children.push(x);
+ // --- 2) Arbre dynt3 (role=tree / a[id^=c_]) ---
+ if(!hierarchical.length){
+  var treeLinks=Array.from(doc.querySelectorAll('a[id^="c_"][href], a.desplegar[href], li[role] > a[href]'));
+  var seenT=new Set();
+  treeLinks.forEach(function(aEl){
+   var info=linkInfo(aEl.getAttribute("href"),aEl.textContent||"");
+   if(!info)return;
+   var key=info.type+":"+(info.capsel||info.tableId||info.url);
+   if(seenT.has(key))return;
+   seenT.add(key);
+   hierarchical.push(info);
   });
-  // Resolució de títols de grup. Els proxies CORS (jina, etc.) sovint tornen
-  // markdown i trenquen el DOM; combinem text cru + neteja agressiva.
-  var padreTitle=new Map();
-  var htmlStr=String(html||"");
+ }
 
-  function setPadreTitle(p,t){
-   p=String(p||"").trim();
-   t=ineCleanSectionTitle(t);
-   if(!p||!t)return;
-   if(!padreTitle.has(p))padreTitle.set(p,t);
+ // --- 3) Fallback pla: tots els enllaços de la pàgina ---
+ if(!hierarchical.length){
+  var flat=[],seenF=new Set();
+  function addFlat(info){
+   if(!info)return;
+   var key=info.type+":"+(info.capsel||info.tableId||info.id||info.url);
+   if(seenF.has(key))return;
+   seenF.add(key);
+   flat.push(info);
   }
-
-  // A) span.title fora d'enllaços + padre= del bloc següent
-  try{
-   var reTitle=/<span\s+class=["'][^"']*\btitle\b[^"']*["'][^>]*>([\s\S]*?)<\/span>/gi,m;
-   var sections=[];
-   while((m=reTitle.exec(htmlStr))){
-    var before=htmlStr.slice(Math.max(0,m.index-60),m.index);
-    if(/<a\b[^>]*$/i.test(before))continue;
-    var t=ineCleanSectionTitle(String(m[1]||""));
-    if(!t)continue;
-    sections.push({title:t,end:m.index+m[0].length,index:m.index});
-   }
-   for(var si=0;si<sections.length;si++){
-    var from=sections[si].end;
-    var to=si+1<sections.length?sections[si+1].index:Math.min(htmlStr.length,from+2500);
-    var chunk=htmlStr.slice(from,to);
-    if(!/[?&]padre=\d+/i.test(chunk))continue;
-    var seenP={},pm,pre=/[?&]padre=(\d+)/gi;
-    while((pm=pre.exec(chunk))){
-     if(!seenP[pm[1]]){seenP[pm[1]]=1;setPadreTitle(pm[1],sections[si].title)}
-    }
-   }
-  }catch(e){}
-
-  // B) DOM: li > span.title + enllaços amb padre=
-  try{
-   Array.from(doc.querySelectorAll("li")).forEach(function(li){
-    var titleEl=null;
-    Array.from(li.children||[]).some(function(ch){
-     if(ch.matches&&ch.matches("span.title, .title, span[class*='title']")&&!(ch.closest&&ch.closest("a"))){titleEl=ch;return true}
-     return false;
-    });
-    if(!titleEl)return;
-    var title=ineCleanSectionTitle(titleEl.textContent);
-    if(!title)return;
-    Array.from(li.querySelectorAll("a[href]")).forEach(function(aEl){
-     var href=aEl.getAttribute("href")||"";
-     var abs;try{abs=new URL(href.replace(/&amp;/g,"&"),pageUrl).href}catch(err){return}
-     var u;try{u=new URL(abs)}catch(err2){return}
-     var padre=u.searchParams.get("padre")||"";
-     if(padre)setPadreTitle(padre,title);
-    });
-   });
-  }catch(e){}
-
-  // C) Proximitat: des de cada padre del grup, cerca enrere "Resultados ..."
-  try{
-   groups.filter(function(x){return x.type==="capsel-group"}).forEach(function(g){
-    var p=String(g.padre||"");
-    if(!p||padreTitle.has(p))return;
-    var reP=new RegExp("[?&]padre="+p+"(?:\\D|$)","i");
-    var mm=reP.exec(htmlStr);
-    if(!mm)return;
-    var win=htmlStr.slice(Math.max(0,mm.index-1000),mm.index);
-    var best="",rm,rr=/(?:Resultados|Resultats|National results)[^\n<]{0,60}/gi;
-    while((rm=rr.exec(win))){
-     var cand=ineCleanSectionTitle(rm[0]);
-     if(cand)best=cand;
-    }
-    if(best)setPadreTitle(p,best);
-   });
-  }catch(e){}
-
-  // D) Si el HTML conté els dos títols clàssics, assigna per ordre als grups pendents
-  try{
-   var hasRN=/Resultados\s+nacionales/i.test(htmlStr);
-   var hasRC=/Resultados\s+por\s+comunidades/i.test(htmlStr);
-   if(hasRN&&hasRC){
-    var order=["Resultados nacionales","Resultados por comunidades autónomas"];
-    var gi=0;
-    groups.forEach(function(g){
-     if(g.type!=="capsel-group")return;
-     var p=String(g.padre||"");
-     if(p&&!padreTitle.has(p)&&order[gi]){setPadreTitle(p,order[gi]);gi++}
-    });
-   }
-  }catch(e){}
-
-  var groupList=groups.filter(function(x){return x.type==="capsel-group"});
-  groupList.forEach(function(g){
-   var t=padreTitle.get(String(g.padre||""));
-   if(t)g.label=t;
+  Array.from(doc.querySelectorAll("a[href]")).forEach(function(aEl){
+   addFlat(linkInfo(aEl.getAttribute("href"),aEl.textContent||""));
   });
-
-  // E) Neteja final d'etiquetes contaminades per markdown
-  groups.forEach(function(g){
-   if(g.type!=="capsel-group")return;
-   var c=ineCleanSectionTitle(g.label);
-   if(c)g.label=c;
-  });
-
-  // F) Recurs: ineExplainCapselItems per als que encara diguin Apartat
-  var unresolved=groupList.filter(function(g){return /^Apartat\s+\d+$/i.test(String(g.label||""))});
-  if(unresolved.length){
-   try{
-    var explained=await ineExplainCapselItems(unresolved.map(function(g){
-     return Object.assign({},g,{label:g.label,url:g.url,capsel:g.padre});
-    }));
-    explained.forEach(function(g){
-     var dst=groups.find(function(x){return x.id===g.id});
-     var cl=ineCleanSectionTitle(g.label);
-     if(dst&&cl)dst.label=cl;
-    });
-   }catch(e){}
-  }
-
-  // G) Si encara queden Apartat i el HTML té els títols, assignació directa per ordre
-  try{
-   var pending=groups.filter(function(g){return g.type==="capsel-group"&&/^Apartat\s+\d+$/i.test(String(g.label||""))});
-   if(pending.length&&/Resultados\s+nacionales/i.test(htmlStr)&&/Resultados\s+por\s+comunidades/i.test(htmlStr)){
-    var labs=["Resultados nacionales","Resultados por comunidades autónomas"];
-    pending.forEach(function(g,i){if(labs[i])g.label=labs[i]});
-   }
-  }catch(e){}
-
-  return groups;
+  var md=/\[([^\]]+)\]\(([^)]+)\)/g,m;
+  while((m=md.exec(String(html||""))))addFlat(linkInfo(m[2],m[1]));
+  hierarchical=flat;
  }
 
- return tables;
+ // Agrupa capsels amb el mateix padre (Resultados nacionales / CCAA) quan no hi ha jerarquia de seccions
+ if(hierarchical.length&&hierarchical.every(function(x){return x.type==="capsel"||x.type==="table"})){
+  var byPadre=new Map();
+  hierarchical.forEach(function(x){
+   if(x.type!=="capsel"||!x.padre)return;
+   if(!byPadre.has(x.padre))byPadre.set(x.padre,[]);
+   byPadre.get(x.padre).push(x);
+  });
+  // Només agrupar si hi ha diversos pares amb diversos fills (estructura típica de resultats)
+  if(byPadre.size>1&&hierarchical.length>6){
+   // manté pla: l'usuari ja veu els títols; agrupar aquí amaga Series
+  }
+ }
+
+ return hierarchical;
 }
+
 
 async function ineLoadTablesFromBase(op){
  var href=ineAbsoluteUrl(op&&op.href);
@@ -3345,7 +3319,11 @@ async function ineSelectLevel(index,val){
   if(!children.length){
    try{children=await ineLoadBaseLevel(item.url)}catch(e){status("INE: "+(e&&e.message?e.message:String(e)),"error");return}
   }
-  ineAddLevel(children,4,item.label||"Apartat");
+  if(!children.length&&item.url){
+   try{children=await ineLoadBaseLevel(item.url)}catch(e){}
+  }
+  if(!children.length){status("INE: aquest apartat no té subapartats ni taules visibles.","error");return}
+  ineAddLevel(children,index+1,item.label||"Apartat");
   status("");
   return;
  }
