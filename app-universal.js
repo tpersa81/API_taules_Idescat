@@ -6040,7 +6040,7 @@ function vizBuildComarcaShare(ds,opts){
 
  var numFilters=opts.numFilters&&typeof opts.numFilters==="object"?Object.assign({},opts.numFilters):{};
  var denFilters=opts.denFilters&&typeof opts.denFilters==="object"?Object.assign({},opts.denFilters):null;
- var useDen=opts.useDen!==false&&denFilters!=null;
+ var useDen=true;
 
  // aplicar fixos
  fixedDims.forEach(function(f){
@@ -6366,7 +6366,7 @@ async function renderVizPanel(){
  }
 
  function readControls(){
-  var typeEl=$("vizType"),perEl=$("vizPeriod"),palEl=$("vizPalette"),useDenEl=$("vizUseDen");
+  var typeEl=$("vizType"),perEl=$("vizPeriod"),palEl=$("vizPalette");
   var numFilters={},denFilters={};
   var metricDims=(state.viz&&state.viz._metricDims)||[];
   metricDims.forEach(function(d){
@@ -6378,7 +6378,7 @@ async function renderVizPanel(){
    type:typeEl&&typeEl.value?typeEl.value:(state.viz.type||"cmap"),
    periodCode:perEl?perEl.value:state.viz.periodCode,
    palette:palEl&&palEl.value?palEl.value:(state.viz.palette||"blues"),
-   useDen:useDenEl?!!useDenEl.checked:!!state.viz.useDen,
+   useDen:true,
    numFilters:numFilters,
    denFilters:denFilters
   };
@@ -6388,8 +6388,8 @@ async function renderVizPanel(){
   return {
    periodCode:state.viz.periodCode,
    numFilters:state.viz.numFilters||{},
-   denFilters:state.viz.useDen===false?null:(state.viz.denFilters||{}),
-   useDen:state.viz.useDen!==false
+   denFilters:state.viz.denFilters||{},
+   useDen:true
   };
  }
 
@@ -6411,7 +6411,6 @@ async function renderVizPanel(){
   }).join("");
   var type=state.viz.type||"cmap";
   var pal=state.viz.palette||"blues";
-  var useDen=state.viz.useDen!==false;
   var numBlock="",denBlock="";
   (built.metricDims||[]).forEach(function(d){
    var cats=vizCats(d);
@@ -6435,7 +6434,7 @@ async function renderVizPanel(){
    '</select></label>'+
    '<label>Període<select id="vizPeriod">'+perOpts+'</select></label>'+
    '<div class="viz-metric-group"><span class="viz-metric-h">Numerador</span><div class="viz-metric-rows">'+numBlock+'</div></div>'+
-   '<div class="viz-metric-group"><label class="viz-metric-h"><input type="checkbox" id="vizUseDen"'+(useDen?' checked':'')+'> Denominador (proporció %)</label><div class="viz-metric-rows" id="vizDenRows">'+denBlock+'</div></div>'+
+   '<div class="viz-metric-group"><span class="viz-metric-h">Denominador</span><div class="viz-metric-rows" id="vizDenRows">'+denBlock+'</div></div>'+
    '<label>Paleta<select id="vizPalette">'+
      '<option value="blues"'+(pal==="blues"?' selected':'')+'>Blaus</option>'+
      '<option value="greens"'+(pal==="greens"?' selected':'')+'>Verds</option>'+
@@ -6444,9 +6443,6 @@ async function renderVizPanel(){
      '<option value="reds"'+(pal==="reds"?' selected':'')+'>Vermells</option>'+
    '</select></label>'+
    '<button type="button" id="vizExport" class="secondary">Desa imatge</button>';
-  var denRows=$("vizDenRows");
-  if(denRows)denRows.style.opacity=useDen?"1":"0.45";
-  if(denRows)denRows.style.pointerEvents=useDen?"auto":"none";
  }
 
  function exportChartImage(){
@@ -6471,30 +6467,58 @@ async function renderVizPanel(){
    }
    var w=svg.viewBox&&svg.viewBox.baseVal&&svg.viewBox.baseVal.width?svg.viewBox.baseVal.width:(svg.clientWidth||900);
    var h=svg.viewBox&&svg.viewBox.baseVal&&svg.viewBox.baseVal.height?svg.viewBox.baseVal.height:(svg.clientHeight||700);
-   var lines=[tableTitle,metricTitle,periodTitle].filter(Boolean);
-   var lineH=18,titleH=16+lines.length*lineH+8;
+   // Font com a la llegenda de Visual (si es pot llegir del DOM)
+   var legendEl=root.querySelector("text, .VisualJSlegend text, #vizChart text");
+   var legendFont="Arial, Helvetica, sans-serif";
+   var legendSize="11px";
+   try{
+    if(legendEl){
+     var lcs=window.getComputedStyle(legendEl);
+     if(lcs.fontFamily)legendFont=lcs.fontFamily;
+     if(lcs.fontSize)legendSize=lcs.fontSize;
+    }
+   }catch(e){}
+   function wrapTitleLines(text,maxChars){
+    text=String(text||"").trim();
+    if(!text)return [];
+    if(text.length<=maxChars)return [text];
+    var words=text.split(/\s+/),lines=[],cur="";
+    words.forEach(function(w){
+     if(!cur){cur=w;return}
+     if((cur+" "+w).length<=maxChars)cur+=" "+w;
+     else{lines.push(cur);cur=w}
+    });
+    if(cur)lines.push(cur);
+    return lines;
+   }
+   var outW=Math.max(w,960);
+   var maxChars=Math.max(40,Math.floor(outW/8.2));
+   var lines=[].concat(
+    wrapTitleLines(tableTitle,maxChars),
+    wrapTitleLines(metricTitle,maxChars),
+    wrapTitleLines(periodTitle,maxChars)
+   ).filter(Boolean);
+   var lineH=16,titleH=14+lines.length*lineH+12;
    var gWrap=document.createElementNS("http://www.w3.org/2000/svg","g");
    while(clone.firstChild)gWrap.appendChild(clone.firstChild);
    gWrap.setAttribute("transform","translate(0,"+titleH+")");
    var bg=document.createElementNS("http://www.w3.org/2000/svg","rect");
    bg.setAttribute("x","0");bg.setAttribute("y","0");
-   bg.setAttribute("width",String(Math.max(w,920)));bg.setAttribute("height",String(h+titleH));
+   bg.setAttribute("width",String(outW));bg.setAttribute("height",String(h+titleH));
    bg.setAttribute("fill","#ffffff");
    clone.appendChild(bg);
    lines.forEach(function(line,li){
     var text=document.createElementNS("http://www.w3.org/2000/svg","text");
     text.setAttribute("x","12");
-    text.setAttribute("y",String(20+li*lineH));
+    text.setAttribute("y",String(18+li*lineH));
     text.setAttribute("fill","#0f172a");
-    text.setAttribute("font-size",li===0?"14":"12");
-    text.setAttribute("font-family","sans-serif");
+    text.setAttribute("font-size",legendSize);
+    text.setAttribute("font-family",legendFont);
     text.setAttribute("font-weight",li===0?"600":"400");
-    // evitar tall: fins a ~110 caràcters per línia visual
-    text.textContent=line.length>110?line.slice(0,107)+"...":line;
+    text.textContent=line;
     clone.appendChild(text);
    });
    clone.appendChild(gWrap);
-   var outW=Math.max(w,920);
    clone.setAttribute("viewBox","0 0 "+outW+" "+(h+titleH));
    clone.setAttribute("width",String(outW));
    clone.setAttribute("height",String(h+titleH));
@@ -6570,17 +6594,15 @@ async function renderVizPanel(){
   state.viz.type=ctrl.type;
   state.viz.periodCode=ctrl.periodCode;
   state.viz.palette=ctrl.palette;
-  state.viz.useDen=ctrl.useDen;
+  state.viz.useDen=true;
   state.viz.numFilters=ctrl.numFilters;
   state.viz.denFilters=ctrl.denFilters;
-  var denRows=$("vizDenRows");
-  if(denRows){denRows.style.opacity=ctrl.useDen?"1":"0.45";denRows.style.pointerEvents=ctrl.useDen?"auto":"none"}
 
   built=vizBuildComarcaShare(state.lastData,{
    periodCode:ctrl.periodCode,
    numFilters:ctrl.numFilters,
-   denFilters:ctrl.useDen?ctrl.denFilters:null,
-   useDen:ctrl.useDen
+   denFilters:ctrl.denFilters,
+   useDen:true
   });
   if(built.error){if(status)status.textContent=built.error;return}
   if(built.needsMetric){
@@ -6658,7 +6680,7 @@ async function renderVizPanel(){
  }
 
  function bindControls(){
-  ["vizType","vizPeriod","vizPalette","vizUseDen"].forEach(function(id){
+  ["vizType","vizPeriod","vizPalette"].forEach(function(id){
    var el=$(id);if(el)el.onchange=function(){redraw()};
   });
   (built.metricDims||[]).forEach(function(d){
