@@ -1,6 +1,3 @@
-
-/* ===== app-universal.js ===== */
-
 const MAX_CELLS=20000;
 const state={provider:"idescat",pxPreset:"finland",stats:[],istacDatasets:[],istacPath:[],icanePackages:[],icaneRawData:null,igeRoot:[],igePath:[],igeItems:new Map(),igeSelector:null,igeMode:null,igeSeriesTree:null,metadata:null,lastData:null,lastQueryUrl:"",finlandTableUrl:"",ineVarCache:new Map(),filters:new Map(),page:1,pageSize:100,temporalOrder:"desc",requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],ineNav:null,ineNavLoaded:false,ineOperations:null,inePath:[],ineItems:new Map(),swedenV2Tables:null,swedenV2Table:false,swedenPath:[],eustatCatalog:[],eustatGroups:[],eustatOperations:[],eustatTables:[],eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[],norwayPath:[],norwayCatalog:[],norwayRootItems:[]};
 const $=id=>document.getElementById(id);
