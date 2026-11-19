@@ -6066,6 +6066,23 @@ function vizMetricTitle(metricDims,numFilters,denFilters){
  return num+" / "+part(denFilters)+" (%)";
 }
 
+function vizDetectPercent(ds,det,fixedDims){
+ // Taules amb concepte/unitat en %: no cal denominador
+ var texts=[];
+ if(ds&&ds.label)texts.push(String(ds.label));
+ (fixedDims||[]).forEach(function(f){texts.push(String(f.catLabel||""),String(f.label||""))});
+ (det&&det.dims||[]).forEach(function(d){
+  if(vizNorm(d.id)==="concept"||/concepte|concept/.test(vizNorm(d.label))){
+   vizCats(d).forEach(function(c){texts.push(String(c.label||""),String(c.code||""))});
+  }
+ });
+ try{
+  if(ds&&ds.dimension&&ds.dimension.unit&&ds.dimension.unit.label)texts.push(String(ds.dimension.unit.label));
+ }catch(e){}
+ var blob=texts.join(" | ");
+ return /\(%\)|percent|per\s*cent/i.test(blob)||/%\s*$/m.test(blob);
+}
+
 function vizBuildComarcaShare(ds,opts){
  opts=opts||{};
  var det=vizDetectDims(ds);
@@ -6091,7 +6108,10 @@ function vizBuildComarcaShare(ds,opts){
 
  var numFilters=opts.numFilters&&typeof opts.numFilters==="object"?Object.assign({},opts.numFilters):{};
  var denFilters=opts.denFilters&&typeof opts.denFilters==="object"?Object.assign({},opts.denFilters):null;
- var useDen=true;
+ var isPercent=vizDetectPercent(ds,det,fixedDims);
+ var useDen=!isPercent;
+ if(opts.useDen===false)useDen=false;
+ if(opts.forceDen===true)useDen=true;
 
  // aplicar fixos
  fixedDims.forEach(function(f){
@@ -6113,6 +6133,7 @@ function vizBuildComarcaShare(ds,opts){
    denFilters:useDen?denFilters:null,
    useDen:useDen,
    metricTitle:"",
+   isPercent:!!isPercent,
    mapData:[],rankData:[],data:[],
    geoDim:det.geoDim,geoLevel:geoLevel,
    supportsMap:geoLevel==="com"||geoLevel==="mun"||geoLevel==="prov"||geoLevel==="at",
@@ -6133,6 +6154,7 @@ function vizBuildComarcaShare(ds,opts){
    denFilters:denFilters,
    useDen:true,
    metricTitle:"",
+   isPercent:!!isPercent,
    mapData:[],rankData:[],data:[],
    geoDim:det.geoDim,geoLevel:geoLevel,
    supportsMap:geoLevel==="com"||geoLevel==="mun"||geoLevel==="prov"||geoLevel==="at",
@@ -6207,6 +6229,7 @@ function vizBuildComarcaShare(ds,opts){
   denFilters:useDen?denFilters:null,
   useDen:useDen,
   denCode:useDen?"1":null,
+  isPercent:!!isPercent,
   metricTitle:metricTitle,
   geoDim:det.geoDim,
   geoLevel:geoLevel,
@@ -6428,7 +6451,9 @@ async function renderVizPanel(){
   if(controls)controls.innerHTML="";
   return;
  }
- if(status)status.textContent="Preparant visualització…";
+ if(status)status.textContent="Carregant visualització…";
+ var chartLoading=$("vizChart");
+ if(chartLoading)chartLoading.innerHTML='<div class="empty viz-loading">Carregant visualització…</div>';
  if(!state.viz)state.viz={type:"cmap",palette:"blues",useDen:true,numFilters:{},denFilters:{}};
 
  function paletteBase(name){
@@ -6468,18 +6493,19 @@ async function renderVizPanel(){
    type:typeEl&&typeEl.value?typeEl.value:(state.viz.type||"cmap"),
    periodCode:perEl?perEl.value:state.viz.periodCode,
    palette:palEl&&palEl.value?palEl.value:(state.viz.palette||"blues"),
-   useDen:true,
+   useDen:!(state.viz&&state.viz._isPercent),
    numFilters:numFilters,
    denFilters:denFilters
   };
  }
 
  function buildOptsFromState(){
+  var isPct=!!(state.viz&&state.viz._isPercent);
   return {
    periodCode:state.viz.periodCode,
    numFilters:state.viz.numFilters||{},
-   denFilters:state.viz.denFilters||{},
-   useDen:true
+   denFilters:isPct?null:(state.viz.denFilters||{}),
+   useDen:!isPct
   };
  }
 
@@ -6492,6 +6518,7 @@ async function renderVizPanel(){
  }
  state.viz.periodCode=built.periodCode;
  state.viz._metricDims=built.metricDims||[];
+ state.viz._isPercent=!!built.isPercent;
  if(built.numFilters)state.viz.numFilters=built.numFilters;
  if(built.denFilters)state.viz.denFilters=built.denFilters;
 
@@ -6532,7 +6559,7 @@ async function renderVizPanel(){
    '<label>Tipus<select id="vizType">'+typeOpts+'</select></label>'+
    '<label>Període<select id="vizPeriod">'+perOpts+'</select></label>'+
    '<div class="viz-metric-group"><span class="viz-metric-h">Numerador</span><div class="viz-metric-rows">'+numBlock+'</div></div>'+
-   '<div class="viz-metric-group"><span class="viz-metric-h">Denominador</span><div class="viz-metric-rows" id="vizDenRows">'+denBlock+'</div></div>'+
+   (built.isPercent?'':('<div class="viz-metric-group"><span class="viz-metric-h">Denominador</span><div class="viz-metric-rows" id="vizDenRows">'+denBlock+'</div></div>'))+
    '<label>Paleta<select id="vizPalette">'+
      '<option value="blues"'+(pal==="blues"?' selected':'')+'>Blaus</option>'+
      '<option value="greens"'+(pal==="greens"?' selected':'')+'>Verds</option>'+
@@ -6680,8 +6707,9 @@ async function renderVizPanel(){
     var pct=100*r.val/max;
     var col=r.isRef?refBarColor(palette):paletteFill(palette,pct/100);
     h+='<div class="viz-bar-col'+(r.isRef?" viz-rank-ref":"")+'" title="'+esc(r.label||r.id)+': '+Number(r.val).toLocaleString("ca-ES",{maximumFractionDigits:1})+(built.useDen?"%":"")+'">';
-    h+='<div class="viz-bar-val">'+Number(r.val).toLocaleString("ca-ES",{maximumFractionDigits:1})+'</div>';
-    h+='<div class="viz-bar-fillwrap"><div class="viz-bar-fill" style="height:'+pct.toFixed(1)+'%;background:'+col+'"></div></div>';
+    h+='<div class="viz-bar-val">'+Number(r.val).toLocaleString("ca-ES",{maximumFractionDigits:1})+((built.useDen||built.isPercent)?"%":"")+'</div>';
+    var px=Math.max(2,Math.round(220*r.val/max));
+    h+='<div class="viz-bar-fillwrap"><div class="viz-bar-fill" style="height:'+px+'px;background:'+col+'"></div></div>';
     h+='<div class="viz-bar-lab">'+esc((r.label||r.id).length>12?(r.label||r.id).slice(0,11)+"…":(r.label||r.id))+'</div>';
     h+='</div>';
    });
@@ -6698,7 +6726,7 @@ async function renderVizPanel(){
    h+='<div class="viz-rank-row'+(r.isRef?" viz-rank-ref":"")+'">';
    h+='<div class="viz-rank-lab"><span class="viz-rank-pos">'+(i+1)+'.</span> '+esc(r.label||r.id)+'</div>';
    h+='<div class="viz-rank-barwrap"><div class="viz-rank-bar" style="width:'+pct.toFixed(1)+'%;background:'+col+'"></div></div>';
-   h+='<div class="viz-rank-val">'+Number(r.val).toLocaleString("ca-ES",{maximumFractionDigits:1,minimumFractionDigits:1})+(built.useDen?"%":"")+'</div>';
+   h+='<div class="viz-rank-val">'+Number(r.val).toLocaleString("ca-ES",{maximumFractionDigits:1,minimumFractionDigits:1})+((built.useDen||built.isPercent)?"%":"")+'</div>';
    h+='</div>';
   });
   h+='</div><div class="viz-rank-foot">Catalunya com a referència (barra de contrast)</div>';
@@ -6803,9 +6831,10 @@ async function renderVizPanel(){
   built=vizBuildComarcaShare(state.lastData,{
    periodCode:ctrl.periodCode,
    numFilters:ctrl.numFilters,
-   denFilters:ctrl.denFilters,
-   useDen:true
+   denFilters:(state.viz&&state.viz._isPercent)?null:ctrl.denFilters,
+   useDen:!(state.viz&&state.viz._isPercent)
   });
+  state.viz._isPercent=!!built.isPercent;
   if(built.error){if(status)status.textContent=built.error;return}
   if(built.needsMetric){
    if(status)status.textContent=built.needDen
@@ -6871,8 +6900,8 @@ async function renderVizPanel(){
    geo:"Catalunya",
    time:String(built.periodLabel||""),
    footer:[vizTableTitle(),"Idescat Visual"],
-   dec:built.useDen?1:0,
-   unit:{symbol:built.useDen?"%":"",position:"end"},
+   dec:(built.useDen||built.isPercent)?1:0,
+   unit:{symbol:(built.useDen||built.isPercent)?"%":"",position:"end"},
    legend:true,type:"cmap",by:mapBy,fixed:[920,720],
    data:built.mapData.map(function(d){return{id:d.id,val:d.val}})
   };
