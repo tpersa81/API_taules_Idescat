@@ -5972,73 +5972,129 @@ function vizAllPeriods(det){
  return list;
 }
 
-function vizMetricDim(det){
- if(det.sexDim)return det.sexDim;
- // primera dimensió no temporal / no geo amb >=2 categories
- return (det.dims||[]).find(function(d){
+/** Dimensions de mètrica: tot menys temps, geo i dimensions d'1 sola categoria (es fixen soles). */
+function vizMetricDims(det){
+ return (det.dims||[]).filter(function(d){
   if(det.timeDim&&d.id===det.timeDim.id)return false;
   if(det.geoDim&&d.id===det.geoDim.id)return false;
-  return vizCats(d).length>=2;
- })||null;
+  var cats=vizCats(d);
+  return cats.length>=2;
+ });
+}
+
+function vizFixedDims(det){
+ // dimensions amb una sola categoria → sempre aquelles
+ var out=[];
+ (det.dims||[]).forEach(function(d){
+  if(det.timeDim&&d.id===det.timeDim.id)return;
+  if(det.geoDim&&d.id===det.geoDim.id)return;
+  var cats=vizCats(d);
+  if(cats.length===1)out.push({id:d.id,label:d.label,code:String(cats[0].code),catLabel:String(cats[0].label||cats[0].code)});
+ });
+ return out;
+}
+
+function vizCatLabel(dim,code){
+ var cats=vizCats(dim);
+ var c=cats.find(function(x){return String(x.code)===String(code)});
+ return c?String(c.label||c.code):String(code||"");
+}
+
+function vizFiltersComplete(filters,metricDims){
+ if(!filters)return false;
+ return metricDims.every(function(d){return filters[d.id]!=null&&String(filters[d.id])!==""});
+}
+
+function vizMetricTitle(metricDims,numFilters,denFilters){
+ function part(filters){
+  return metricDims.map(function(d){
+   return vizCatLabel(d,filters[d.id]);
+  }).join(", ");
+ }
+ var num=part(numFilters);
+ if(!denFilters)return num;
+ return num+" / "+part(denFilters)+" (%)";
 }
 
 function vizBuildComarcaShare(ds,opts){
  opts=opts||{};
  var det=vizDetectDims(ds);
  if(!det.geoDim)return {error:"No s'ha detectat una dimensió territorial (comarques) a la taula."};
- var metricDim=vizMetricDim(det);
- if(!metricDim)return {error:"No s'ha detectat una dimensió de mètrica (p.ex. sexe) per construir el numerador."};
+ var metricDims=vizMetricDims(det);
+ var fixedDims=vizFixedDims(det);
+ if(!metricDims.length&&!fixedDims.length)return {error:"No s'han trobat dimensions de mètrica a la taula."};
+
  var periods=vizAllPeriods(det);
  var periodCode=opts.periodCode||null;
  var periodLabel="";
  if(det.timeDim){
   var period=null;
-  if(periodCode){
-   period=periods.find(function(p){return String(p.code)===String(periodCode)})||null;
-  }
+  if(periodCode)period=periods.find(function(p){return String(p.code)===String(periodCode)})||null;
+  if(!period&&periods.length)period=periods[periods.length-1];
   if(!period){
-   // últim període
-   period=periods.length?periods[periods.length-1]:null;
-   if(!period){
-    var cell=vizLatestPeriod(det.timeDim,det.rows);
-    if(cell)period={code:String(temporalCategoryCode(cell)||cell.code||""),label:String(cell.label||"")};
-   }
+   var cell=vizLatestPeriod(det.timeDim,det.rows);
+   if(cell)period={code:String(temporalCategoryCode(cell)||cell.code||""),label:String(cell.label||"")};
   }
-  if(period){
-   periodCode=String(period.code);
-   periodLabel=String(period.label||periodCode);
-  }
+  if(period){periodCode=String(period.code);periodLabel=String(period.label||periodCode)}
  }
 
- var cats=vizCats(metricDim);
- var numCode=opts.numCode!=null&&opts.numCode!==""?String(opts.numCode):null;
- var denCode=(opts.denCode!=null&&opts.denCode!=="")?String(opts.denCode):null;
- // Sense mètrica per defecte: l'usuari tria numerador (denominador opcional)
- if(!numCode){
+ var numFilters=opts.numFilters&&typeof opts.numFilters==="object"?Object.assign({},opts.numFilters):{};
+ var denFilters=opts.denFilters&&typeof opts.denFilters==="object"?Object.assign({},opts.denFilters):null;
+ var useDen=opts.useDen!==false&&denFilters!=null;
+
+ // aplicar fixos
+ fixedDims.forEach(function(f){
+  numFilters[f.id]=f.code;
+  if(useDen&&denFilters)denFilters[f.id]=f.code;
+ });
+
+ if(!metricDims.length){
+  // només fixos → valor absolut d'aquesta cel·la
+ }else if(!vizFiltersComplete(numFilters,metricDims)){
   return {
    needsMetric:true,
    periodLabel:periodLabel,
    periodCode:periodCode,
    periods:periods,
-   metricDim:metricDim,
-   metricCats:cats,
-   numCode:null,
-   denCode:null,
+   metricDims:metricDims,
+   fixedDims:fixedDims,
+   numFilters:numFilters,
+   denFilters:useDen?denFilters:null,
+   useDen:useDen,
    metricTitle:"",
-   mapData:[],
-   rankData:[],
-   data:[],
-   geoDim:det.geoDim,
-   timeDim:det.timeDim,
-   skipped:0,
-   n:0
+   mapData:[],rankData:[],data:[],
+   geoDim:det.geoDim,timeDim:det.timeDim,skipped:0,n:0
   };
  }
 
- var numLab=(cats.find(function(c){return String(c.code)===String(numCode)})||{}).label||numCode;
- var denLab=denCode?(cats.find(function(c){return String(c.code)===String(denCode)})||{}).label||denCode:null;
+ if(useDen&&!vizFiltersComplete(denFilters,metricDims)){
+  return {
+   needsMetric:true,
+   needDen:true,
+   periodLabel:periodLabel,
+   periodCode:periodCode,
+   periods:periods,
+   metricDims:metricDims,
+   fixedDims:fixedDims,
+   numFilters:numFilters,
+   denFilters:denFilters,
+   useDen:true,
+   metricTitle:"",
+   mapData:[],rankData:[],data:[],
+   geoDim:det.geoDim,timeDim:det.timeDim,skipped:0,n:0
+  };
+ }
 
- // index: geoKey -> {id,label,num,den,isRef}
+ function matchFilters(r,filters){
+  return metricDims.every(function(d){
+   var cell=r[d.id]||{};
+   return String(cell.code)!=null&&String(cell.code)===String(filters[d.id]);
+  })&&fixedDims.every(function(f){
+   var cell=r[f.id]||{};
+   return String(cell.code)===String(f.code);
+  });
+ }
+
  var acc={};
  det.rows.forEach(function(r){
   if(det.timeDim&&periodCode){
@@ -6052,24 +6108,21 @@ function vizBuildComarcaShare(ds,opts){
   var isNoRes=/no resident/i.test(gLab)||String(gCode)==="99";
   if(isNoRes)return;
   var cid=isCat?"TOTAL":vizComarcaId(gCode,gLab);
-  if(!cid&&!isCat)return;
-  if(isCat)cid="TOTAL";
-  var m=r[metricDim.id]||{};
-  var mCode=String(m.code!=null?m.code:"");
+  if(!cid)return;
   var val=r.value;
   if(val==null||val==="")return;
   var n=Number(val);
   if(!Number.isFinite(n))return;
   if(!acc[cid])acc[cid]={id:cid,label:isCat?"Catalunya":gLab,num:null,den:null,isRef:isCat};
-  if(mCode===String(numCode))acc[cid].num=n;
-  if(denCode&&mCode===String(denCode))acc[cid].den=n;
+  if(matchFilters(r,numFilters))acc[cid].num=n;
+  if(useDen&&matchFilters(r,denFilters))acc[cid].den=n;
  });
 
  var mapData=[],rankData=[],skipped=0;
  Object.keys(acc).forEach(function(id){
   var o=acc[id];
   var val=null;
-  if(denCode){
+  if(useDen){
    if(o.num==null||o.den==null||!o.den){skipped++;return}
    val=100*o.num/o.den;
   }else{
@@ -6084,18 +6137,20 @@ function vizBuildComarcaShare(ds,opts){
  rankData.sort(function(a,b){return b.val-a.val});
  if(!mapData.length&&!rankData.length)return {error:"No s'han pogut calcular valors per comarca amb la mètrica i el període seleccionats."};
 
- var metricTitle=denCode?(numLab+" / "+denLab+" (%)"):numLab;
+ var metricTitle=vizMetricTitle(metricDims,numFilters,useDen?denFilters:null);
  return {
   mapData:mapData,
   rankData:rankData,
-  data:mapData, // compat
+  data:mapData,
   periodLabel:periodLabel,
   periodCode:periodCode,
   periods:periods,
-  metricDim:metricDim,
-  metricCats:cats,
-  numCode:numCode,
-  denCode:denCode,
+  metricDims:metricDims,
+  fixedDims:fixedDims,
+  numFilters:numFilters,
+  denFilters:useDen?denFilters:null,
+  useDen:useDen,
+  denCode:useDen?"1":null, // compat unit %
   metricTitle:metricTitle,
   geoDim:det.geoDim,
   timeDim:det.timeDim,
@@ -6284,74 +6339,12 @@ async function renderVizPanel(){
   return;
  }
  if(status)status.textContent="Preparant visualització…";
- if(!state.viz)state.viz={type:"cmap",palette:"blues"};
-
- function readControls(){
-  var typeEl=$("vizType"),perEl=$("vizPeriod"),numEl=$("vizNum"),denEl=$("vizDen"),palEl=$("vizPalette");
-  return {
-   type:typeEl&&typeEl.value?typeEl.value:(state.viz.type||"cmap"),
-   periodCode:perEl?perEl.value:state.viz.periodCode,
-   numCode:numEl?numEl.value:state.viz.numCode,
-   denCode:denEl?(denEl.value||""):state.viz.denCode,
-   palette:palEl&&palEl.value?palEl.value:(state.viz.palette||"blues")
-  };
- }
-
- var opts0=Object.assign({},state.viz);
- var built=vizBuildComarcaShare(state.lastData,opts0);
- if(built.error){
-  if(status)status.textContent=built.error;
-  if($("vizChart"))$("vizChart").innerHTML="";
-  if(controls)controls.innerHTML="";
-  return;
- }
- // persist selecció (sense forçar mètrica)
- state.viz.periodCode=built.periodCode;
- state.viz.numCode=built.numCode||"";
- state.viz.denCode=built.denCode==null?"":built.denCode;
-
- if(controls){
-  var perOpts=(built.periods||[]).map(function(p){
-   return '<option value="'+esc(p.code)+'"'+(String(p.code)===String(built.periodCode)?' selected':'')+'>'+esc(p.label)+'</option>';
-  }).join("");
-  var catOpts=(built.metricCats||[]).map(function(c){
-   return '<option value="'+esc(String(c.code))+'">'+esc(String(c.label||c.code))+'</option>';
-  }).join("");
-  var numOpts=catOpts.replace('value="'+esc(String(built.numCode))+'"','value="'+esc(String(built.numCode))+'" selected');
-  // rebuild properly
-  numOpts='<option value="">(tria numerador)</option>'+(built.metricCats||[]).map(function(c){
-   var sel=built.numCode&&String(c.code)===String(built.numCode)?' selected':'';
-   return '<option value="'+esc(String(c.code))+'"'+sel+'>'+esc(String(c.label||c.code))+'</option>';
-  }).join("");
-  var denOpts='<option value="">(cap — valor absolut)</option>'+(built.metricCats||[]).map(function(c){
-   var sel=built.denCode!=null&&built.denCode!==""&&String(c.code)===String(built.denCode)?' selected':'';
-   return '<option value="'+esc(String(c.code))+'"'+sel+'>'+esc(String(c.label||c.code))+'</option>';
-  }).join("");
-  var type=state.viz.type||"cmap";
-  var pal=state.viz.palette||"blues";
-  controls.innerHTML=
-   '<label>Tipus<select id="vizType">'+
-     '<option value="cmap"'+(type==="cmap"?' selected':'')+'>Mapa de comarques</option>'+
-     '<option value="rank"'+(type==="rank"?' selected':'')+'>Ranking</option>'+
-   '</select></label>'+
-   '<label>Període<select id="vizPeriod">'+perOpts+'</select></label>'+
-   '<label>Numerador<select id="vizNum">'+numOpts+'</select></label>'+
-   '<label>Denominador<select id="vizDen">'+denOpts+'</select></label>'+
-   '<label>Paleta<select id="vizPalette">'+
-     '<option value="blues"'+(pal==="blues"?' selected':'')+'>Blaus</option>'+
-     '<option value="greens"'+(pal==="greens"?' selected':'')+'>Verds</option>'+
-     '<option value="oranges"'+(pal==="oranges"?' selected':'')+'>Taronges</option>'+
-     '<option value="purples"'+(pal==="purples"?' selected':'')+'>Liles</option>'+
-     '<option value="reds"'+(pal==="reds"?' selected':'')+'>Vermells</option>'+
-   '</select></label>'+
-   '<button type="button" id="vizExport" class="secondary">Desa imatge</button>';
- }
+ if(!state.viz)state.viz={type:"cmap",palette:"blues",useDen:true,numFilters:{},denFilters:{}};
 
  function paletteBase(name){
   return ({blues:"#08306b",greens:"#00441b",oranges:"#7f2704",purples:"#3f007d",reds:"#67000d"})[name]||"#08306b";
  }
  function paletteFill(name,t){
-  // t in [0,1] → color interpolat simple cap a base
   var bases={
    blues:["#f7fbff","#c6dbef","#6baed6","#2171b5","#08306b"],
    greens:["#f7fcf5","#c7e9c0","#74c476","#238b45","#00441b"],
@@ -6364,6 +6357,97 @@ async function renderVizPanel(){
   var i=Math.min(arr.length-1,Math.floor(x*(arr.length-1)));
   return arr[i];
  }
+ /** Color de referència Catalunya: sempre contrast fort amb la paleta. */
+ function refBarColor(palette){
+  // neutre fosc + el mapa/ranking el distingeixen per patró
+  if(palette==="reds"||palette==="oranges")return "#0f172a";
+  if(palette==="blues"||palette==="purples")return "#b45309";
+  return "#9f1239";
+ }
+
+ function readControls(){
+  var typeEl=$("vizType"),perEl=$("vizPeriod"),palEl=$("vizPalette"),useDenEl=$("vizUseDen");
+  var numFilters={},denFilters={};
+  var metricDims=(state.viz&&state.viz._metricDims)||[];
+  metricDims.forEach(function(d){
+   var n=$("vizNum_"+d.id),dn=$("vizDen_"+d.id);
+   if(n&&n.value)numFilters[d.id]=n.value;
+   if(dn&&dn.value)denFilters[d.id]=dn.value;
+  });
+  return {
+   type:typeEl&&typeEl.value?typeEl.value:(state.viz.type||"cmap"),
+   periodCode:perEl?perEl.value:state.viz.periodCode,
+   palette:palEl&&palEl.value?palEl.value:(state.viz.palette||"blues"),
+   useDen:useDenEl?!!useDenEl.checked:!!state.viz.useDen,
+   numFilters:numFilters,
+   denFilters:denFilters
+  };
+ }
+
+ function buildOptsFromState(){
+  return {
+   periodCode:state.viz.periodCode,
+   numFilters:state.viz.numFilters||{},
+   denFilters:state.viz.useDen===false?null:(state.viz.denFilters||{}),
+   useDen:state.viz.useDen!==false
+  };
+ }
+
+ var built=vizBuildComarcaShare(state.lastData,buildOptsFromState());
+ if(built.error){
+  if(status)status.textContent=built.error;
+  if($("vizChart"))$("vizChart").innerHTML="";
+  if(controls)controls.innerHTML="";
+  return;
+ }
+ state.viz.periodCode=built.periodCode;
+ state.viz._metricDims=built.metricDims||[];
+ if(built.numFilters)state.viz.numFilters=built.numFilters;
+ if(built.denFilters)state.viz.denFilters=built.denFilters;
+
+ if(controls){
+  var perOpts=(built.periods||[]).map(function(p){
+   return '<option value="'+esc(p.code)+'"'+(String(p.code)===String(built.periodCode)?' selected':'')+'>'+esc(p.label)+'</option>';
+  }).join("");
+  var type=state.viz.type||"cmap";
+  var pal=state.viz.palette||"blues";
+  var useDen=state.viz.useDen!==false;
+  var numBlock="",denBlock="";
+  (built.metricDims||[]).forEach(function(d){
+   var cats=vizCats(d);
+   var curN=(state.viz.numFilters&&state.viz.numFilters[d.id])||"";
+   var curD=(state.viz.denFilters&&state.viz.denFilters[d.id])||"";
+   var optsN='<option value="">(tria)</option>'+cats.map(function(c){
+    var sel=String(c.code)===String(curN)?' selected':'';
+    return '<option value="'+esc(String(c.code))+'"'+sel+'>'+esc(String(c.label||c.code))+'</option>';
+   }).join("");
+   var optsD='<option value="">(tria)</option>'+cats.map(function(c){
+    var sel=String(c.code)===String(curD)?' selected':'';
+    return '<option value="'+esc(String(c.code))+'"'+sel+'>'+esc(String(c.label||c.code))+'</option>';
+   }).join("");
+   numBlock+='<label>'+esc(d.label||d.id)+'<select id="vizNum_'+esc(d.id)+'">'+optsN+'</select></label>';
+   denBlock+='<label>'+esc(d.label||d.id)+'<select id="vizDen_'+esc(d.id)+'">'+optsD+'</select></label>';
+  });
+  controls.innerHTML=
+   '<label>Tipus<select id="vizType">'+
+     '<option value="cmap"'+(type==="cmap"?' selected':'')+'>Mapa de comarques</option>'+
+     '<option value="rank"'+(type==="rank"?' selected':'')+'>Ranking</option>'+
+   '</select></label>'+
+   '<label>Període<select id="vizPeriod">'+perOpts+'</select></label>'+
+   '<div class="viz-metric-group"><span class="viz-metric-h">Numerador</span><div class="viz-metric-rows">'+numBlock+'</div></div>'+
+   '<div class="viz-metric-group"><label class="viz-metric-h"><input type="checkbox" id="vizUseDen"'+(useDen?' checked':'')+'> Denominador (proporció %)</label><div class="viz-metric-rows" id="vizDenRows">'+denBlock+'</div></div>'+
+   '<label>Paleta<select id="vizPalette">'+
+     '<option value="blues"'+(pal==="blues"?' selected':'')+'>Blaus</option>'+
+     '<option value="greens"'+(pal==="greens"?' selected':'')+'>Verds</option>'+
+     '<option value="oranges"'+(pal==="oranges"?' selected':'')+'>Taronges</option>'+
+     '<option value="purples"'+(pal==="purples"?' selected':'')+'>Liles</option>'+
+     '<option value="reds"'+(pal==="reds"?' selected':'')+'>Vermells</option>'+
+   '</select></label>'+
+   '<button type="button" id="vizExport" class="secondary">Desa imatge</button>';
+  var denRows=$("vizDenRows");
+  if(denRows)denRows.style.opacity=useDen?"1":"0.45";
+  if(denRows)denRows.style.pointerEvents=useDen?"auto":"none";
+ }
 
  function exportChartImage(){
   var root=$("vizChart");
@@ -6371,84 +6455,85 @@ async function renderVizPanel(){
   var tableTitle=vizTableTitle();
   var metricTitle=(state.viz&&state.viz._lastMetricTitle)||"";
   var periodTitle=(state.viz&&state.viz._lastPeriodLabel)||"";
-  var fullTitle=[tableTitle,metricTitle,periodTitle].filter(Boolean).join(" · ");
 
   var svg=root.querySelector("svg");
   if(svg){
-   // Clona i inline styles (Visual usa classes CSS; sense això l'SVG surt negre)
    var clone=svg.cloneNode(true);
    clone.setAttribute("xmlns","http://www.w3.org/2000/svg");
-   if(!clone.getAttribute("xmlns:xlink"))clone.setAttribute("xmlns:xlink","http://www.w3.org/1999/xlink");
    var origEls=svg.querySelectorAll("*");
    var cloneEls=clone.querySelectorAll("*");
    for(var i=0;i<origEls.length&&i<cloneEls.length;i++){
     var cs=window.getComputedStyle(origEls[i]);
-    var fill=cs.fill,stroke=cs.stroke,sw=cs.strokeWidth,op=cs.opacity;
-    if(fill&&fill!=="none")cloneEls[i].setAttribute("fill",fill);
-    if(stroke&&stroke!=="none")cloneEls[i].setAttribute("stroke",stroke);
-    if(sw)cloneEls[i].setAttribute("stroke-width",sw);
-    if(op&&op!=="1")cloneEls[i].setAttribute("opacity",op);
+    if(cs.fill&&cs.fill!=="none")cloneEls[i].setAttribute("fill",cs.fill);
+    if(cs.stroke&&cs.stroke!=="none")cloneEls[i].setAttribute("stroke",cs.stroke);
+    if(cs.strokeWidth)cloneEls[i].setAttribute("stroke-width",cs.strokeWidth);
+    if(cs.opacity&&cs.opacity!=="1")cloneEls[i].setAttribute("opacity",cs.opacity);
    }
-   // Fons blanc + títol sobre el mapa
-   var vb=clone.getAttribute("viewBox");
    var w=svg.viewBox&&svg.viewBox.baseVal&&svg.viewBox.baseVal.width?svg.viewBox.baseVal.width:(svg.clientWidth||900);
    var h=svg.viewBox&&svg.viewBox.baseVal&&svg.viewBox.baseVal.height?svg.viewBox.baseVal.height:(svg.clientHeight||700);
+   var lines=[tableTitle,metricTitle,periodTitle].filter(Boolean);
+   var lineH=18,titleH=16+lines.length*lineH+8;
    var gWrap=document.createElementNS("http://www.w3.org/2000/svg","g");
-   // reparent existing children into group shifted down
-   var titleH=36;
    while(clone.firstChild)gWrap.appendChild(clone.firstChild);
    gWrap.setAttribute("transform","translate(0,"+titleH+")");
    var bg=document.createElementNS("http://www.w3.org/2000/svg","rect");
    bg.setAttribute("x","0");bg.setAttribute("y","0");
-   bg.setAttribute("width",String(w));bg.setAttribute("height",String(h+titleH));
+   bg.setAttribute("width",String(Math.max(w,920)));bg.setAttribute("height",String(h+titleH));
    bg.setAttribute("fill","#ffffff");
-   var text=document.createElementNS("http://www.w3.org/2000/svg","text");
-   text.setAttribute("x","12");text.setAttribute("y","22");
-   text.setAttribute("fill","#0f172a");text.setAttribute("font-size","14");
-   text.setAttribute("font-family","sans-serif");text.setAttribute("font-weight","600");
-   text.textContent=fullTitle;
-   clone.insertBefore(bg,null);
-   clone.appendChild(text);
+   clone.appendChild(bg);
+   lines.forEach(function(line,li){
+    var text=document.createElementNS("http://www.w3.org/2000/svg","text");
+    text.setAttribute("x","12");
+    text.setAttribute("y",String(20+li*lineH));
+    text.setAttribute("fill","#0f172a");
+    text.setAttribute("font-size",li===0?"14":"12");
+    text.setAttribute("font-family","sans-serif");
+    text.setAttribute("font-weight",li===0?"600":"400");
+    // evitar tall: fins a ~110 caràcters per línia visual
+    text.textContent=line.length>110?line.slice(0,107)+"...":line;
+    clone.appendChild(text);
+   });
    clone.appendChild(gWrap);
-   clone.setAttribute("viewBox","0 0 "+w+" "+(h+titleH));
+   var outW=Math.max(w,920);
+   clone.setAttribute("viewBox","0 0 "+outW+" "+(h+titleH));
+   clone.setAttribute("width",String(outW));
    clone.setAttribute("height",String(h+titleH));
    var ser=new XMLSerializer().serializeToString(clone);
-   if(!ser.startsWith("<?xml"))ser='<?xml version="1.0" encoding="UTF-8"?>\n'+ser;
+   if(ser.indexOf("<?xml")!==0)ser='<?xml version="1.0" encoding="UTF-8"?>\n'+ser;
    var blob=new Blob([ser],{type:"image/svg+xml;charset=utf-8"});
    var url=URL.createObjectURL(blob);
-   var a=document.createElement("a");
-   a.href=url;a.download="mapa-comarques.svg";a.click();
+   var a=document.createElement("a");a.href=url;a.download="mapa-comarques.svg";a.click();
    setTimeout(function(){URL.revokeObjectURL(url)},2000);
    return;
   }
-  // ranking: canvas amb títol de taula
   var rows=root.querySelectorAll(".viz-rank-row");
   if(!rows.length){alert("No hi ha res a exportar.");return}
-  var w=960,rowH=22,headerH=70,h=headerH+rows.length*rowH+20;
+  // Un sol bloc de títol (sense duplicar el del DOM)
+  var w=960,rowH=22,headerH=24+([tableTitle,metricTitle,periodTitle].filter(Boolean).length)*18+16;
+  var h=headerH+rows.length*rowH+16;
   var c=document.createElement("canvas");c.width=w;c.height=h;
   var ctx=c.getContext("2d");
   ctx.fillStyle="#fff";ctx.fillRect(0,0,w,h);
-  ctx.fillStyle="#0f172a";
-  ctx.font="600 15px sans-serif";
-  ctx.fillText(tableTitle,16,24);
-  ctx.font="13px sans-serif";
-  var sub=(root.querySelector(".viz-rank-title")||{}).textContent||metricTitle;
-  ctx.fillStyle="#334155";
-  ctx.fillText(sub,16,46);
+  var y=22;
+  [[tableTitle,"600 14px sans-serif","#0f172a"],[metricTitle,"12px sans-serif","#334155"],[periodTitle,"12px sans-serif","#64748b"]].forEach(function(row){
+   if(!row[0])return;
+   ctx.font=row[1];ctx.fillStyle=row[2];
+   ctx.fillText(row[0],16,y);y+=18;
+  });
+  y=headerH;
   ctx.font="12px sans-serif";
-  rows.forEach(function(row,i){
+  rows.forEach(function(row){
    var lab=(row.querySelector(".viz-rank-lab")||{}).textContent||"";
    var val=(row.querySelector(".viz-rank-val")||{}).textContent||"";
    var bar=row.querySelector(".viz-rank-bar");
    var pct=bar&&bar.style.width?parseFloat(bar.style.width):0;
-   var y=headerH+i*rowH;
-   ctx.fillStyle=row.classList.contains("viz-rank-ref")?"#b45309":"#0f172a";
-   ctx.textAlign="left";
-   ctx.fillText(lab.trim().slice(0,32),16,y);
-   ctx.fillStyle="#e2e8f0";ctx.fillRect(240,y-10,520,12);
-   var barCol=bar&&bar.style.background?bar.style.background:"#2b527b";
-   ctx.fillStyle=barCol;ctx.fillRect(240,y-10,520*(pct/100),12);
+   ctx.fillStyle=row.classList.contains("viz-rank-ref")?"#0f172a":"#0f172a";
+   ctx.textAlign="left";ctx.fillText(lab.trim().slice(0,34),16,y);
+   ctx.fillStyle="#e2e8f0";ctx.fillRect(250,y-10,520,12);
+   ctx.fillStyle=(bar&&bar.style.background)||"#2b527b";
+   ctx.fillRect(250,y-10,520*(pct/100),12);
    ctx.fillStyle="#0f172a";ctx.textAlign="right";ctx.fillText(val,920,y);ctx.textAlign="left";
+   y+=rowH;
   });
   c.toBlob(function(blob){
    if(!blob)return;
@@ -6456,9 +6541,9 @@ async function renderVizPanel(){
    var a=document.createElement("a");a.href=url;a.download="ranking.png";a.click();
    setTimeout(function(){URL.revokeObjectURL(url)},2000);
   });
-}
+ }
 
-function drawRankHtml(rows,title,palette){
+ function drawRankHtml(rows,title,palette){
   var el=document.getElementById("vizChart");
   if(!el)throw new Error("Contenidor #vizChart introbable");
   var max=0;
@@ -6469,14 +6554,14 @@ function drawRankHtml(rows,title,palette){
   h+='<div class="viz-rank-list">';
   rows.forEach(function(r,i){
    var pct=100*r.val/max;
-   var col=r.isRef?"#b45309":paletteFill(palette,pct/100);
+   var col=r.isRef?refBarColor(palette):paletteFill(palette,pct/100);
    h+='<div class="viz-rank-row'+(r.isRef?" viz-rank-ref":"")+'">';
    h+='<div class="viz-rank-lab"><span class="viz-rank-pos">'+(i+1)+'.</span> '+esc(r.label||r.id)+'</div>';
    h+='<div class="viz-rank-barwrap"><div class="viz-rank-bar" style="width:'+pct.toFixed(1)+'%;background:'+col+'"></div></div>';
-   h+='<div class="viz-rank-val">'+Number(r.val).toLocaleString("ca-ES",{maximumFractionDigits:1,minimumFractionDigits:1})+(built.denCode?"%":"")+'</div>';
+   h+='<div class="viz-rank-val">'+Number(r.val).toLocaleString("ca-ES",{maximumFractionDigits:1,minimumFractionDigits:1})+(built.useDen?"%":"")+'</div>';
    h+='</div>';
   });
-  h+='</div><div class="viz-rank-foot">Prototip · Catalunya marcada com a referència</div>';
+  h+='</div><div class="viz-rank-foot">Catalunya com a referència (barra de contrast)</div>';
   el.innerHTML=h;
  }
 
@@ -6484,39 +6569,36 @@ function drawRankHtml(rows,title,palette){
   var ctrl=readControls();
   state.viz.type=ctrl.type;
   state.viz.periodCode=ctrl.periodCode;
-  state.viz.numCode=ctrl.numCode;
-  state.viz.denCode=ctrl.denCode;
   state.viz.palette=ctrl.palette;
+  state.viz.useDen=ctrl.useDen;
+  state.viz.numFilters=ctrl.numFilters;
+  state.viz.denFilters=ctrl.denFilters;
+  var denRows=$("vizDenRows");
+  if(denRows){denRows.style.opacity=ctrl.useDen?"1":"0.45";denRows.style.pointerEvents=ctrl.useDen?"auto":"none"}
+
   built=vizBuildComarcaShare(state.lastData,{
    periodCode:ctrl.periodCode,
-   numCode:ctrl.numCode,
-   denCode:ctrl.denCode
+   numFilters:ctrl.numFilters,
+   denFilters:ctrl.useDen?ctrl.denFilters:null,
+   useDen:ctrl.useDen
   });
-  if(built.error){
-   if(status)status.textContent=built.error;
-   return;
-  }
+  if(built.error){if(status)status.textContent=built.error;return}
   if(built.needsMetric){
-   if(status)status.textContent="Tria un numerador (i, si cal, un denominador) per construir la mètrica.";
-   var ch0=$("vizChart");
-   if(ch0)ch0.innerHTML="";
+   if(status)status.textContent=built.needDen
+    ?"Completa les categories del denominador (o desactiva'l)."
+    :"Tria les categories del numerador"+((built.metricDims&&built.metricDims.length>1)?" (totes les variables)":"")+".";
+   var ch0=$("vizChart");if(ch0)ch0.innerHTML="";
    return;
   }
-  // contenidor net
   var chart=$("vizChart");
-  if(!chart){
-   chart=document.createElement("div");
-   chart.id="vizChart";
-   panel.appendChild(chart);
-  }
+  if(!chart){chart=document.createElement("div");chart.id="vizChart";panel.appendChild(chart)}
   var fresh=document.createElement("div");
-  fresh.id="vizChart";
-  fresh.className="visual";
-  fresh.style.minHeight="520px";
-  fresh.style.width="100%";
+  fresh.id="vizChart";fresh.className="visual";
+  fresh.style.minHeight="520px";fresh.style.width="100%";
   if(chart.parentNode)chart.parentNode.replaceChild(fresh,chart);
 
-  var unitSuffix=built.denCode?"%":"";
+  state.viz._lastMetricTitle=built.metricTitle;
+  state.viz._lastPeriodLabel=built.periodLabel;
   if(status){
    status.textContent=built.metricTitle+" · "+built.periodLabel+" · "+built.n+" comarques"+
     (built.skipped?" · "+built.skipped+" sense dades":"")+
@@ -6524,17 +6606,14 @@ function drawRankHtml(rows,title,palette){
   }
 
   if(ctrl.type==="rank"){
-   drawRankHtml(built.rankData,vizTableTitle()+" · "+built.metricTitle+" · "+built.periodLabel,ctrl.palette);
+   // títol de ranking: mètrica + període (el títol de taula va a l'exportació)
+   drawRankHtml(built.rankData,built.metricTitle+" · "+built.periodLabel,ctrl.palette);
    return;
   }
 
-  // Mapa Visual
   var year=vizPeriodYear(built.periodLabel,built.periodCode);
   var mapBy=vizResolveMapBy(year);
-  if(!mapBy){
-   if(status)status.textContent="Error: mapa de comarques no disponible per a l'any "+(year!=null?year:"?")+".";
-   return;
-  }
+  if(!mapBy){if(status)status.textContent="Error: mapa no disponible per a l'any "+(year!=null?year:"?")+".";return}
   try{
    var mapFile=VISUAL_MAP_FILES[mapBy]||VISUAL_MAP_FILES.com;
    if(VisualJS.setup&&VisualJS.setup.map){
@@ -6556,18 +6635,14 @@ function drawRankHtml(rows,title,palette){
   }catch(e){}
 
   var payload={
-   id:"vizChart",
-   lang:"ca",
+   id:"vizChart",lang:"ca",
    title:built.metricTitle,
    geo:"Catalunya",
    time:String(built.periodLabel||""),
-   footer:["Prototip · consulta actual","Idescat Visual"],
-   dec:built.denCode?1:0,
-   unit:{symbol:unitSuffix,position:"end"},
-   legend:true,
-   type:"cmap",
-   by:mapBy,
-   fixed:[920,720],
+   footer:[vizTableTitle(),"Idescat Visual"],
+   dec:built.useDen?1:0,
+   unit:{symbol:built.useDen?"%":"",position:"end"},
+   legend:true,type:"cmap",by:mapBy,fixed:[920,720],
    data:built.mapData.map(function(d){return{id:d.id,val:d.val}})
   };
   try{
@@ -6582,13 +6657,17 @@ function drawRankHtml(rows,title,palette){
   }
  }
 
- // bind controls
- ["vizType","vizPeriod","vizNum","vizDen","vizPalette"].forEach(function(id){
-  var el=$(id);
-  if(el)el.onchange=function(){redraw()};
- });
- var exp=$("vizExport");
- if(exp)exp.onclick=function(){exportChartImage()};
+ function bindControls(){
+  ["vizType","vizPeriod","vizPalette","vizUseDen"].forEach(function(id){
+   var el=$(id);if(el)el.onchange=function(){redraw()};
+  });
+  (built.metricDims||[]).forEach(function(d){
+   var n=$("vizNum_"+d.id),dn=$("vizDen_"+d.id);
+   if(n)n.onchange=function(){redraw()};
+   if(dn)dn.onchange=function(){redraw()};
+  });
+  var exp=$("vizExport");if(exp)exp.onclick=function(){exportChartImage()};
+ }
 
  try{
   var yPref=vizPeriodYear(built.periodLabel,built.periodCode);
@@ -6597,6 +6676,7 @@ function drawRankHtml(rows,title,palette){
   if(status)status.textContent="No s'ha pogut carregar Visual (Idescat): "+(e&&e.message?e.message:e);
   return;
  }
+ bindControls();
  redraw();
 }
 
