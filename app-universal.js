@@ -5828,6 +5828,13 @@ function setResultTab(which){
  if(which==="viz")renderVizPanel();
 }
 
+function vizTableTitle(){
+ var ds=state.lastData||state.metadata;
+ if(ds&&ds.label)return String(ds.label);
+ if(state.selected&&state.selected.table)return String(state.selected.table);
+ return "Consulta";
+}
+
 function vizNorm(s){
  return String(s==null?"":s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
 }
@@ -6005,18 +6012,28 @@ function vizBuildComarcaShare(ds,opts){
 
  var cats=vizCats(metricDim);
  var numCode=opts.numCode!=null&&opts.numCode!==""?String(opts.numCode):null;
- var denCode=opts.denCode!=null&&opts.denCode!==""?String(opts.denCode):null;
- // defaults: Homes / Total si existeixen
+ var denCode=(opts.denCode!=null&&opts.denCode!=="")?String(opts.denCode):null;
+ // Sense mètrica per defecte: l'usuari tria numerador (denominador opcional)
  if(!numCode){
-  numCode=vizFindSexCode(metricDim,"M")||(cats[0]?String(cats[0].code):null);
+  return {
+   needsMetric:true,
+   periodLabel:periodLabel,
+   periodCode:periodCode,
+   periods:periods,
+   metricDim:metricDim,
+   metricCats:cats,
+   numCode:null,
+   denCode:null,
+   metricTitle:"",
+   mapData:[],
+   rankData:[],
+   data:[],
+   geoDim:det.geoDim,
+   timeDim:det.timeDim,
+   skipped:0,
+   n:0
+  };
  }
- if(opts.denCode===undefined){
-  // primer cop: prova Total
-  denCode=vizFindSexCode(metricDim,"T");
- }else if(opts.denCode===""){
-  denCode=null; // explícitament sense denominador
- }
- if(!numCode)return {error:"Cal triar una categoria de numerador."};
 
  var numLab=(cats.find(function(c){return String(c.code)===String(numCode)})||{}).label||numCode;
  var denLab=denCode?(cats.find(function(c){return String(c.code)===String(denCode)})||{}).label||denCode:null;
@@ -6288,9 +6305,9 @@ async function renderVizPanel(){
   if(controls)controls.innerHTML="";
   return;
  }
- // persist defaults discovered
+ // persist selecció (sense forçar mètrica)
  state.viz.periodCode=built.periodCode;
- state.viz.numCode=built.numCode;
+ state.viz.numCode=built.numCode||"";
  state.viz.denCode=built.denCode==null?"":built.denCode;
 
  if(controls){
@@ -6302,12 +6319,12 @@ async function renderVizPanel(){
   }).join("");
   var numOpts=catOpts.replace('value="'+esc(String(built.numCode))+'"','value="'+esc(String(built.numCode))+'" selected');
   // rebuild properly
-  numOpts=(built.metricCats||[]).map(function(c){
-   var sel=String(c.code)===String(built.numCode)?' selected':'';
+  numOpts='<option value="">(tria numerador)</option>'+(built.metricCats||[]).map(function(c){
+   var sel=built.numCode&&String(c.code)===String(built.numCode)?' selected':'';
    return '<option value="'+esc(String(c.code))+'"'+sel+'>'+esc(String(c.label||c.code))+'</option>';
   }).join("");
   var denOpts='<option value="">(cap — valor absolut)</option>'+(built.metricCats||[]).map(function(c){
-   var sel=built.denCode!=null&&String(c.code)===String(built.denCode)?' selected':'';
+   var sel=built.denCode!=null&&built.denCode!==""&&String(c.code)===String(built.denCode)?' selected':'';
    return '<option value="'+esc(String(c.code))+'"'+sel+'>'+esc(String(c.label||c.code))+'</option>';
   }).join("");
   var type=state.viz.type||"cmap";
@@ -6351,9 +6368,52 @@ async function renderVizPanel(){
  function exportChartImage(){
   var root=$("vizChart");
   if(!root)return;
+  var tableTitle=vizTableTitle();
+  var metricTitle=(state.viz&&state.viz._lastMetricTitle)||"";
+  var periodTitle=(state.viz&&state.viz._lastPeriodLabel)||"";
+  var fullTitle=[tableTitle,metricTitle,periodTitle].filter(Boolean).join(" · ");
+
   var svg=root.querySelector("svg");
   if(svg){
-   var ser=new XMLSerializer().serializeToString(svg);
+   // Clona i inline styles (Visual usa classes CSS; sense això l'SVG surt negre)
+   var clone=svg.cloneNode(true);
+   clone.setAttribute("xmlns","http://www.w3.org/2000/svg");
+   if(!clone.getAttribute("xmlns:xlink"))clone.setAttribute("xmlns:xlink","http://www.w3.org/1999/xlink");
+   var origEls=svg.querySelectorAll("*");
+   var cloneEls=clone.querySelectorAll("*");
+   for(var i=0;i<origEls.length&&i<cloneEls.length;i++){
+    var cs=window.getComputedStyle(origEls[i]);
+    var fill=cs.fill,stroke=cs.stroke,sw=cs.strokeWidth,op=cs.opacity;
+    if(fill&&fill!=="none")cloneEls[i].setAttribute("fill",fill);
+    if(stroke&&stroke!=="none")cloneEls[i].setAttribute("stroke",stroke);
+    if(sw)cloneEls[i].setAttribute("stroke-width",sw);
+    if(op&&op!=="1")cloneEls[i].setAttribute("opacity",op);
+   }
+   // Fons blanc + títol sobre el mapa
+   var vb=clone.getAttribute("viewBox");
+   var w=svg.viewBox&&svg.viewBox.baseVal&&svg.viewBox.baseVal.width?svg.viewBox.baseVal.width:(svg.clientWidth||900);
+   var h=svg.viewBox&&svg.viewBox.baseVal&&svg.viewBox.baseVal.height?svg.viewBox.baseVal.height:(svg.clientHeight||700);
+   var gWrap=document.createElementNS("http://www.w3.org/2000/svg","g");
+   // reparent existing children into group shifted down
+   var titleH=36;
+   while(clone.firstChild)gWrap.appendChild(clone.firstChild);
+   gWrap.setAttribute("transform","translate(0,"+titleH+")");
+   var bg=document.createElementNS("http://www.w3.org/2000/svg","rect");
+   bg.setAttribute("x","0");bg.setAttribute("y","0");
+   bg.setAttribute("width",String(w));bg.setAttribute("height",String(h+titleH));
+   bg.setAttribute("fill","#ffffff");
+   var text=document.createElementNS("http://www.w3.org/2000/svg","text");
+   text.setAttribute("x","12");text.setAttribute("y","22");
+   text.setAttribute("fill","#0f172a");text.setAttribute("font-size","14");
+   text.setAttribute("font-family","sans-serif");text.setAttribute("font-weight","600");
+   text.textContent=fullTitle;
+   clone.insertBefore(bg,null);
+   clone.appendChild(text);
+   clone.appendChild(gWrap);
+   clone.setAttribute("viewBox","0 0 "+w+" "+(h+titleH));
+   clone.setAttribute("height",String(h+titleH));
+   var ser=new XMLSerializer().serializeToString(clone);
+   if(!ser.startsWith("<?xml"))ser='<?xml version="1.0" encoding="UTF-8"?>\n'+ser;
    var blob=new Blob([ser],{type:"image/svg+xml;charset=utf-8"});
    var url=URL.createObjectURL(blob);
    var a=document.createElement("a");
@@ -6361,27 +6421,34 @@ async function renderVizPanel(){
    setTimeout(function(){URL.revokeObjectURL(url)},2000);
    return;
   }
-  // ranking: dibuixa a canvas
+  // ranking: canvas amb títol de taula
   var rows=root.querySelectorAll(".viz-rank-row");
   if(!rows.length){alert("No hi ha res a exportar.");return}
-  var w=900,rowH=22,h=60+rows.length*rowH;
+  var w=960,rowH=22,headerH=70,h=headerH+rows.length*rowH+20;
   var c=document.createElement("canvas");c.width=w;c.height=h;
   var ctx=c.getContext("2d");
   ctx.fillStyle="#fff";ctx.fillRect(0,0,w,h);
-  ctx.fillStyle="#0f172a";ctx.font="600 16px sans-serif";
-  var title=(root.querySelector(".viz-rank-title")||{}).textContent||"Ranking";
-  ctx.fillText(title,16,28);
+  ctx.fillStyle="#0f172a";
+  ctx.font="600 15px sans-serif";
+  ctx.fillText(tableTitle,16,24);
+  ctx.font="13px sans-serif";
+  var sub=(root.querySelector(".viz-rank-title")||{}).textContent||metricTitle;
+  ctx.fillStyle="#334155";
+  ctx.fillText(sub,16,46);
   ctx.font="12px sans-serif";
   rows.forEach(function(row,i){
    var lab=(row.querySelector(".viz-rank-lab")||{}).textContent||"";
    var val=(row.querySelector(".viz-rank-val")||{}).textContent||"";
    var bar=row.querySelector(".viz-rank-bar");
    var pct=bar&&bar.style.width?parseFloat(bar.style.width):0;
-   var y=50+i*rowH;
-   ctx.fillStyle="#0f172a";ctx.fillText(lab.trim().slice(0,28),16,y);
-   ctx.fillStyle="#e2e8f0";ctx.fillRect(220,y-10,500,12);
-   ctx.fillStyle="#2b527b";ctx.fillRect(220,y-10,500*(pct/100),12);
-   ctx.fillStyle="#0f172a";ctx.textAlign="right";ctx.fillText(val,860,y);ctx.textAlign="left";
+   var y=headerH+i*rowH;
+   ctx.fillStyle=row.classList.contains("viz-rank-ref")?"#b45309":"#0f172a";
+   ctx.textAlign="left";
+   ctx.fillText(lab.trim().slice(0,32),16,y);
+   ctx.fillStyle="#e2e8f0";ctx.fillRect(240,y-10,520,12);
+   var barCol=bar&&bar.style.background?bar.style.background:"#2b527b";
+   ctx.fillStyle=barCol;ctx.fillRect(240,y-10,520*(pct/100),12);
+   ctx.fillStyle="#0f172a";ctx.textAlign="right";ctx.fillText(val,920,y);ctx.textAlign="left";
   });
   c.toBlob(function(blob){
    if(!blob)return;
@@ -6389,9 +6456,9 @@ async function renderVizPanel(){
    var a=document.createElement("a");a.href=url;a.download="ranking.png";a.click();
    setTimeout(function(){URL.revokeObjectURL(url)},2000);
   });
- }
+}
 
- function drawRankHtml(rows,title,palette){
+function drawRankHtml(rows,title,palette){
   var el=document.getElementById("vizChart");
   if(!el)throw new Error("Contenidor #vizChart introbable");
   var max=0;
@@ -6404,7 +6471,7 @@ async function renderVizPanel(){
    var pct=100*r.val/max;
    var col=r.isRef?"#b45309":paletteFill(palette,pct/100);
    h+='<div class="viz-rank-row'+(r.isRef?" viz-rank-ref":"")+'">';
-   h+='<div class="viz-rank-lab"><span class="viz-rank-pos">'+(i+1)+'.</span> '+esc(r.label||r.id)+(r.isRef?' <span class="viz-rank-tag">ref.</span>':'')+'</div>';
+   h+='<div class="viz-rank-lab"><span class="viz-rank-pos">'+(i+1)+'.</span> '+esc(r.label||r.id)+'</div>';
    h+='<div class="viz-rank-barwrap"><div class="viz-rank-bar" style="width:'+pct.toFixed(1)+'%;background:'+col+'"></div></div>';
    h+='<div class="viz-rank-val">'+Number(r.val).toLocaleString("ca-ES",{maximumFractionDigits:1,minimumFractionDigits:1})+(built.denCode?"%":"")+'</div>';
    h+='</div>';
@@ -6429,6 +6496,12 @@ async function renderVizPanel(){
    if(status)status.textContent=built.error;
    return;
   }
+  if(built.needsMetric){
+   if(status)status.textContent="Tria un numerador (i, si cal, un denominador) per construir la mètrica.";
+   var ch0=$("vizChart");
+   if(ch0)ch0.innerHTML="";
+   return;
+  }
   // contenidor net
   var chart=$("vizChart");
   if(!chart){
@@ -6451,7 +6524,7 @@ async function renderVizPanel(){
   }
 
   if(ctrl.type==="rank"){
-   drawRankHtml(built.rankData,built.metricTitle+" · "+built.periodLabel,ctrl.palette);
+   drawRankHtml(built.rankData,vizTableTitle()+" · "+built.metricTitle+" · "+built.periodLabel,ctrl.palette);
    return;
   }
 
