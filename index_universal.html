@@ -35,12 +35,12 @@
 .viz-rank-ref .viz-rank-bar{outline:2px solid #fbbf24;outline-offset:1px}
 
 .viz-bar{padding:.5rem .75rem 1rem}
-.viz-bar-chart{display:flex;align-items:flex-end;gap:6px;min-height:280px;overflow-x:auto;padding:0.5rem 0 0}
-.viz-bar-col{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:36px;flex:0 0 auto}
-.viz-bar-fillwrap{width:28px;height:220px;background:#e2e8f0;border-radius:4px 4px 0 0;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden}
+.viz-bar-chart{display:flex;align-items:flex-end;gap:8px;min-height:300px;overflow-x:auto;padding:0.5rem 0 0}
+.viz-bar-col{display:grid;grid-template-rows:1.25rem 220px 2.6rem;align-items:stretch;justify-items:center;min-width:44px;flex:0 0 auto}
+.viz-bar-fillwrap{width:28px;height:220px;background:#e2e8f0;border-radius:4px 4px 0 0;display:flex;flex-direction:column;justify-content:flex-end;align-self:end;overflow:hidden}
 .viz-bar-fill{width:100%;min-height:2px;border-radius:4px 4px 0 0;flex-shrink:0}
-.viz-bar-lab{font-size:.65rem;max-width:40px;text-align:center;margin-top:.25rem;line-height:1.1;color:#334155}
-.viz-bar-val{font-size:.65rem;color:#64748b;margin-bottom:.15rem}
+.viz-bar-lab{font-size:.65rem;width:44px;max-width:44px;text-align:center;line-height:1.15;color:#334155;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;align-self:start;margin-top:.2rem}
+.viz-bar-val{font-size:.65rem;color:#64748b;line-height:1.25rem;height:1.25rem;text-align:center;white-space:nowrap}
 .viz-line{width:100%;overflow:auto}
 #tabViz[hidden]{display:none!important}
 .viz-loading{padding:2rem;text-align:center;color:#64748b}

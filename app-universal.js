@@ -6699,40 +6699,51 @@ async function renderVizPanel(){
   var max=0;
   rows.forEach(function(r){if(r.val>max)max=r.val});
   if(!(max>0))max=1;
+  // Ranking (i %): escala fixa 0–100. Valors absoluts al gràfic de barres: 0–max.
+  var isPct=!!(built.useDen||built.isPercent);
+  var scaleMax=isPct?100:max;
+  if(mode==="rank")scaleMax=100;
+  if(scaleMax<=0)scaleMax=1;
+
   if(mode==="bar"){
    var h='<div class="viz-bar">';
    h+='<div class="viz-rank-title">'+esc(title)+'</div>';
    h+='<div class="viz-bar-chart">';
    rows.forEach(function(r){
-    var pct=100*r.val/max;
-    var col=r.isRef?refBarColor(palette):paletteFill(palette,pct/100);
-    h+='<div class="viz-bar-col'+(r.isRef?" viz-rank-ref":"")+'" title="'+esc(r.label||r.id)+': '+Number(r.val).toLocaleString("ca-ES",{maximumFractionDigits:1})+(built.useDen?"%":"")+'">';
-    h+='<div class="viz-bar-val">'+Number(r.val).toLocaleString("ca-ES",{maximumFractionDigits:1})+((built.useDen||built.isPercent)?"%":"")+'</div>';
-    var px=Math.max(2,Math.round(220*r.val/max));
+    var ratio=Math.max(0,Math.min(1,r.val/scaleMax));
+    var px=Math.max(2,Math.round(220*ratio));
+    var col=r.isRef?refBarColor(palette):paletteFill(palette,ratio);
+    var unit=isPct?"%":"";
+    var lab=String(r.label||r.id||"");
+    if(lab.length>14)lab=lab.slice(0,13)+"…";
+    h+='<div class="viz-bar-col'+(r.isRef?" viz-rank-ref":"")+'" title="'+esc(String(r.label||r.id))+': '+Number(r.val).toLocaleString("ca-ES",{maximumFractionDigits:1})+unit+'">';
+    h+='<div class="viz-bar-val">'+Number(r.val).toLocaleString("ca-ES",{maximumFractionDigits:1})+unit+'</div>';
     h+='<div class="viz-bar-fillwrap"><div class="viz-bar-fill" style="height:'+px+'px;background:'+col+'"></div></div>';
-    h+='<div class="viz-bar-lab">'+esc((r.label||r.id).length>12?(r.label||r.id).slice(0,11)+"…":(r.label||r.id))+'</div>';
+    h+='<div class="viz-bar-lab">'+esc(lab)+'</div>';
     h+='</div>';
    });
-   h+='</div><div class="viz-rank-foot">Catalunya com a referència (contrast)</div></div>';
+   h+='</div><div class="viz-rank-foot">Catalunya com a referència (contrast) · escala 0–'+scaleMax.toLocaleString("ca-ES")+(isPct?"%":"")+'</div></div>';
    el.innerHTML=h;
    return;
   }
+
   var h='<div class="viz-rank">';
   h+='<div class="viz-rank-title">'+esc(title)+'</div>';
   h+='<div class="viz-rank-list">';
   rows.forEach(function(r,i){
-   var pct=100*r.val/max;
-   var col=r.isRef?refBarColor(palette):paletteFill(palette,pct/100);
+   var ratio=Math.max(0,Math.min(1,Number(r.val)/scaleMax));
+   var pct=100*ratio;
+   var col=r.isRef?refBarColor(palette):paletteFill(palette,ratio);
    h+='<div class="viz-rank-row'+(r.isRef?" viz-rank-ref":"")+'">';
    h+='<div class="viz-rank-lab"><span class="viz-rank-pos">'+(i+1)+'.</span> '+esc(r.label||r.id)+'</div>';
    h+='<div class="viz-rank-barwrap"><div class="viz-rank-bar" style="width:'+pct.toFixed(1)+'%;background:'+col+'"></div></div>';
-   h+='<div class="viz-rank-val">'+Number(r.val).toLocaleString("ca-ES",{maximumFractionDigits:1,minimumFractionDigits:1})+((built.useDen||built.isPercent)?"%":"")+'</div>';
+   h+='<div class="viz-rank-val">'+Number(r.val).toLocaleString("ca-ES",{maximumFractionDigits:1,minimumFractionDigits:1})+(isPct?"%":"")+'</div>';
    h+='</div>';
   });
-  h+='</div><div class="viz-rank-foot">Catalunya com a referència (barra de contrast)</div>';
+  h+='</div><div class="viz-rank-foot">Catalunya com a referència (barra de contrast) · escala 0–100</div>';
   el.innerHTML=h;
  }
- function drawLineHtml(builtObj,palette){
+function drawLineHtml(builtObj,palette){
   var el=document.getElementById("vizChart");
   if(!el)return;
   var periods=builtObj.periods||[];
