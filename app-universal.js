@@ -1671,7 +1671,8 @@ function bind(){
   $("stat").onchange=async function(){clearQueryView();await onStatChange();updateUrl()};
  $("concept").onchange=async function(){clearQueryView();if(state.provider==="ine")return;if(state.provider==="pxweb"&&state.pxPreset!=="eustat")await pxSelect("concept");else if(state.provider==="eurostat")await eurostatSelectLevel("concept");else if(state.provider==="pxweb"&&state.pxPreset==="eustat"){state.selected.concept=$("concept").value;state.selected.cross="";state.selected.node="";state.selected.table="";resetSelect("cross");resetSelect("node");resetSelect("table");resetSelect("geo");var et=await eustatLoadOperationTables(state.selected.concept);if(et.length===1){$("cross").value=et[0].id;await $("cross").onchange()}}else{state.selected.concept=$("concept").value;state.selected.cross="";state.selected.node="";state.selected.table="";state.selected.geo="";["cross","node","table","geo"].forEach(resetSelect);state.metadata=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;var c=state.selected.concept,rows=(state.catalog||[]).filter(function(r){return r.concept===c}),x=[...new Set(rows.map(function(r){return r.cross}).filter(Boolean))];fill($("cross"),x.map(function(v){return{value:v,label:v}}));updateIdescatLevelVisibility();$("cross").disabled=!x.length;if(x.length===1){$("cross").value=x[0];await $("cross").onchange()}else if(x.length===0){var ids=[...new Set(rows.map(function(r){return String(r.node)}).filter(Boolean))];fill($("node"),ids.map(function(id){var q=rows.find(function(r){return String(r.node)===id});updateIdescatLevelVisibility();return{value:id,label:id+" · "+q.name}}));$("node").disabled=!ids.length;if(ids.length===1){$("node").value=ids[0];await onNodeChange()}}}};
  $("cross").onchange=async function(){clearQueryView();if(state.provider==="pxweb"&&state.pxPreset!=="eustat")await pxSelect("cross");else if(state.provider==="eurostat")await eurostatSelectLevel("cross");else if(state.provider==="pxweb"&&state.pxPreset==="eustat"){var et=(state.eustatTables||[]).find(function(r){return r.id===$("cross").value});if(et){state.selected.cross=et.id;state.selected.node=et.id;state.selected.table=et.id;if(et.type==="px"){await pxFlatSelectTable(et.id)}else{state.metadata=null;$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=false;$("cellInfo").hidden=true;$("tableInfo").innerHTML="<strong>Taula:</strong> "+esc(et.label)+"<span class=\"path\">"+esc(et.url)+"</span><p><a href=\""+esc(et.url)+"\" target=\"_blank\" rel=\"noopener\">Obre/descarrega la taula</a></p>"}}}else{var c=$("concept").value,x=$("cross").value;state.selected.cross=x;state.selected.node="";state.selected.table="";state.selected.geo="";resetSelect("node");resetSelect("table");resetSelect("geo");state.metadata=null;state.filters.clear();$("filters").innerHTML="";$("results").innerHTML='<div class="empty">Selecciona una taula i fes la consulta.</div>';$("query").disabled=true;$("exportCsv").disabled=true;$("exportXlsx").disabled=true;$("addToCart").disabled=true;$("tableInfo").hidden=true;$("cellInfo").hidden=true;var r=(state.catalog||[]).filter(function(v){return v.concept===c&&v.cross===x}),ids=[...new Set(r.map(function(v){return v.node}))];fill($("node"),ids.map(function(id){var q=r.find(function(v){return v.node===id});updateIdescatLevelVisibility();return{value:id,label:id+" · "+q.name}}));$("node").disabled=!ids.length;if(ids.length===1){$("node").value=ids[0];await onNodeChange()}}};
- $("node").onchange=async function(){clearQueryView();if(state.provider==="ine")return;if(state.provider==="eurostat")await eurostatSelectLevel("node");else await onNodeChange()};$("table").onchange=onTableChange;$("geo").onchange=onGeoChange;$("tabData").onclick=function(){setResultTab("data")};$("tabPivot").onclick=function(){setResultTab("pivot")};if($("tabViz"))$("tabViz").onclick=function(){setResultTab("viz")};$("results").addEventListener("click",function(e){var b=e.target.closest("button[data-page]");if(b&&!b.disabled)setResultPage(Number(b.dataset.page))});$("results").addEventListener("change",function(e){if(e.target.matches("select[data-page-select]"))setResultPage(Number(e.target.value));if(e.target.matches("select[data-page-size]"))setResultPageSize(Number(e.target.value))});$("temporalOrder").onchange=function(){setTemporalOrder(this.value)};$("query").onclick=runQuery;$("exportCsv").onclick=exportCSV;$("exportXlsx").onclick=exportXLSX;$("addToCart").onclick=addCart;$("cartExport").onclick=exportCart;$("cartClear").onclick=function(){state.cart=[];renderCart()};$("cartToggle").onclick=function(){var p=$("cartPanel");p.hidden=false;$("cartToggle").setAttribute("aria-expanded","true");p.scrollIntoView({behavior:"smooth",block:"start"})};$("clear").onclick=function(){if(state.metadata)renderMetadata(state.metadata)}
+ $("node").onchange=async function(){clearQueryView();if(state.provider==="ine")return;if(state.provider==="eurostat")await eurostatSelectLevel("node");else await onNodeChange()};$("table").onchange=onTableChange;$("geo").onchange=onGeoChange;$("tabData").onclick=function(){setResultTab("data")};$("tabPivot").onclick=function(){setResultTab("pivot")};if($("tabViz"))$("tabViz").onclick=function(){setResultTab("viz")};
+ try{updateVizTabVisibility()}catch(e){}$("results").addEventListener("click",function(e){var b=e.target.closest("button[data-page]");if(b&&!b.disabled)setResultPage(Number(b.dataset.page))});$("results").addEventListener("change",function(e){if(e.target.matches("select[data-page-select]"))setResultPage(Number(e.target.value));if(e.target.matches("select[data-page-size]"))setResultPageSize(Number(e.target.value))});$("temporalOrder").onchange=function(){setTemporalOrder(this.value)};$("query").onclick=runQuery;$("exportCsv").onclick=exportCSV;$("exportXlsx").onclick=exportXLSX;$("addToCart").onclick=addCart;$("cartExport").onclick=exportCart;$("cartClear").onclick=function(){state.cart=[];renderCart()};$("cartToggle").onclick=function(){var p=$("cartPanel");p.hidden=false;$("cartToggle").setAttribute("aria-expanded","true");p.scrollIntoView({behavior:"smooth",block:"start"})};$("clear").onclick=function(){if(state.metadata)renderMetadata(state.metadata)}
 }
 function updateUrl(){var q=new URLSearchParams();q.set("provider",state.provider==="nomis"?"ons":state.provider);if(state.provider==="pxweb")q.set("px",state.pxPreset);if(state.selected.stat)q.set("stat",state.selected.stat);history.replaceState(null,"","?"+q.toString())}
 
@@ -5815,9 +5816,23 @@ async function csoQuery(filters){
 /* ===== app-boot.js ===== */
 /* Boot — carregar després de core + tots els providers */
 
+function updateVizTabVisibility(){
+ var vizB=$("tabViz"),viz=$("vizPanel");
+ var show=state.provider==="idescat";
+ if(vizB)vizB.hidden=!show;
+ if(!show){
+  if(viz)viz.hidden=true;
+  if(vizB&&vizB.classList.contains("active")){
+   if($("tabData"))$("tabData").classList.add("active");
+   if(vizB)vizB.classList.remove("active");
+   if($("results"))$("results").hidden=false;
+  }
+ }
+}
 function setResultTab(which){
  var dataB=$("tabData"),pivotB=$("tabPivot"),vizB=$("tabViz");
  var res=$("results"),piv=$("pivotBuilder"),viz=$("vizPanel");
+ if(which==="viz"&&state.provider!=="idescat")which="data";
  if(dataB)dataB.classList.toggle("active",which==="data");
  if(pivotB)pivotB.classList.toggle("active",which==="pivot");
  if(vizB)vizB.classList.toggle("active",which==="viz");
@@ -5869,7 +5884,8 @@ function vizDetectDims(ds){
   if(timeDim&&d.id===timeDim.id)return false;
   if(sexDim&&d.id===sexDim.id)return false;
   var id=vizNorm(d.id),lab=vizNorm(d.label);
-  if(/^(com|comarca|comarques)$/.test(id)||/comarca/.test(lab))return true;
+  if(/^(com|comarca|comarques|mun|municipi|municipio|prov|provincia|at|ambit)$/.test(id))return true;
+  if(/comarca|municip|provinc|ambit|pla territorial/.test(lab))return true;
   return false;
  });
  if(!geoDim){
@@ -5877,36 +5893,70 @@ function vizDetectDims(ds){
    if(timeDim&&d.id===timeDim.id)return false;
    if(sexDim&&d.id===sexDim.id)return false;
    var id=vizNorm(d.id),lab=vizNorm(d.label);
-   if(/^(geo|territori|territorio|area|ambit)$/.test(id))return true;
+   if(/^(geo|territori|territorio|area)$/.test(id))return true;
    var n=vizCats(d).length;
-   if(n>=40&&n<=55)return true;
+   if(n>=3&&n<=1200)return true;
    return false;
   })||null;
  }
  if(geoDim)geoDim=Object.assign({},geoDim,{categories:vizCats(geoDim)});
- return {dims:dd,rows:rows,timeDim:timeDim,sexDim:sexDim,geoDim:geoDim};
+ var geoLevel=vizGeoLevel(geoDim);
+ return {dims:dd,rows:rows,timeDim:timeDim,sexDim:sexDim,geoDim:geoDim,geoLevel:geoLevel};
 }
 
 function vizIsExcludedGeo(label,code){
  var s=vizNorm(label);
  var c=String(code==null?"":code).trim().toUpperCase();
- if(c==="TOTAL"||c==="CAT"||c==="09"&&/catalunya/.test(s))return true;
+ if(c==="TOTAL"||c==="CAT")return true;
  if(/catalunya|cataluna/.test(s))return true;
  if(/no resident/.test(s)||c==="99")return true;
  return false;
 }
 
-function vizComarcaId(code,label){
+/** Detecta nivell territorial de la dimensió geo. */
+function vizGeoLevel(geoDim){
+ if(!geoDim)return null;
+ var id=vizNorm(geoDim.id),lab=vizNorm(geoDim.label);
+ if(/^(mun|municipi|municipio)$/.test(id)||/municip/.test(lab))return "mun";
+ if(/^(prov|provincia|province)$/.test(id)||/provinc/.test(lab))return "prov";
+ if(/^(at|ambit|ambits)$/.test(id)||/ambit/.test(lab)||/pla territorial/.test(lab))return "at";
+ if(/^(com|comarca|comarques)$/.test(id)||/comarca/.test(lab))return "com";
+ var n=vizCats(geoDim).length;
+ if(n>=800)return "mun";
+ if(n>=40&&n<=55)return "com";
+ if(n>=3&&n<=8)return "prov";
+ if(n>=8&&n<=20)return "at";
+ return "com";
+}
+
+function vizGeoId(level,code,label){
  var c=String(code==null?"":code).trim();
- // "08", "8", "com:08", "codi_08"
- var m=c.match(/(?:^|[^\d])(\d{1,2})(?:[^\d]|$)/);
- if(m){
-  var n=Number(m[1]);
-  if(n>=1&&n<=49)return (n<10?"0":"")+String(n);
+ if(level==="mun"){
+  var digits=c.replace(/\D/g,"");
+  if(digits.length===5)return digits; // Idescat a vegades 5
+  if(digits.length===6)return digits;
+  return digits||null;
  }
- // provar label buit
+ if(level==="prov"){
+  var m=c.match(/(\d{1,2})/);
+  if(!m)return null;
+  var n=Number(m[1]);
+  if(n>=1&&n<=99)return (n<10?"0":"")+String(n);
+  return null;
+ }
+ if(level==="at"){
+  // codis d'àmbit: es conserven tal qual si són curts
+  return c||null;
+ }
+ // comarca
+ var m2=c.match(/(?:^|[^\d])(\d{1,2})(?:[^\d]|$)/);
+ if(m2){
+  var n2=Number(m2[1]);
+  if(n2>=1&&n2<=49)return (n2<10?"0":"")+String(n2);
+ }
  return null;
 }
+function vizComarcaId(code,label){return vizGeoId("com",code,label)}
 
 function vizFindSexCode(sexDim,kind){
  if(!sexDim)return null;
@@ -6019,7 +6069,8 @@ function vizMetricTitle(metricDims,numFilters,denFilters){
 function vizBuildComarcaShare(ds,opts){
  opts=opts||{};
  var det=vizDetectDims(ds);
- if(!det.geoDim)return {error:"No s'ha detectat una dimensió territorial (comarques) a la taula."};
+ if(!det.geoDim)return {error:"No s'ha detectat una dimensió territorial (municipi/comarca/àmbit/província) a la taula."};
+ var geoLevel=det.geoLevel||vizGeoLevel(det.geoDim)||"com";
  var metricDims=vizMetricDims(det);
  var fixedDims=vizFixedDims(det);
  if(!metricDims.length&&!fixedDims.length)return {error:"No s'han trobat dimensions de mètrica a la taula."};
@@ -6063,7 +6114,9 @@ function vizBuildComarcaShare(ds,opts){
    useDen:useDen,
    metricTitle:"",
    mapData:[],rankData:[],data:[],
-   geoDim:det.geoDim,timeDim:det.timeDim,skipped:0,n:0
+   geoDim:det.geoDim,geoLevel:geoLevel,
+   supportsMap:geoLevel==="com"||geoLevel==="mun"||geoLevel==="prov"||geoLevel==="at",
+   timeDim:det.timeDim,skipped:0,n:0
   };
  }
 
@@ -6081,7 +6134,9 @@ function vizBuildComarcaShare(ds,opts){
    useDen:true,
    metricTitle:"",
    mapData:[],rankData:[],data:[],
-   geoDim:det.geoDim,timeDim:det.timeDim,skipped:0,n:0
+   geoDim:det.geoDim,geoLevel:geoLevel,
+   supportsMap:geoLevel==="com"||geoLevel==="mun"||geoLevel==="prov"||geoLevel==="at",
+   timeDim:det.timeDim,skipped:0,n:0
   };
  }
 
@@ -6107,7 +6162,7 @@ function vizBuildComarcaShare(ds,opts){
   var isCat=/catalunya|cataluna/i.test(gLab)||String(gCode).toUpperCase()==="TOTAL"||String(gCode).toUpperCase()==="CAT";
   var isNoRes=/no resident/i.test(gLab)||String(gCode)==="99";
   if(isNoRes)return;
-  var cid=isCat?"TOTAL":vizComarcaId(gCode,gLab);
+  var cid=isCat?"TOTAL":vizGeoId(geoLevel,gCode,gLab);
   if(!cid)return;
   var val=r.value;
   if(val==null||val==="")return;
@@ -6135,9 +6190,10 @@ function vizBuildComarcaShare(ds,opts){
  });
  mapData.sort(function(a,b){return String(a.id).localeCompare(String(b.id),"ca",{numeric:true})});
  rankData.sort(function(a,b){return b.val-a.val});
- if(!mapData.length&&!rankData.length)return {error:"No s'han pogut calcular valors per comarca amb la mètrica i el període seleccionats."};
+ if(!mapData.length&&!rankData.length)return {error:"No s'han pogut calcular valors territorials amb la mètrica i el període seleccionats."};
 
  var metricTitle=vizMetricTitle(metricDims,numFilters,useDen?denFilters:null);
+ var supportsMap=geoLevel==="com"||geoLevel==="mun"||geoLevel==="prov"||geoLevel==="at";
  return {
   mapData:mapData,
   rankData:rankData,
@@ -6150,9 +6206,11 @@ function vizBuildComarcaShare(ds,opts){
   numFilters:numFilters,
   denFilters:useDen?denFilters:null,
   useDen:useDen,
-  denCode:useDen?"1":null, // compat unit %
+  denCode:useDen?"1":null,
   metricTitle:metricTitle,
   geoDim:det.geoDim,
+  geoLevel:geoLevel,
+  supportsMap:supportsMap,
   timeDim:det.timeDim,
   skipped:skipped,
   n:mapData.length
@@ -6166,7 +6224,12 @@ var VISUAL_MAP_FILES={
  com2025:"maps/cat2025com.js",
  com2023:"maps/cat2023com.js",
  com2015:"maps/cat2015com.js",
- com:"maps/cat2013com.js"
+ com:"maps/cat2013com.js",
+ mun:"maps/cat2013mun.js",
+ prov:"maps/cat2013prov.js",
+ at2025:"maps/cat2025at.js",
+ at2023:"maps/cat2023at.js",
+ at:"maps/cat2014at.js"
 };
 
 function vizLoadScript(src){
@@ -6224,14 +6287,28 @@ function vizMapReady(by){
  }catch(e){return false}
 }
 
-function vizResolveMapBy(year){
+function vizMapByForYearAt(year){
+ if(year==null||!Number.isFinite(year))return "at2025";
+ if(year>=2025)return "at2025";
+ if(year>=2023)return "at2023";
+ return "at";
+}
+function vizPreferredMapKeys(geoLevel,year){
+ if(geoLevel==="mun")return ["mun"];
+ if(geoLevel==="prov")return ["prov"];
+ if(geoLevel==="at"){
+  var preferred=vizMapByForYearAt(year);
+  return [preferred,"at2025","at2023","at"];
+ }
  var preferred=vizMapByForYear(year);
- var order=[preferred,"com2025","com2023","com2015","com"];
- var seen={};
+ return [preferred,"com2025","com2023","com2015","com"];
+}
+
+function vizResolveMapBy(year,geoLevel){
+ geoLevel=geoLevel||"com";
+ var order=vizPreferredMapKeys(geoLevel,year);
  for(var i=0;i<order.length;i++){
-  var k=order[i];
-  if(seen[k])continue;seen[k]=true;
-  if(vizMapReady(k))return k;
+  if(vizMapReady(order[i]))return order[i];
  }
  return null;
 }
@@ -6241,12 +6318,25 @@ function vizEnsureMapNamespace(){
  if(!VisualJS.map)VisualJS.map={};
 }
 
+function vizAliasAmbitMaps(){
+ try{
+  if(window.VisualJS&&VisualJS.map){
+   // cat2023at.js registra at23; la clau Visual/documentació és at2023
+   if(VisualJS.map.at23&&!VisualJS.map.at2023)VisualJS.map.at2023=VisualJS.map.at23;
+   if(VisualJS.map.at2023&&!VisualJS.map.at23)VisualJS.map.at23=VisualJS.map.at2023;
+  }
+ }catch(e){}
+}
 function vizLoadOneMap(key){
  if(vizMapReady(key))return Promise.resolve(key);
  var rel=VISUAL_MAP_FILES[key];
  if(!rel)return Promise.reject(new Error("Clau de mapa desconeguda: "+key));
  vizEnsureMapNamespace();
  return vizLoadScriptFallback(rel).then(function(){
+  vizAliasAmbitMaps();
+  if(!vizMapReady(key)&&key==="at2023"&&VisualJS.map&&VisualJS.map.at23){
+   VisualJS.map.at2023=VisualJS.map.at23;
+  }
   if(!vizMapReady(key)){
    throw new Error("Script "+rel+" carregat però VisualJS.map."+key+" no és vàlid");
   }
@@ -6270,7 +6360,7 @@ function ensureVisualLib(preferredBy){
   })
   .then(function(){
    // Carrega el mapa preferit primer i després la resta (best-effort)
-   var keys=[preferredBy,"com2025","com2023","com2015","com"];
+   var keys=[preferredBy,"com2025","com2023","com2015","com","mun","prov","at2025","at2023","at"];
    var uniq=[],seen={};
    keys.forEach(function(k){if(!seen[k]&&VISUAL_MAP_FILES[k]){seen[k]=true;uniq.push(k)}});
    var loaded=[];
@@ -6427,11 +6517,19 @@ async function renderVizPanel(){
    numBlock+='<label>'+esc(d.label||d.id)+'<select id="vizNum_'+esc(d.id)+'">'+optsN+'</select></label>';
    denBlock+='<label>'+esc(d.label||d.id)+'<select id="vizDen_'+esc(d.id)+'">'+optsD+'</select></label>';
   });
-  controls.innerHTML=
-   '<label>Tipus<select id="vizType">'+
-     '<option value="cmap"'+(type==="cmap"?' selected':'')+'>Mapa de comarques</option>'+
-     '<option value="rank"'+(type==="rank"?' selected':'')+'>Ranking</option>'+
-   '</select></label>'+
+  var typeOpts='';
+   if(built.supportsMap!==false&&(built.geoLevel==="com"||built.geoLevel==="mun"||built.geoLevel==="prov"||built.geoLevel==="at"||built.supportsMap)){
+    var mapLab={com:"Mapa de comarques",mun:"Mapa de municipis",prov:"Mapa de províncies",at:"Mapa d'àmbits"}[built.geoLevel||"com"]||"Mapa";
+    typeOpts+='<option value="cmap"'+(type==="cmap"?' selected':'')+'>'+mapLab+'</option>';
+   }
+   typeOpts+='<option value="rank"'+(type==="rank"?' selected':'')+'>Ranking</option>';
+   typeOpts+='<option value="bar"'+(type==="bar"?' selected':'')+'>Barres</option>';
+   if((built.periods||[]).length>1){
+    typeOpts+='<option value="line"'+(type==="line"?' selected':'')+'>Línies (evolució)</option>';
+   }
+   if(type==="cmap"&&typeOpts.indexOf('value="cmap"')<0)type="rank";
+   controls.innerHTML=
+   '<label>Tipus<select id="vizType">'+typeOpts+'</select></label>'+
    '<label>Període<select id="vizPeriod">'+perOpts+'</select></label>'+
    '<div class="viz-metric-group"><span class="viz-metric-h">Numerador</span><div class="viz-metric-rows">'+numBlock+'</div></div>'+
    '<div class="viz-metric-group"><span class="viz-metric-h">Denominador</span><div class="viz-metric-rows" id="vizDenRows">'+denBlock+'</div></div>'+
@@ -6567,12 +6665,30 @@ async function renderVizPanel(){
   });
  }
 
- function drawRankHtml(rows,title,palette){
+ function drawRankHtml(rows,title,palette,mode){
+  mode=mode||"rank";
   var el=document.getElementById("vizChart");
   if(!el)throw new Error("Contenidor #vizChart introbable");
   var max=0;
   rows.forEach(function(r){if(r.val>max)max=r.val});
   if(!(max>0))max=1;
+  if(mode==="bar"){
+   var h='<div class="viz-bar">';
+   h+='<div class="viz-rank-title">'+esc(title)+'</div>';
+   h+='<div class="viz-bar-chart">';
+   rows.forEach(function(r){
+    var pct=100*r.val/max;
+    var col=r.isRef?refBarColor(palette):paletteFill(palette,pct/100);
+    h+='<div class="viz-bar-col'+(r.isRef?" viz-rank-ref":"")+'" title="'+esc(r.label||r.id)+': '+Number(r.val).toLocaleString("ca-ES",{maximumFractionDigits:1})+(built.useDen?"%":"")+'">';
+    h+='<div class="viz-bar-val">'+Number(r.val).toLocaleString("ca-ES",{maximumFractionDigits:1})+'</div>';
+    h+='<div class="viz-bar-fillwrap"><div class="viz-bar-fill" style="height:'+pct.toFixed(1)+'%;background:'+col+'"></div></div>';
+    h+='<div class="viz-bar-lab">'+esc((r.label||r.id).length>12?(r.label||r.id).slice(0,11)+"…":(r.label||r.id))+'</div>';
+    h+='</div>';
+   });
+   h+='</div><div class="viz-rank-foot">Catalunya com a referència (contrast)</div></div>';
+   el.innerHTML=h;
+   return;
+  }
   var h='<div class="viz-rank">';
   h+='<div class="viz-rank-title">'+esc(title)+'</div>';
   h+='<div class="viz-rank-list">';
@@ -6587,6 +6703,92 @@ async function renderVizPanel(){
   });
   h+='</div><div class="viz-rank-foot">Catalunya com a referència (barra de contrast)</div>';
   el.innerHTML=h;
+ }
+ function drawLineHtml(builtObj,palette){
+  var el=document.getElementById("vizChart");
+  if(!el)return;
+  var periods=builtObj.periods||[];
+  if(periods.length<2){el.innerHTML='<div class="empty">Calen almenys 2 períodes per al gràfic de línies.</div>';return}
+  // sèries: Catalunya + fins a 6 unitats amb valor més alt a l'últim període
+  var seriesIds=[];
+  var lastCode=periods[periods.length-1].code;
+  var lastBuilt=vizBuildComarcaShare(state.lastData,{
+   periodCode:lastCode,
+   numFilters:builtObj.numFilters,
+   denFilters:builtObj.denFilters,
+   useDen:true
+  });
+  if(lastBuilt&&lastBuilt.rankData){
+   lastBuilt.rankData.forEach(function(r){
+    if(r.isRef)seriesIds.push(r.id);
+   });
+   lastBuilt.rankData.filter(function(r){return !r.isRef}).slice(0,6).forEach(function(r){
+    if(seriesIds.indexOf(r.id)<0)seriesIds.push(r.id);
+   });
+  }
+  var colors=["#2b527b","#a52a2a","#008000","#ffbf00","#5959ff","#ff5959","#9acd32","#af8d26"];
+  var series=seriesIds.map(function(id,idx){
+   var label=id,points=[];
+   periods.forEach(function(p){
+    var b=vizBuildComarcaShare(state.lastData,{
+     periodCode:p.code,
+     numFilters:builtObj.numFilters,
+     denFilters:builtObj.denFilters,
+     useDen:true
+    });
+    var row=(b.rankData||[]).find(function(r){return String(r.id)===String(id)});
+    if(row){label=row.label;points.push({x:p.label,y:row.val,code:p.code})}
+    else points.push({x:p.label,y:null,code:p.code});
+   });
+   return {id:id,label:label,color:colors[idx%colors.length],points:points};
+  });
+  var allY=[];
+  series.forEach(function(s){s.points.forEach(function(p){if(p.y!=null)allY.push(p.y)})});
+  var yMin=Math.min.apply(null,allY.length?allY:[0]);
+  var yMax=Math.max.apply(null,allY.length?allY:[1]);
+  if(yMin===yMax){yMin=yMin*0.9;yMax=yMax*1.1||1}
+  var pad=0.05*(yMax-yMin);yMin-=pad;yMax+=pad;
+  var W=900,H=420,ml=48,mr=16,mt=28,mb=56;
+  var iw=W-ml-mr,ih=H-mt-mb;
+  function xPos(i){return ml+(periods.length<=1?iw/2:i*iw/(periods.length-1))}
+  function yPos(v){return mt+ih-(v-yMin)/(yMax-yMin)*ih}
+  var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H+'">';
+  svg+='<rect width="'+W+'" height="'+H+'" fill="#fff"/>';
+  svg+='<text x="'+ml+'" y="18" font-size="13" font-family="Arial, Helvetica, sans-serif" font-weight="600" fill="#0f172a">'+esc(builtObj.metricTitle||"")+'</text>';
+  // grid
+  for(var g=0;g<=4;g++){
+   var gy=mt+ih*g/4;
+   var gv=yMax-(yMax-yMin)*g/4;
+   svg+='<line x1="'+ml+'" y1="'+gy+'" x2="'+(ml+iw)+'" y2="'+gy+'" stroke="#e2e8f0"/>';
+   svg+='<text x="'+(ml-6)+'" y="'+(gy+4)+'" text-anchor="end" font-size="10" font-family="Arial, Helvetica, sans-serif" fill="#64748b">'+gv.toFixed(builtObj.useDen?1:0)+'</text>';
+  }
+  series.forEach(function(s){
+   var d=[];
+   s.points.forEach(function(p,i){
+    if(p.y==null)return;
+    d.push((d.length?"L":"M")+xPos(i).toFixed(1)+","+yPos(p.y).toFixed(1));
+   });
+   if(d.length)svg+='<path d="'+d.join(" ")+'" fill="none" stroke="'+s.color+'" stroke-width="2"/>';
+   s.points.forEach(function(p,i){
+    if(p.y==null)return;
+    svg+='<circle cx="'+xPos(i).toFixed(1)+'" cy="'+yPos(p.y).toFixed(1)+'" r="3" fill="'+s.color+'"><title>'+esc(s.label+": "+p.x+" = "+p.y)+'</title></circle>';
+   });
+  });
+  // x labels (max ~12)
+  var step=Math.max(1,Math.ceil(periods.length/12));
+  periods.forEach(function(p,i){
+   if(i%step&&i!==periods.length-1)return;
+   svg+='<text x="'+xPos(i).toFixed(1)+'" y="'+(H-20)+'" text-anchor="middle" font-size="9" font-family="Arial, Helvetica, sans-serif" fill="#64748b">'+esc(String(p.label))+'</text>';
+  });
+  // legend
+  var lx=ml,ly=H-6;
+  series.forEach(function(s,i){
+   svg+='<rect x="'+lx+'" y="'+(ly-8)+'" width="10" height="10" fill="'+s.color+'"/>';
+   svg+='<text x="'+(lx+14)+'" y="'+ly+'" font-size="10" font-family="Arial, Helvetica, sans-serif" fill="#334155">'+esc(s.label)+'</text>';
+   lx+=14+Math.min(120,s.label.length*6)+12;
+  });
+  svg+='</svg>';
+  el.innerHTML='<div class="viz-line">'+svg+'</div>';
  }
 
  function redraw(){
@@ -6622,20 +6824,27 @@ async function renderVizPanel(){
   state.viz._lastMetricTitle=built.metricTitle;
   state.viz._lastPeriodLabel=built.periodLabel;
   if(status){
-   status.textContent=built.metricTitle+" · "+built.periodLabel+" · "+built.n+" comarques"+
+   status.textContent=built.metricTitle+" · "+built.periodLabel+" · "+built.n+" unitats"+
     (built.skipped?" · "+built.skipped+" sense dades":"")+
-    (ctrl.type==="cmap"?" · mapa "+vizMapByForYear(vizPeriodYear(built.periodLabel,built.periodCode)):"");
+    (ctrl.type==="cmap"?" · mapa "+(vizResolveMapBy(vizPeriodYear(built.periodLabel,built.periodCode),built.geoLevel)||built.geoLevel):"");
   }
 
-  if(ctrl.type==="rank"){
-   // títol de ranking: mètrica + període (el títol de taula va a l'exportació)
-   drawRankHtml(built.rankData,built.metricTitle+" · "+built.periodLabel,ctrl.palette);
+  if(ctrl.type==="rank"||ctrl.type==="bar"){
+   drawRankHtml(built.rankData,built.metricTitle+" · "+built.periodLabel,ctrl.palette,ctrl.type);
+   return;
+  }
+  if(ctrl.type==="line"){
+   drawLineHtml(built,ctrl.palette);
    return;
   }
 
+  if(!built.supportsMap){
+   if(status)status.textContent="Aquest nivell territorial ("+(built.geoLevel||"?")+") no té mapa coroplètic; usa ranking, barres o línies.";
+   return;
+  }
   var year=vizPeriodYear(built.periodLabel,built.periodCode);
-  var mapBy=vizResolveMapBy(year);
-  if(!mapBy){if(status)status.textContent="Error: mapa no disponible per a l'any "+(year!=null?year:"?")+".";return}
+  var mapBy=vizResolveMapBy(year,built.geoLevel);
+  if(!mapBy){if(status)status.textContent="Error: mapa no disponible ("+(built.geoLevel||"com")+", any "+(year!=null?year:"?")+").";return}
   try{
    var mapFile=VISUAL_MAP_FILES[mapBy]||VISUAL_MAP_FILES.com;
    if(VisualJS.setup&&VisualJS.setup.map){
