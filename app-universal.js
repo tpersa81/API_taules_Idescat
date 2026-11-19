@@ -1,3 +1,6 @@
+
+/* ===== app-universal.js ===== */
+
 const MAX_CELLS=20000;
 const state={provider:"idescat",pxPreset:"finland",stats:[],istacDatasets:[],istacPath:[],icanePackages:[],icaneRawData:null,igeRoot:[],igePath:[],igeItems:new Map(),igeSelector:null,igeMode:null,igeSeriesTree:null,metadata:null,lastData:null,lastQueryUrl:"",finlandTableUrl:"",ineVarCache:new Map(),filters:new Map(),page:1,pageSize:100,temporalOrder:"desc",requestToken:0,pivot:{rows:[],columns:[]},selected:{stat:"",concept:"",cross:"",node:"",table:"",geo:""},cart:[],nextCartId:1,pxPath:[],pxItems:new Map(),ineTables:[],ineNav:null,ineNavLoaded:false,ineOperations:null,inePath:[],ineItems:new Map(),swedenV2Tables:null,swedenV2Table:false,swedenPath:[],eustatCatalog:[],eustatGroups:[],eustatOperations:[],eustatTables:[],eurostatTOC:null,eurostatRoots:[],eurostatNodes:[],eurostatPath:[],norwayPath:[],norwayCatalog:[],norwayRootItems:[]};
 const $=id=>document.getElementById(id);
@@ -6277,14 +6280,35 @@ async function renderVizPanel(){
   if(type==="rank"){
    payload.axis={ticks:{y:false,x:true}};
   }
+  function drawRankHtml(rows){
+   var el=document.getElementById("vizChart");
+   if(!el)throw new Error("Contenidor #vizChart introbable");
+   var max=0;
+   rows.forEach(function(r){if(r[1]>max)max=r[1]});
+   if(!(max>0))max=1;
+   var h='<div class="viz-rank">';
+   h+='<div class="viz-rank-title">Homes / total (%) · '+esc(String(built.periodLabel||""))+'</div>';
+   h+='<div class="viz-rank-list">';
+   rows.forEach(function(r,i){
+    var lab=String(r[0]),val=Number(r[1]),pct=100*val/max;
+    h+='<div class="viz-rank-row">';
+    h+='<div class="viz-rank-lab"><span class="viz-rank-pos">'+(i+1)+'.</span> '+esc(lab)+'</div>';
+    h+='<div class="viz-rank-barwrap"><div class="viz-rank-bar" style="width:'+pct.toFixed(1)+'%"></div></div>';
+    h+='<div class="viz-rank-val">'+val.toLocaleString("ca-ES",{maximumFractionDigits:1,minimumFractionDigits:1})+'%</div>';
+    h+='</div>';
+   });
+   h+='</div>';
+   h+='<div class="viz-rank-foot">Prototip · dades de la consulta actual</div>';
+   el.innerHTML=h;
+  }
   function doDraw(){
    try{
     var el=document.getElementById("vizChart");
     if(!el)throw new Error("Contenidor #vizChart introbable");
-    if(window.jQuery&&!jQuery("#vizChart").length){
-     throw new Error("jQuery no troba #vizChart");
+    if(type==="rank"){
+     drawRankHtml(chartData);
+     return;
     }
-    // Evita estat intern d'un dibuix anterior (mapa) sobre el mateix id
     try{
      if(window.VisualJS&&VisualJS.container)delete VisualJS.container.vizChart;
      if(window.VisualJS)VisualJS.show=true;
@@ -6297,13 +6321,7 @@ async function renderVizPanel(){
     console.error("Visual draw error", e, payload);
    }
   }
-  if(type==="rank"){
-   ensureVisualChartDeps().then(doDraw).catch(function(e){
-    if(status)status.textContent="No s'han pogut carregar jQuery/Flot per al ranking: "+(e&&e.message?e.message:e);
-   });
-  }else{
-   doDraw();
-  }
+  doDraw();
  }
  if(typeSel)typeSel.onchange=draw;
  draw();
