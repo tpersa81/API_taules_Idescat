@@ -5946,22 +5946,82 @@ function vizLatestPeriod(timeDim,rows){
  return cats.length?cats[cats.length-1]:null;
 }
 
+function vizAllPeriods(det){
+ if(!det.timeDim)return [];
+ var seen=new Map();
+ (det.rows||[]).forEach(function(r){
+  var cell=r[det.timeDim.id];
+  if(!cell)return;
+  var code=String(temporalCategoryCode(cell)||cell.code||"");
+  if(!code||seen.has(code))return;
+  var rank=temporalCodeRank(code);
+  seen.set(code,{code:code,label:String(cell.label||code),rank:rank});
+ });
+ var list=Array.from(seen.values());
+ list.sort(function(a,b){
+  if(a.rank!=null&&b.rank!=null&&a.rank!==b.rank)return a.rank-b.rank;
+  return String(a.code).localeCompare(String(b.code),"ca",{numeric:true});
+ });
+ return list;
+}
+
+function vizMetricDim(det){
+ if(det.sexDim)return det.sexDim;
+ // primera dimensió no temporal / no geo amb >=2 categories
+ return (det.dims||[]).find(function(d){
+  if(det.timeDim&&d.id===det.timeDim.id)return false;
+  if(det.geoDim&&d.id===det.geoDim.id)return false;
+  return vizCats(d).length>=2;
+ })||null;
+}
+
 function vizBuildComarcaShare(ds,opts){
  opts=opts||{};
  var det=vizDetectDims(ds);
  if(!det.geoDim)return {error:"No s'ha detectat una dimensió territorial (comarques) a la taula."};
- if(!det.sexDim)return {error:"No s'ha detectat la dimensió de sexe (cal Homes i Total)."};
- var codeM=vizFindSexCode(det.sexDim,"M");
- var codeT=vizFindSexCode(det.sexDim,"T");
- if(!codeM||!codeT){
-  var catList=(det.sexDim.categories||[]).map(function(c){return (c.code||"?")+":"+(c.label||"?")}).join(", ");
-  return {error:"No s'han pogut identificar les categories Homes i Total a «"+(det.sexDim.label||det.sexDim.id)+"» ["+catList+"]."};
+ var metricDim=vizMetricDim(det);
+ if(!metricDim)return {error:"No s'ha detectat una dimensió de mètrica (p.ex. sexe) per construir el numerador."};
+ var periods=vizAllPeriods(det);
+ var periodCode=opts.periodCode||null;
+ var periodLabel="";
+ if(det.timeDim){
+  var period=null;
+  if(periodCode){
+   period=periods.find(function(p){return String(p.code)===String(periodCode)})||null;
+  }
+  if(!period){
+   // últim període
+   period=periods.length?periods[periods.length-1]:null;
+   if(!period){
+    var cell=vizLatestPeriod(det.timeDim,det.rows);
+    if(cell)period={code:String(temporalCategoryCode(cell)||cell.code||""),label:String(cell.label||"")};
+   }
+  }
+  if(period){
+   periodCode=String(period.code);
+   periodLabel=String(period.label||periodCode);
+  }
  }
- var period=opts.period||vizLatestPeriod(det.timeDim,det.rows);
- var periodCode=period?String(temporalCategoryCode(period)||(period.code!=null?period.code:period)):null;
- var periodLabel=period?(period.label||periodCode):"(sense període)";
 
- // index: geoId -> {m,t}
+ var cats=vizCats(metricDim);
+ var numCode=opts.numCode!=null&&opts.numCode!==""?String(opts.numCode):null;
+ var denCode=opts.denCode!=null&&opts.denCode!==""?String(opts.denCode):null;
+ // defaults: Homes / Total si existeixen
+ if(!numCode){
+  numCode=vizFindSexCode(metricDim,"M")||(cats[0]?String(cats[0].code):null);
+ }
+ if(opts.denCode===undefined){
+  // primer cop: prova Total
+  denCode=vizFindSexCode(metricDim,"T");
+ }else if(opts.denCode===""){
+  denCode=null; // explícitament sense denominador
+ }
+ if(!numCode)return {error:"Cal triar una categoria de numerador."};
+
+ var numLab=(cats.find(function(c){return String(c.code)===String(numCode)})||{}).label||numCode;
+ var denLab=denCode?(cats.find(function(c){return String(c.code)===String(denCode)})||{}).label||denCode:null;
+
+ // index: geoKey -> {id,label,num,den,isRef}
  var acc={};
  det.rows.forEach(function(r){
   if(det.timeDim&&periodCode){
@@ -5971,37 +6031,59 @@ function vizBuildComarcaShare(ds,opts){
   var g=r[det.geoDim.id]||{};
   var gCode=String(g.code!=null?g.code:"");
   var gLab=String(g.label!=null?g.label:gCode);
-  if(vizIsExcludedGeo(gLab,gCode))return;
-  var cid=vizComarcaId(gCode,gLab);
-  if(!cid)return;
-  var s=r[det.sexDim.id]||{};
-  var sCode=String(s.code!=null?s.code:"");
+  var isCat=/catalunya|cataluna/i.test(gLab)||String(gCode).toUpperCase()==="TOTAL"||String(gCode).toUpperCase()==="CAT";
+  var isNoRes=/no resident/i.test(gLab)||String(gCode)==="99";
+  if(isNoRes)return;
+  var cid=isCat?"TOTAL":vizComarcaId(gCode,gLab);
+  if(!cid&&!isCat)return;
+  if(isCat)cid="TOTAL";
+  var m=r[metricDim.id]||{};
+  var mCode=String(m.code!=null?m.code:"");
   var val=r.value;
   if(val==null||val==="")return;
   var n=Number(val);
   if(!Number.isFinite(n))return;
-  if(!acc[cid])acc[cid]={id:cid,label:gLab,m:null,t:null};
-  if(sCode===String(codeM))acc[cid].m=n;
-  if(sCode===String(codeT))acc[cid].t=n;
+  if(!acc[cid])acc[cid]={id:cid,label:isCat?"Catalunya":gLab,num:null,den:null,isRef:isCat};
+  if(mCode===String(numCode))acc[cid].num=n;
+  if(denCode&&mCode===String(denCode))acc[cid].den=n;
  });
 
- var data=[],skipped=0;
+ var mapData=[],rankData=[],skipped=0;
  Object.keys(acc).forEach(function(id){
   var o=acc[id];
-  if(o.m==null||o.t==null||!o.t){skipped++;return}
-  data.push({id:o.id,val:100*o.m/o.t,label:o.label});
+  var val=null;
+  if(denCode){
+   if(o.num==null||o.den==null||!o.den){skipped++;return}
+   val=100*o.num/o.den;
+  }else{
+   if(o.num==null){skipped++;return}
+   val=o.num;
+  }
+  var row={id:o.id,val:val,label:o.label,isRef:!!o.isRef};
+  if(o.isRef)rankData.push(row);
+  else{mapData.push(row);rankData.push(row)}
  });
- data.sort(function(a,b){return String(a.id).localeCompare(String(b.id),"ca",{numeric:true})});
- if(!data.length)return {error:"No s'han pogut calcular proporcions Homes/Total per comarca amb el període seleccionat."};
+ mapData.sort(function(a,b){return String(a.id).localeCompare(String(b.id),"ca",{numeric:true})});
+ rankData.sort(function(a,b){return b.val-a.val});
+ if(!mapData.length&&!rankData.length)return {error:"No s'han pogut calcular valors per comarca amb la mètrica i el període seleccionats."};
+
+ var metricTitle=denCode?(numLab+" / "+denLab+" (%)"):numLab;
  return {
-  data:data,
+  mapData:mapData,
+  rankData:rankData,
+  data:mapData, // compat
   periodLabel:periodLabel,
   periodCode:periodCode,
+  periods:periods,
+  metricDim:metricDim,
+  metricCats:cats,
+  numCode:numCode,
+  denCode:denCode,
+  metricTitle:metricTitle,
   geoDim:det.geoDim,
-  sexDim:det.sexDim,
   timeDim:det.timeDim,
   skipped:skipped,
-  n:data.length
+  n:mapData.length
  };
 }
 
@@ -6176,155 +6258,274 @@ function ensureVisualChartDeps(){
 }
 
 async function renderVizPanel(){
- var panel=$("vizPanel"),status=$("vizStatus"),chart=$("vizChart"),controls=$("vizControls");
- if(!panel||!chart)return;
+ var panel=$("vizPanel"),status=$("vizStatus"),controls=$("vizControls");
+ if(!panel)return;
  if(!state.lastData){
   if(status)status.textContent="Fes una consulta primer per visualitzar les dades.";
-  chart.innerHTML="";
+  if($("vizChart"))$("vizChart").innerHTML="";
   if(controls)controls.innerHTML="";
   return;
  }
  if(status)status.textContent="Preparant visualització…";
- var built=vizBuildComarcaShare(state.lastData,{});
+ if(!state.viz)state.viz={type:"cmap",palette:"blues"};
+
+ function readControls(){
+  var typeEl=$("vizType"),perEl=$("vizPeriod"),numEl=$("vizNum"),denEl=$("vizDen"),palEl=$("vizPalette");
+  return {
+   type:typeEl&&typeEl.value?typeEl.value:(state.viz.type||"cmap"),
+   periodCode:perEl?perEl.value:state.viz.periodCode,
+   numCode:numEl?numEl.value:state.viz.numCode,
+   denCode:denEl?(denEl.value||""):state.viz.denCode,
+   palette:palEl&&palEl.value?palEl.value:(state.viz.palette||"blues")
+  };
+ }
+
+ var opts0=Object.assign({},state.viz);
+ var built=vizBuildComarcaShare(state.lastData,opts0);
  if(built.error){
   if(status)status.textContent=built.error;
-  chart.innerHTML="";
+  if($("vizChart"))$("vizChart").innerHTML="";
   if(controls)controls.innerHTML="";
   return;
  }
+ // persist defaults discovered
+ state.viz.periodCode=built.periodCode;
+ state.viz.numCode=built.numCode;
+ state.viz.denCode=built.denCode==null?"":built.denCode;
+
  if(controls){
+  var perOpts=(built.periods||[]).map(function(p){
+   return '<option value="'+esc(p.code)+'"'+(String(p.code)===String(built.periodCode)?' selected':'')+'>'+esc(p.label)+'</option>';
+  }).join("");
+  var catOpts=(built.metricCats||[]).map(function(c){
+   return '<option value="'+esc(String(c.code))+'">'+esc(String(c.label||c.code))+'</option>';
+  }).join("");
+  var numOpts=catOpts.replace('value="'+esc(String(built.numCode))+'"','value="'+esc(String(built.numCode))+'" selected');
+  // rebuild properly
+  numOpts=(built.metricCats||[]).map(function(c){
+   var sel=String(c.code)===String(built.numCode)?' selected':'';
+   return '<option value="'+esc(String(c.code))+'"'+sel+'>'+esc(String(c.label||c.code))+'</option>';
+  }).join("");
+  var denOpts='<option value="">(cap — valor absolut)</option>'+(built.metricCats||[]).map(function(c){
+   var sel=built.denCode!=null&&String(c.code)===String(built.denCode)?' selected':'';
+   return '<option value="'+esc(String(c.code))+'"'+sel+'>'+esc(String(c.label||c.code))+'</option>';
+  }).join("");
+  var type=state.viz.type||"cmap";
+  var pal=state.viz.palette||"blues";
   controls.innerHTML=
-   '<label>Tipus<select id="vizType"><option value="cmap">Mapa de comarques</option><option value="rank">Ranking</option></select></label>'+
-   '<label>Mètrica<select id="vizMetric" disabled><option>Homes / Total (%)</option></select></label>'+
-   '<label>Període<select id="vizPeriod" disabled><option>'+esc(built.periodLabel)+'</option></select></label>';
+   '<label>Tipus<select id="vizType">'+
+     '<option value="cmap"'+(type==="cmap"?' selected':'')+'>Mapa de comarques</option>'+
+     '<option value="rank"'+(type==="rank"?' selected':'')+'>Ranking</option>'+
+   '</select></label>'+
+   '<label>Període<select id="vizPeriod">'+perOpts+'</select></label>'+
+   '<label>Numerador<select id="vizNum">'+numOpts+'</select></label>'+
+   '<label>Denominador<select id="vizDen">'+denOpts+'</select></label>'+
+   '<label>Paleta<select id="vizPalette">'+
+     '<option value="blues"'+(pal==="blues"?' selected':'')+'>Blaus</option>'+
+     '<option value="greens"'+(pal==="greens"?' selected':'')+'>Verds</option>'+
+     '<option value="oranges"'+(pal==="oranges"?' selected':'')+'>Taronges</option>'+
+     '<option value="purples"'+(pal==="purples"?' selected':'')+'>Liles</option>'+
+     '<option value="reds"'+(pal==="reds"?' selected':'')+'>Vermells</option>'+
+   '</select></label>'+
+   '<button type="button" id="vizExport" class="secondary">Desa imatge</button>';
  }
- try{
-  var yPref=vizPeriodYear(built.periodLabel,built.periodCode);
- await ensureVisualLib(vizMapByForYear(yPref));
- }catch(e){
-  if(status)status.textContent="No s'ha pogut carregar Visual (Idescat): "+(e&&e.message?e.message:e);
-  return;
+
+ function paletteBase(name){
+  return ({blues:"#08306b",greens:"#00441b",oranges:"#7f2704",purples:"#3f007d",reds:"#67000d"})[name]||"#08306b";
  }
- var typeSel=$("vizType");
- var type=typeSel&&typeSel.value?typeSel.value:"cmap";
- function draw(){
-  type=typeSel&&typeSel.value?typeSel.value:"cmap";
-  // Visual/Flot muten el DOM: cal un contenidor net a cada dibuix
-  chart=$("vizChart");
+ function paletteFill(name,t){
+  // t in [0,1] → color interpolat simple cap a base
+  var bases={
+   blues:["#f7fbff","#c6dbef","#6baed6","#2171b5","#08306b"],
+   greens:["#f7fcf5","#c7e9c0","#74c476","#238b45","#00441b"],
+   oranges:["#fff5eb","#fdd0a2","#fd8d3c","#d94801","#7f2704"],
+   purples:["#fcfbfd","#dadaeb","#9e9ac8","#6a51a3","#3f007d"],
+   reds:["#fff5f0","#fcbba1","#fb6a4a","#cb181d","#67000d"]
+  };
+  var arr=bases[name]||bases.blues;
+  var x=Math.max(0,Math.min(1,t));
+  var i=Math.min(arr.length-1,Math.floor(x*(arr.length-1)));
+  return arr[i];
+ }
+
+ function exportChartImage(){
+  var root=$("vizChart");
+  if(!root)return;
+  var svg=root.querySelector("svg");
+  if(svg){
+   var ser=new XMLSerializer().serializeToString(svg);
+   var blob=new Blob([ser],{type:"image/svg+xml;charset=utf-8"});
+   var url=URL.createObjectURL(blob);
+   var a=document.createElement("a");
+   a.href=url;a.download="mapa-comarques.svg";a.click();
+   setTimeout(function(){URL.revokeObjectURL(url)},2000);
+   return;
+  }
+  // ranking: dibuixa a canvas
+  var rows=root.querySelectorAll(".viz-rank-row");
+  if(!rows.length){alert("No hi ha res a exportar.");return}
+  var w=900,rowH=22,h=60+rows.length*rowH;
+  var c=document.createElement("canvas");c.width=w;c.height=h;
+  var ctx=c.getContext("2d");
+  ctx.fillStyle="#fff";ctx.fillRect(0,0,w,h);
+  ctx.fillStyle="#0f172a";ctx.font="600 16px sans-serif";
+  var title=(root.querySelector(".viz-rank-title")||{}).textContent||"Ranking";
+  ctx.fillText(title,16,28);
+  ctx.font="12px sans-serif";
+  rows.forEach(function(row,i){
+   var lab=(row.querySelector(".viz-rank-lab")||{}).textContent||"";
+   var val=(row.querySelector(".viz-rank-val")||{}).textContent||"";
+   var bar=row.querySelector(".viz-rank-bar");
+   var pct=bar&&bar.style.width?parseFloat(bar.style.width):0;
+   var y=50+i*rowH;
+   ctx.fillStyle="#0f172a";ctx.fillText(lab.trim().slice(0,28),16,y);
+   ctx.fillStyle="#e2e8f0";ctx.fillRect(220,y-10,500,12);
+   ctx.fillStyle="#2b527b";ctx.fillRect(220,y-10,500*(pct/100),12);
+   ctx.fillStyle="#0f172a";ctx.textAlign="right";ctx.fillText(val,860,y);ctx.textAlign="left";
+  });
+  c.toBlob(function(blob){
+   if(!blob)return;
+   var url=URL.createObjectURL(blob);
+   var a=document.createElement("a");a.href=url;a.download="ranking.png";a.click();
+   setTimeout(function(){URL.revokeObjectURL(url)},2000);
+  });
+ }
+
+ function drawRankHtml(rows,title,palette){
+  var el=document.getElementById("vizChart");
+  if(!el)throw new Error("Contenidor #vizChart introbable");
+  var max=0;
+  rows.forEach(function(r){if(r.val>max)max=r.val});
+  if(!(max>0))max=1;
+  var h='<div class="viz-rank">';
+  h+='<div class="viz-rank-title">'+esc(title)+'</div>';
+  h+='<div class="viz-rank-list">';
+  rows.forEach(function(r,i){
+   var pct=100*r.val/max;
+   var col=r.isRef?"#b45309":paletteFill(palette,pct/100);
+   h+='<div class="viz-rank-row'+(r.isRef?" viz-rank-ref":"")+'">';
+   h+='<div class="viz-rank-lab"><span class="viz-rank-pos">'+(i+1)+'.</span> '+esc(r.label||r.id)+(r.isRef?' <span class="viz-rank-tag">ref.</span>':'')+'</div>';
+   h+='<div class="viz-rank-barwrap"><div class="viz-rank-bar" style="width:'+pct.toFixed(1)+'%;background:'+col+'"></div></div>';
+   h+='<div class="viz-rank-val">'+Number(r.val).toLocaleString("ca-ES",{maximumFractionDigits:1,minimumFractionDigits:1})+(built.denCode?"%":"")+'</div>';
+   h+='</div>';
+  });
+  h+='</div><div class="viz-rank-foot">Prototip · Catalunya marcada com a referència</div>';
+  el.innerHTML=h;
+ }
+
+ function redraw(){
+  var ctrl=readControls();
+  state.viz.type=ctrl.type;
+  state.viz.periodCode=ctrl.periodCode;
+  state.viz.numCode=ctrl.numCode;
+  state.viz.denCode=ctrl.denCode;
+  state.viz.palette=ctrl.palette;
+  built=vizBuildComarcaShare(state.lastData,{
+   periodCode:ctrl.periodCode,
+   numCode:ctrl.numCode,
+   denCode:ctrl.denCode
+  });
+  if(built.error){
+   if(status)status.textContent=built.error;
+   return;
+  }
+  // contenidor net
+  var chart=$("vizChart");
   if(!chart){
-   var host=$("vizPanel");
-   if(!host){if(status)status.textContent="No hi ha contenidor de visualització.";return}
    chart=document.createElement("div");
    chart.id="vizChart";
-   host.appendChild(chart);
+   panel.appendChild(chart);
   }
   var fresh=document.createElement("div");
   fresh.id="vizChart";
   fresh.className="visual";
-  fresh.style.minHeight="420px";
+  fresh.style.minHeight="520px";
   fresh.style.width="100%";
   if(chart.parentNode)chart.parentNode.replaceChild(fresh,chart);
-  chart=fresh;
-  var year=vizPeriodYear(built.periodLabel,built.periodCode);
-  var mapBy=type==="cmap"?vizResolveMapBy(year):null;
-  if(type==="cmap"&&!mapBy){
-   if(status)status.textContent="Error: mapa de comarques no disponible (VisualJS.map). Clau demanada: "+vizMapByForYear(year)+" (any "+(year!=null?year:"?")+").";
+
+  var unitSuffix=built.denCode?"%":"";
+  if(status){
+   status.textContent=built.metricTitle+" · "+built.periodLabel+" · "+built.n+" comarques"+
+    (built.skipped?" · "+built.skipped+" sense dades":"")+
+    (ctrl.type==="cmap"?" · mapa "+vizMapByForYear(vizPeriodYear(built.periodLabel,built.periodCode)):"");
+  }
+
+  if(ctrl.type==="rank"){
+   drawRankHtml(built.rankData,built.metricTitle+" · "+built.periodLabel,ctrl.palette);
    return;
   }
-  if(status){
-   status.textContent="Proporció d'homes sobre el total d'afiliats · "+built.periodLabel+" · "+built.n+" comarques"+
-    (built.skipped?" · "+built.skipped+" sense parella Homes/Total":"")+
-    (type==="cmap"&&mapBy?" · mapa "+mapBy:"");
+
+  // Mapa Visual
+  var year=vizPeriodYear(built.periodLabel,built.periodCode);
+  var mapBy=vizResolveMapBy(year);
+  if(!mapBy){
+   if(status)status.textContent="Error: mapa de comarques no disponible per a l'any "+(year!=null?year:"?")+".";
+   return;
   }
-  if(type==="cmap"){
-   try{
-    var mapFile=VISUAL_MAP_FILES[mapBy]||VISUAL_MAP_FILES.com;
-    if(VisualJS.setup&&VisualJS.setup.map){
-     if(!VisualJS.setup.map[mapBy])VisualJS.setup.map[mapBy]={js:VISUAL_CDN+mapFile};
-     VisualJS.setup.map[mapBy].js=VISUAL_CDN+mapFile;
-     VisualJS.setup.map[mapBy].exists=function(){return vizMapReady(mapBy)};
-    }
-    if(VisualJS.setup&&VisualJS.setup.lib&&VisualJS.setup.lib.d3){
-     VisualJS.setup.lib.d3.js=VISUAL_CDN+"lib/d3.v3.js";
-     VisualJS.setup.lib.d3.exists=function(){return typeof d3==="object"};
-    }
-    if(VisualJS.setup&&VisualJS.setup.lib&&VisualJS.setup.lib.maps){
-     VisualJS.setup.lib.maps.js=VISUAL_CDN+"maps/visual.maps.js";
-     VisualJS.setup.lib.maps.exists=function(){return typeof VisualJS.func==="object"&&typeof VisualJS.func.colors==="function"};
-    }
-   }catch(e){}
-  }
-  var chartData;
-  if(type==="cmap"){
-   chartData=built.data.map(function(d){return{id:d.id,val:d.val}});
-  }else{
-   chartData=built.data.slice().sort(function(a,b){return b.val-a.val}).map(function(d){
-    return [String(d.label||d.id), d.val];
-   });
-  }
+  try{
+   var mapFile=VISUAL_MAP_FILES[mapBy]||VISUAL_MAP_FILES.com;
+   if(VisualJS.setup&&VisualJS.setup.map){
+    if(!VisualJS.setup.map[mapBy])VisualJS.setup.map[mapBy]={js:VISUAL_CDN+mapFile};
+    VisualJS.setup.map[mapBy].js=VISUAL_CDN+mapFile;
+    VisualJS.setup.map[mapBy].exists=function(){return vizMapReady(mapBy)};
+   }
+   if(VisualJS.setup&&VisualJS.setup.lib&&VisualJS.setup.lib.d3){
+    VisualJS.setup.lib.d3.js=VISUAL_CDN+"lib/d3.v3.js";
+    VisualJS.setup.lib.d3.exists=function(){return typeof d3==="object"};
+   }
+   if(VisualJS.setup&&VisualJS.setup.lib&&VisualJS.setup.lib.maps){
+    VisualJS.setup.lib.maps.js=VISUAL_CDN+"maps/visual.maps.js";
+    VisualJS.setup.lib.maps.exists=function(){return typeof VisualJS.func==="object"&&typeof VisualJS.func.colors==="function"};
+   }
+   if(VisualJS.setup&&VisualJS.setup.colors&&VisualJS.setup.colors.map){
+    VisualJS.setup.colors.map.base=paletteBase(ctrl.palette);
+   }
+  }catch(e){}
+
   var payload={
    id:"vizChart",
    lang:"ca",
-   title:"Homes / total (%)",
+   title:built.metricTitle,
    geo:"Catalunya",
    time:String(built.periodLabel||""),
-   footer:["Prototip · dades de la consulta actual","Idescat Visual"],
-   dec:1,
-   unit:{symbol:"%",position:"end"},
+   footer:["Prototip · consulta actual","Idescat Visual"],
+   dec:built.denCode?1:0,
+   unit:{symbol:unitSuffix,position:"end"},
    legend:true,
-   type:type,
-   fixed: type==="rank" ? [640, Math.max(420, 24*chartData.length+80)] : [640,420],
-   data: chartData
+   type:"cmap",
+   by:mapBy,
+   fixed:[920,720],
+   data:built.mapData.map(function(d){return{id:d.id,val:d.val}})
   };
-  if(type==="cmap")payload.by=mapBy;
-  if(type==="rank"){
-   payload.axis={ticks:{y:false,x:true}};
+  try{
+   if(window.VisualJS&&VisualJS.container)delete VisualJS.container.vizChart;
+   if(window.VisualJS)VisualJS.show=true;
+   if(typeof visual==="function")visual(payload);
+   else if(window.VisualJS&&typeof VisualJS.load==="function")VisualJS.load(payload);
+   else throw new Error("Visual no disponible");
+  }catch(e){
+   if(status)status.textContent="Error en dibuixar: "+(e&&e.message?e.message:String(e));
+   console.error(e,payload);
   }
-  function drawRankHtml(rows){
-   var el=document.getElementById("vizChart");
-   if(!el)throw new Error("Contenidor #vizChart introbable");
-   var max=0;
-   rows.forEach(function(r){if(r[1]>max)max=r[1]});
-   if(!(max>0))max=1;
-   var h='<div class="viz-rank">';
-   h+='<div class="viz-rank-title">Homes / total (%) · '+esc(String(built.periodLabel||""))+'</div>';
-   h+='<div class="viz-rank-list">';
-   rows.forEach(function(r,i){
-    var lab=String(r[0]),val=Number(r[1]),pct=100*val/max;
-    h+='<div class="viz-rank-row">';
-    h+='<div class="viz-rank-lab"><span class="viz-rank-pos">'+(i+1)+'.</span> '+esc(lab)+'</div>';
-    h+='<div class="viz-rank-barwrap"><div class="viz-rank-bar" style="width:'+pct.toFixed(1)+'%"></div></div>';
-    h+='<div class="viz-rank-val">'+val.toLocaleString("ca-ES",{maximumFractionDigits:1,minimumFractionDigits:1})+'%</div>';
-    h+='</div>';
-   });
-   h+='</div>';
-   h+='<div class="viz-rank-foot">Prototip · dades de la consulta actual</div>';
-   el.innerHTML=h;
-  }
-  function doDraw(){
-   try{
-    var el=document.getElementById("vizChart");
-    if(!el)throw new Error("Contenidor #vizChart introbable");
-    if(type==="rank"){
-     drawRankHtml(chartData);
-     return;
-    }
-    try{
-     if(window.VisualJS&&VisualJS.container)delete VisualJS.container.vizChart;
-     if(window.VisualJS)VisualJS.show=true;
-    }catch(e){}
-    if(typeof visual==="function")visual(payload);
-    else if(window.VisualJS&&typeof VisualJS.load==="function")VisualJS.load(payload);
-    else throw new Error("Visual no disponible");
-   }catch(e){
-    if(status)status.textContent="Error en dibuixar: "+(e&&e.message?e.message:String(e))+(mapBy?" · by="+mapBy:"");
-    console.error("Visual draw error", e, payload);
-   }
-  }
-  doDraw();
  }
- if(typeSel)typeSel.onchange=draw;
- draw();
+
+ // bind controls
+ ["vizType","vizPeriod","vizNum","vizDen","vizPalette"].forEach(function(id){
+  var el=$(id);
+  if(el)el.onchange=function(){redraw()};
+ });
+ var exp=$("vizExport");
+ if(exp)exp.onclick=function(){exportChartImage()};
+
+ try{
+  var yPref=vizPeriodYear(built.periodLabel,built.periodCode);
+  await ensureVisualLib(vizMapByForYear(yPref));
+ }catch(e){
+  if(status)status.textContent="No s'ha pogut carregar Visual (Idescat): "+(e&&e.message?e.message:e);
+  return;
+ }
+ redraw();
 }
+
 
 (async function(){bind();renderCart();var q=new URLSearchParams(location.search);state.provider=q.get("provider")||"idescat";if(state.provider==="ons")state.provider="nomis";state.pxPreset=q.get("px")||(state.provider==="pxweb"?"finland":"");$("provider").value=(state.provider==="pxweb"||state.provider==="istac"||state.provider==="icane"||state.provider==="ige"||state.provider==="nomis"||state.provider==="dst"||state.provider==="cso")?"other":state.provider;$("otherProvider").value=state.provider==="istac"?"istac":state.provider==="icane"?"icane":state.provider==="ige"?"ige":state.provider==="nomis"?"nomis":state.provider==="dst"?"dst":state.provider==="cso"?"cso":(state.provider==="pxweb"&&state.pxPreset?"pxweb:"+state.pxPreset:"");setProviderUI();try{await loadStats()}catch(e){status(e.message,"error")}})();
