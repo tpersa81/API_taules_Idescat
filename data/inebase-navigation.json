@@ -309,7 +309,7 @@
     "name": "Encuesta de fecundidad",
     "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177006&menu=ultiDatos&idp=1254735573002",
     "group": "Demografía y población",
-    "topic": "Semana 40 2026"
+    "topic": "Semana 44 2026"
   },
   {
     "name": "Estimación mensual de nacimientos",
@@ -321,7 +321,7 @@
     "name": "Estadística de migraciones",
     "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177000&menu=ultiDatos&idp=1254735573002",
     "group": "Demografía y población",
-    "topic": "Agosto 2026"
+    "topic": "Septiembre 2026"
   },
   {
     "name": "Encuesta nacional de inmigrantes",
@@ -507,13 +507,13 @@
     "name": "Estadística sobre ejecuciones hipotecarias",
     "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176993&menu=ultiDatos&idp=1254735576606",
     "group": "Economía",
-    "topic": "Agosto 2026"
+    "topic": "Septiembre 2026"
   },
   {
     "name": "Estadística de efectos de comercio impagados",
     "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736169832&menu=resultados&idp=1254735576606",
     "group": "Economía",
-    "topic": "Agosto 2026"
+    "topic": "Septiembre 2026"
   },
   {
     "name": "Suspensiones de pagos y declaraciones de quiebra",
@@ -549,7 +549,7 @@
     "name": "Índices de precios de exportación e importación de productos industriales",
     "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736148943&menu=ultiDatos&idp=1254735576715",
     "group": "Industria, energía y construcción",
-    "topic": "Agosto 2026"
+    "topic": "Septiembre 2026"
   },
   {
     "name": "Encuesta industrial de productos",
@@ -573,7 +573,7 @@
     "name": "Índice de Producción de la Construcción",
     "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177119&menu=ultiDatos&idp=1254735576757",
     "group": "Industria, energía y construcción",
-    "topic": "Agosto 2026"
+    "topic": "Septiembre 2026"
   },
   {
     "name": "Índices de precios de materiales, nacional de la mano de obra y de componentes de transporte de viajeros por carretera",
@@ -819,7 +819,7 @@
     "name": "Campings: encuesta de ocupación e índice de precios",
     "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736176961&menu=ultiDatos&idp=1254735576863",
     "group": "Servicios",
-    "topic": "Septiembre 2026"
+    "topic": "Octubre 2026"
   },
   {
     "name": "Apartamentos turísticos: encuesta de ocupación e índice de precios",
@@ -921,7 +921,7 @@
     "name": "Índice de referencia de arrendamientos de vivienda",
     "href": "https://www.ine.es/dyngs/INEbase/operacion.htm?c=Estadistica_C&cid=1254736177110&menu=ultiDatos&idp=1254735976607",
     "group": "Nivel y condiciones de vida (IPC)",
-    "topic": "Agosto 2026"
+    "topic": "Septiembre 2026"
   },
   {
     "name": "Encuesta de Condiciones de Vida (ECV)",
